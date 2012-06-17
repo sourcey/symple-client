@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Player Screen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
+    <script>
+        
+    // -----------------------------------------------------------------------------
+    //
+    // Pseudo MJPEG Engine
+    //
+    // -----------------------------------------------------------------------------
+    var player = null;
+    var playing = false;
+    var prevImage = null;
+    var fps = 0;
+    var seq = 0;
+
+    function play() {
+        if (!playing) {
+            playing = true;
+            for (var i = 0; i < player.options.threads; ++i) {
+                loadNext();
+            }
+        }
+    }
+
+    function stop() {
+        playing = false;
+    }
+
+    function resize(width, height) {
+    }
+
+    function loadNext() {
+        if (!playing)
+            return;
+
+        var img = new Image();
+        img.style.position = "absolute";
+        img.style.zIndex = -1;
+        img.onload = onload;
+        //img.width = player.options.videoWidth;
+        //img.height = player.options.videoHeight;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.src = url();
+        
+        var body = document.getElementById("body"); // for ie6
+        body.insertBefore(img, body.firstChild);
+        //console.log('PseudoMJPEGEngine:numChildren: ' + body.childNodes.length);
+    }
+
+    function update(img) {
+        if (!playing)
+            return;
+
+        // drop old fames to avoid jerky playback
+        if (prevImage &&
+            prevImage.seq > img.seq) {
+            free(img);
+            //console.log('PseudoMJPEGEngine:Dropping: ' + img.seq + ' < ' + prevImage.seq);
+            return;
+        }
+
+        // bring new image to front!
+        img.style.zIndex = img.seq;
+
+        var now = new Date().getTime();
+        var delta = 0;
+        if (prevImage) {
+            free(prevImage);
+            delta = now - prevImage.time;
+            fps = (1000.0 / delta).toFixed(3);
+        }
+
+        player.displayStatus(delta + " ms (" + fps + " fps)");
+        prevImage = img;
+        prevImage.time = now;
+        loadNext();
+    }
+
+    function onload() {
+        update.call(window, this);
+    }
+
+    function free(img) {
+        img.src = "#";
+        img.parentNode.removeChild(img);
+    }
+
+    function url() {
+        return "http://" + player.options.spotIP + ":" + player.options.spotPort + player.options.snapshotURI +
+            "?channel=" + player.options.channel + "&width=" + player.options.encodeWidth + "&height=" +
+            player.options.encodeHeight + "&seq=" + (++seq) + "&rand=" + Math.random()
+    }
+    </script>
+  </head>
+  <body id="body">
+  </body>
+</html>

@@ -1,0 +1,143 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Socket IO Test</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <!--<script src="/assetpipe/spot/server/node_modules/socket.io/lib/socket.io.js"></script>
+    <script src="/assetpipe/socket.io/lib/socket.io-client.js"></script>-->
+  </head>
+  <body>
+    <h1>Socket IO Test</h1>
+    <!--
+    <div id="setUser">
+      Username: <input type="text" id="username-input" value="user"/> <br/>
+      Name: <input type="text" id="name-input" value="Some User"/> <br/>
+      Account: <input type="text" id="account-input" value="4"/> <br/>
+      <button id="setNickName">Set</button>
+    </div>
+    -->
+    <div id="chat">
+      <div id="board"></div>
+      <textarea id="textSend"></textarea>
+      <button id="send">Send</button>
+    </div>
+  </body>
+  <script type="text/javascript">
+    var $client = new Client;
+    
+    function getURLParameter(name) {
+      return decodeURI(
+          (RegExp(name + '=' + '(.+?)(&|$)').exec(location.search)||[,null])[1]
+      );
+    }
+    
+    function connect() {
+      //$("#username-input").val(), $("#name-input").val(), $("#account-input").val()
+      
+      $client.Connect("admin", "Web Node", "chat");      
+    }
+      
+    function sendMsg(){
+      var m = $("#textSend").val();
+      $("#textSend").val("");
+      $client.Send(m);
+    }
+
+    $(document).ready(function(){
+      
+      var sessionID = "31fec9d24829b2163c1d3b37695f48b68c38940bc01e78f7620c2f772e24b6e5";
+      jQuery.ajaxSetup({ beforeSend: function (xhr) { xhr.setRequestHeader("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzAccept", "text/javascript"); } }); 
+      /*  
+      $.ajaxSetup({
+        'beforeSend': function(xhr) {
+          xhr.setRequestHeader("aaaaaaaaaaaaaaaaaaX-Session-ID", sessionID);
+        }
+      });
+          
+      // add cookie
+      var sessionID = "31fec9d24829b2163c1d3b37695f48b68c38940bc01e78f7620c2f772e24b6e5";
+      document.cookie = "_anionu_session=" + sessionID; // pfft
+      document.cookie = "_anionu_account=4";
+      $.beforeSend(function(xhr){
+        xhr.setRequestHeader("X-Session-ID", sessionID);
+      });
+    
+      $("#name-input").val(getURLParameter("name"));
+      $("#username-input").val(getURLParameter("username"));
+      $("#account-input").val(getURLParameter("account"));
+      */
+      connect();
+      
+      $("#setNickName").click(function(){
+        connect();
+      });
+        
+      $('textarea#textSend').bind('keypress', function(e) {
+        if(e.keyCode==13) {
+          sendMsg();
+        }
+      });
+  
+      $("#send").click(function() {
+          sendMsg();
+      });
+  
+      var today = new Date();
+      var offset = -(today.getTimezoneOffset()/60);  
+    });
+    
+    function Client(){
+      this.socket = null;
+      this.username = "";
+      this.name = "";
+      this.account = "";
+  
+      this.Connect = function(username, name, account) {
+        //var url = 
+        socket = io.connect('http://localhost:1337'); // + account/chat
+        username = username;
+        name = name;
+        account = account;
+        
+        // connect
+        socket.on('connect',function () {
+          console.log('Connected')
+          //console.log(data)
+          //var cookie = "31fec9d24829b2163c1d3b37695f48b68c38940bc01e78f7620c2f772e24b6e5";
+          //, cookie: cookiedata
+          socket.emit('announce', 
+            {
+              //username: username, 
+              name: name//, 
+              //account: account
+            }, 
+            function(response) {
+              $("#board").append("<p>" + response.msg + "</p>");
+              //$("#board").append("<p>" + response + "</p>");
+              console.log(response)
+            });
+          /*
+          */
+        });
+        
+        socket.on("message", function(msg, p, c){
+          console.log(msg)
+          $("#board").append("<p>" + msg.name + ": " + msg + "</p>"); //.msg
+        });
+      };
+  
+      this.Send = function Send (msg) {
+        console.log('Sending: ')
+        console.log(msg)
+        
+        socket.emit("message", { msg: msg, info: name}, function(response) {
+          $("#board").append("<p>" + name + ": " + msg + "</p>");
+        });
+      };  
+  
+    }
+  
+  </script>
+</html>
+

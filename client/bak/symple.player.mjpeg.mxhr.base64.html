@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Player Screen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+
+    // -----------------------------------------------------------------------------
+    //
+    // MXHR Base64 MJPEG Engine
+    //
+    // - Multipart data MUST be base64 encoded to use this engine.
+    // - Safari/WebKit parses and removes chunk headers and boundaries for us.
+    //
+    // -----------------------------------------------------------------------------
+    var player = null;
+    var xhr = null;
+    var img = null;
+    var prevTime = new Date().getTime();
+    var fps = 0;
+    var seq = 0;
+    var parsed = 0;
+    var boundary = '';
+
+    function play() {
+        img =  document.getElementById("image");
+        img.style.width = '100%';
+        img.style.height = '100%';
+
+        // These versions of XHR are known to work with MXHR
+        try { xhr = new ActiveXObject('MSXML2.XMLHTTP.6.0'); } catch(nope) {
+            try { xhr = new ActiveXObject('MSXML3.XMLHTTP'); } catch(nuhuh) {
+                try { xhr = new XMLHttpRequest(); } catch(noway) {
+                    throw new Error('Could not find supported version of XMLHttpRequest.');
+                }
+            }
+        }
+
+        // If possible don't let the browser parse any data
+        if (xhr.overrideMimeType)
+            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        xhr.open('GET', player.options.url, true);
+        xhr.onreadystatechange = function() {
+            
+            // Safari does not return initial headers here, only chunk headers.
+            if (xhr.readyState == 2 && !navigator.userAgent.match(/(AppleWebKit)/)) {
+                var contentTypeHeader = xhr.getResponseHeader("Content-Type");
+                if (contentTypeHeader.indexOf("multipart/") == -1) {
+                    // ERROR: Not multipart
+                    player.displayMessage('error', 'Bad multipart response');
+                    //xhr.abort(); // safari windows crash
+                    return;
+                } else
+                    // TODO: Boundaries enclosed in commas
+                    boundary = '--' + contentTypeHeader.split('=')[1];
+            }
+            else if (xhr.readyState == 3) {
+                processChunk();
+            }
+            if (xhr.readyState == 4) {
+                onComplete(xhr.status);
+            }
+        };
+
+        xhr.send(null);
+    }
+
+    function stop() {
+        if (xhr) {
+            xhr.abort();
+        }
+        if (img) {
+            img.style.display = 'none';
+            img.src = "#"; // closes socket in ff, but not safari
+            img = null;
+        }
+    }
+
+    function onComplete(status) {
+        processChunk();
+        // ERROR
+        player.displayMessage('info', 'The stream has ended');
+        /*
+        if (status >= 200 && status < 300) {
+            invoke('complete', status);
+        } else {
+            invoke('error', status);
+        }
+        */
+    }
+
+    function processChunk() {
+        var length = xhr.responseText.length,
+            buffer = xhr.responseText.substring(parsed, length);
+
+        if (navigator.userAgent.match(/(AppleWebKit)/)) {
+            var mime = xhr.getResponseHeader("Content-Type");
+            draw(mime, buffer);
+            parsed += buffer.length;
+        }
+        else {
+            // [parsed_length, header_and_payload]
+            var res = incrParse(buffer);
+            if (res[0] > 0) {
+                processPart(res[1]);
+                parsed += res[0];
+                if (length > parsed) processChunk();
+            }
+        }
+    }
+    
+    function processPart(part) {
+        //console.log('processPart')
+        part = part.replace(boundary + "\r\n", '');
+        var lines = part.split("\r\n");
+        var mime = null;
+        var headers = {};
+        while(/^[-a-z0-9]+:/i.test(lines[0])) {
+            var header = lines.shift().split(':');
+            headers[header[0]] = header[1].trim();
+            if (header[0] == 'Content-Type')
+                mime = header[1].trim();
+        }
+
+        var payload = lines.join("\r\n");
+        draw(mime, payload);
+    }
+
+    function incrParse(buffer) {
+        //console.log('incrParse:', buffer.length)
+        if (buffer.length < 1) return [-1];
+        var start = buffer.indexOf(boundary);
+        if (start == -1) return [-1];
+        var end = buffer.indexOf(boundary, start + boundary.length);
+        // SUCCESS
+        if (start > -1 && end > -1) {
+            var part = buffer.substring(start, end);
+            // end != part.length in wrong response, ignore it
+            return [end, part];
+        }
+        // INCOMPLETE
+        return [-1];
+    }
+
+    function draw(mime, data) {
+        //console.log('draw', mime, data.length)
+        if (img.style)
+            img.style.display = 'block';
+
+        img.src = 'data:' + mime + ';base64,' + data;
+
+        update();
+    }
+
+    function update() {
+        if (player && seq > 0) {
+            var now = new Date().getTime();
+            var delta = prevTime ? now - prevTime : 0;
+            fps = (1000.0 / delta).toFixed(3);
+            player.displayStatus(delta + " ms (" + fps + " fps)");
+            prevTime  = now;
+        }
+
+        seq++;
+    }
+
+    function resize(width, height) {
+        /*
+        if (img) {
+            img.width = width;
+            img.height = height;
+        }
+        */
+    }
+
+            //if (seq < 3) {
+            //    seq++;
+            //    return;
+            //}
+        /*
+        img.src = '';
+
+        var img = new Image();
+        img.style.position = "absolute";
+        //img.style.zIndex = -1;
+        img.style.zIndex = seq;
+        img.onload = onload;
+        //img.width = player.options.videoWidth;
+        //img.height = player.options.videoHeight;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.src = 'data:' + mime + ';base64,' + data;
+
+       // var body = document.getElementById("body"); // for ie6
+       // body.insertBefore(img, body.firstChild);
+        if (document.body.firstChild){
+            document.body.insertBefore(img, document.body.firstChild);
+        } else {
+            document.body.appendChild(img);
+        }
+        */
+
+            /*
+            console.log('MJPEG: onreadystatechange: ', xhr.readyState);
+
+                var contentTypeHeader = xhr.getResponseHeader("Content-Type");
+                var ExpiresHeader = xhr.getResponseHeader("Expires");
+                console.log('MJPEG: onreadystatechange: contentTypeHeader: ', contentTypeHeader)
+                console.log('MJPEG: onreadystatechange: Expires ', Expires)
+
+                //console.log('MJPEG: onreadystatechange 2: contentTypeHeader: ', contentTypeHeader)
+                //if (seq == 0) {
+                //    var contentTypeHeader = xhr.getResponseHeader("Content-Type");
+               // console.log('MJPEG: onreadystatechange 3: contentTypeHeader: ', contentTypeHeader)
+                //}
+
+            */
+        /*
+        if (img) {
+            img.style.display = 'none';
+            img.src = "";
+            img = null;
+        }
+        seq++;
+        if (seq > 1)
+            return;
+
+        console.log('processChunk: ', buffer)
+        // This method of aquiring the boundary is quite dubious, but since
+        // safari/webkit doesn't give us the initial multipart header via 
+        // onreadystatechange we have no choice.
+        if (!boundary) { //seq == 0 &&
+            var start = buffer.indexOf('--');
+        console.log('processChunk: startstartstartstartstartstart: ', start)
+            if (start == -1) return;
+            var end = buffer.indexOf('\r\n', start);
+        console.log('processChunk: endendendendendendendendendendendend: ', end)
+            if (end == -1) return;
+            boundary = buffer.substring(start, end);
+            // ERROr: No boundary
+        }
+        //console.log('processChunk: navigator.userAgent: ', navigator.userAgent)
+        */
+
+    </script>
+  </head>
+  <body>
+      <!--
+      -->
+       <img id="image" style="display:none" />
+  </body>
+</html>

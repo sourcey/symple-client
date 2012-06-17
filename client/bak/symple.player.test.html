@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>HTML5 Test</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">       
+    
+    <style>
+      #player {
+      }
+    </style>
+    
+    <script src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
+    <script type="text/javascript">          
+
+
+
+var $player;
+
+
+  $(function() {
+    
+    // Restrictions for MP4 on older iPhone/iPad:
+    // H.264 video, up to 1.5 Mbps, 640 by 480 pixels, 30 frames per second,
+    // Low-Complexity version of the H.264 Baseline Profile with AAC-LC audio
+    // up to 160 Kbps, 48kHz, stereo audio in .m4v, .mp4, and .mov file formats.
+
+    $player = new Player({ 
+        spotIP: '61.69.195.21', 
+        /*
+        encodeWidth: 128, 
+        encodeHeight: 96, 
+        videoWidth: 320, 
+        videoHeight: 240,
+        encodeWidth: 320, 
+        encodeHeight: 240,
+        videoWidth: 320, 
+        videoHeight: 240,
+        */
+        encodeWidth: 640, 
+        encodeHeight: 480,
+        videoWidth: 640, 
+        videoHeight: 480,
+        threads: 5,
+        streamingMethod: 'pseudo'
+        });
+  });
+
+    </script>
+    
+  </head>
+  <body>
+  
+    <div id="player-container">
+      <div id="player">
+        <div id="player-message">
+        </div>
+        <div id="player-screen">
+        </div>
+        <div id="player-controls">
+          <div id="player-info">-</div>
+          <button id="play-btn" onclick="javascript:$player.play()">Play</button>
+          <button id="pause-btn" onclick="javascript:$player.stop()">Stop</button>
+          <button id="record-btn" onclick="javascript:$player.record()">Record</button>
+        </div>
+      </div>        
+    </div>
+    
+
+         <!--
+    <img src="http://61.69.195.21:327/streaming?format=MJPEG&channel=Default&transport=HTTP" />
+    
+
+6D4] Dropping Overs
+
+
+B1D440] Current Pac
+
+
+      <video height="475" width="407" player-controls="player-controls" autoplay="autoplay" poster="/test/iphoneguide-mac.png">
+         <source src="http://localhost:328/test.mp4" type="video/mp4" />
+         <source src="http://localhost:3000/enctest.mp4" type="video/mp4" />
+         <source src="http://localhost:3000/text.html" type="video/mp4" />
+         <source src="/enctest.mp4" type="video/mp4" />
+         <source src="/test/iphoneguide-mac.mp4" type="video/mp4" />
+         <source src="/test/iphoneguide-mac.ogv" type="video/ogg" />
+      </video>
+         -->
+    
+      <!--
+			<video id="compass" src="http://images.apple.com/safari/welcome/media/compass.mov" width="256" height="256">
+				<img src="http://images.apple.com/safari/welcome/images/safari.jpg" width="200" height="200" alt="Safari" />
+			</video>
+			-->
+  
+      <!-- "Video For Everybody" v0.4.2 by Kroc Camen of Camen Design <camendesign.com/code/video_for_everybody>
+           =================================================================================================================== -->
+      <!-- first try HTML5 playback: if serving as XML, expand `player-controls` to `player-controls="player-controls"` and autoplay likewise       -->
+      <!-- warning: playback does not work on iPad/iPhone if you include the poster attribute! fixed in iOS4                   -->
+      <!-- <video width="400" height="300" player-controls="player-controls" autoplay="autoplay"> width="640" height="360"  -->
+              <!-- MP4 must be first for iPad!
+
+              <source src="/out.mp4"  />
+              <source src="/out.mp4" type="video/mp4"  /> -->
+              <!-- <source src="http://clips.vorwaerts-gmbh.de/VfE_html5.mp4" type="video/mp4"  />Safari / iOS, IE9 -->
+              <!-- <source src="http://clips.vorwaerts-gmbh.de/VfE.webm"      type="video/webm" />Chrome10+, Ffx4+, Opera10.6+ -->
+              <!-- <source src="http://clips.vorwaerts-gmbh.de/VfE.ogv"       type="video/ogg"  />Firefox3.6+ / Opera 10.5+ -->
+              <!-- fallback to Flash:
+              <object width="640" height="360" type="application/x-shockwave-flash" data="player.swf"> -->
+                      <!-- Firefox uses the `data` attribute above, IE/Safari uses the param below
+                      <param name="movie" value="player.swf" />
+                      <param name="flashvars" value="autostart=true&amp;controlbar=over&amp;image=poster.jpg&amp;file=http://clips.vorwaerts-gmbh.de/VfE_flash.mp4" /> -->
+                      <!-- fallback image
+
+                      <img src="poster.jpg" width="640" height="360" alt="Big Buck Bunny"
+                           title="No video playback capabilities, please download the video below" />
+              </object> 
+      </video>-->
+      
+      
+      <!--
+      					<video player-controls="player-controls" autoplay="autoplay" poster="images/player-screen.jpg" width="592" height="252" onclick="if(/Android/.test(navigator.userAgent))this.play();">
+					<source src="images/happyfit2.mp4" />
+					<source src="images/happyfit2.mp4" type="video/mp4" />
+					<source src="images/happyfit2.webm" type="video/webm" />
+					<source src="images/happyfit2.ogv" type="video/ogg" />
+					<object type="application/x-shockwave-flash" data="images/flashfox.swf" width="592" height="252">
+					<param name="movie" value="images/flashfox.swf" />
+					<param name="allowFullplayer-screen" value="true" />
+					<param name="wmode" value="transparent" />
+					<param name="flashVars" value="autoplay=true&amp;player-controls=true&amp;poster=images/happyfit2.jpg&amp;src=happyfit2.mp4" />
+					 <embed src="images/flashfox.swf" width="592px" height="252px" flashVars="autoplay=true&amp;player-controls=true&amp;poster=images/player-screen.jpg&amp;src=happyfit2.mp4"
+							allowFullplayer-screen="true" wmode="transparent" type="application/x-shockwave-flash" pluginspage="http://www.adobe.com/go/getflashplayer_en" />
+					<img alt="happyfit2" src="images/player-screen.jpg" width="592" height="252" title="Video playback is not supported by your browser" />
+						</object>
+					</video>
+  </body>
+</html>
+					-->
