@@ -1,10 +1,38 @@
 var app = require('express').createServer()
-  , sio = require('socket.io')
+  , sio = require('socket.io')  
+  , fs = require('fs')
   , RedisStore = sio.RedisStore
   , io = sio.listen(app);
-    
+
+//
+// Load configuration file
+var config = JSON.parse(
+  fs.readFileSync("./config.json").toString().replace(
+    new RegExp("\\/\\*(.|\\r|\\n)*?\\*\\/", "g"),
+    "" // strip out comments
+  )
+);
+
+//
+// Configure Socket.IO
 io.configure(function () {
-  io.set('store', new RedisStore({ nodeID: 1 }));
+
+  // Initialize the redis store
+  var store = new RedisStore({
+    nodeID: config.nodeId     || 1,
+    redisPub: config.redis    || {},
+    redisSub: config.redis    || {},
+    redisClient: config.redis || {}
+  });
+    
+  // Authenticate redis connections if required
+  if (config.redis && config.redis.password) {
+    store.pub.auth(config.redis.password)
+    store.sub.auth(config.redis.password)
+    store.cmd.auth(config.redis.password)
+  }
+  
+  io.set('store', store); 
 });
 
 app.listen(4000);
@@ -14,12 +42,12 @@ app.listen(4000);
 // Globals
 //
 
-function isFunction(obj) {
+function isfunc(obj) {
   return !!(obj && obj.constructor && obj.call && obj.apply);
 }
 
 function respond(ack, status, message, data) {
-  if (ack && isFunction(ack)) {
+  if (ack && isfunc(ack)) {
     res = {}
     res.type = 'response';
     res.status = status;
@@ -651,9 +679,9 @@ sio.Socket.prototype.updateSession = function(key, value, fn) {
           console.log(client.id + ' Responding Authorize: ' + JSON.stringify(req));
           console.log(client.id + ' Responding Authorize: ------------');
           
-    //console.log(isFunction(ack));
-   // console.log(isFunction(req));
-    //console.log(isFunction(authorize));
+    //console.log(isfunc(ack));
+   // console.log(isfunc(req));
+    //console.log(isfunc(authorize));
     //console.log(ack);
           ack({ res: "Welcome " + client.name });
           }
@@ -667,9 +695,9 @@ sio.Socket.prototype.updateSession = function(key, value, fn) {
         if (ack) {
           console.log(client.id + ' Responding Authorize: ' + JSON.stringify(req));
           console.log(client.id + ' Responding Authorize: ------------');
-       // console.log(isFunction(ack));
-        //console.log(isFunction(req));
-        //console.log(isFunction(authorize));
+       // console.log(isfunc(ack));
+        //console.log(isfunc(req));
+        //console.log(isfunc(authorize));
         //console.log(ack);
           ack({ res: err }); //err);
           }

@@ -1,0 +1,11 @@
+{
+  /* The ID of the node instance */
+  "nodeId" : 1,
+    
+  /* Redis configuration */
+  "redis" : {
+    "host" : "127.0.0.1",
+    "port" : 6379,
+    "password" : ""
+  }
+}
