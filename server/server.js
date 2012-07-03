@@ -1,17 +1,34 @@
-var app = require('express').createServer()
+var http = require('http')
+  , https = require('https')
   , sio = require('socket.io')  
   , fs = require('fs')
-  , RedisStore = sio.RedisStore
-  , io = sio.listen(app);
+  , RedisStore = sio.RedisStore;
 
 //
 // Load configuration file
 var config = JSON.parse(
-  fs.readFileSync("./config.json").toString().replace(
+  fs.readFileSync(__dirname + "/config.json").toString().replace(
     new RegExp("\\/\\*(.|\\r|\\n)*?\\*\\/", "g"),
     "" // strip out comments
   )
 );
+
+//
+// Create server instance
+var server = (config.ssl.enabled ?
+  // HTTPS
+  https.createServer({
+      key: fs.readFileSync(config.ssl.key)
+    , cert: fs.readFileSync(config.ssl.cert)
+  }) :
+  // HTTP
+  http.createServer())  
+    .listen(config.port, function() {
+      var addr = server.address();
+      console.log('Listening on http://' + addr.address + ':' + addr.port);
+    });
+
+var io = sio.listen(server);
 
 //
 // Configure Socket.IO
@@ -34,8 +51,6 @@ io.configure(function () {
   
   io.set('store', store); 
 });
-
-app.listen(4000);
 
 
 //
@@ -365,6 +380,10 @@ io.sockets.on('connection', function(client) {
 
 
 
+
+//, io = sio.listen(app);
+//app.listen(config.port);
+//require('express').createServer();  
 
 
   /*
