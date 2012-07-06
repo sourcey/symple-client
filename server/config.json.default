@@ -4,6 +4,9 @@
   
   /* The port to listen on */
   "port" : 4000,  
+  
+  /* Allow anonymous connections */
+  "anonymous" : false,  
     
   /* Redis configuration */
   "redis" : {

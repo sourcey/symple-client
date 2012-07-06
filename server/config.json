@@ -4,6 +4,9 @@
   
   /* The port to listen on */
   "port" : 443,  
+  
+  /* Allow anonymous connections */
+  "anonymous" : true,  
     
   /* Redis configuration */
   "redis" : {
@@ -15,7 +18,7 @@
   /* SSL configuration */
   "ssl" : {
     "enabled" : true,
-    "key" : "D:\\dev\\projects\\Sourcey\\share\\ssl\\anionu.cert.key",
-    "cert" : "D:\\dev\\projects\\Sourcey\\share\\ssl\\anionu.cert.crt"
+    "key" : "D:\\dev\\projects\\Sourcey\\share\\ssl\\symple.key",
+    "cert" : "D:\\dev\\projects\\Sourcey\\share\\ssl\\symple.crt"
   }
 }

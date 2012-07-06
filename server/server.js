@@ -25,8 +25,9 @@ var server = (config.ssl.enabled ?
   http.createServer())  
     .listen(config.port, function() {
       var addr = server.address();
-      console.log('Listening on http://' + addr.address + ':' + addr.port);
+      console.log('Listening on ' + (config.ssl.enabled ? 'https' : 'http')  + '://' + addr.address + ':' + addr.port);
     });
+
 
 var io = sio.listen(server);
 
@@ -80,39 +81,55 @@ function respond(ack, status, message, data) {
 //
 
 sio.Socket.prototype.authorize = function(req, fn) {  
-  if (!req.user || !req.token)
-    return fn(404, 'Bad request');
     
   var client = this;
-  client.token = req.token;
-  client.getSession(function(err, session) {
-    console.log('Authentication: Key: ', client.token);
-    console.log('Authentication: Session: ', session);
-    if (err || !session || !session.user) {
-      console.log('Authentication Error: ', err);
-      return fn(401, 'Authentication Error');
-    }
-    else {
-      client.online = true;
-      client.name = req.name ?                  // The client display name
-          req.name : client.user;
-      client.type = req.type;                   // The client type
-      client.user = session.user.user;          // The client login name
-      client.group = session.user.group;        // The client's parent group
-      client.access = session.user.access;      // The client access level [1 - 10]
-      client.token = req.token;                 // Remote session token (from Rails)
-      client.session = session;                 // Remote sessiopn object (from Rails)
-      //client.sympleID = client.group + ':' + client.user + ':' + client.id;
-      //client.join(client.user);   // join user channel
-      //client.join(client.group);  // join group channel/*client.group + ':' +*/
-      //client.join(client.user);   // join user channel     // join group channel
-      //client.join(client.group);
-      client.join('user-' + client.user);       // join user channel
-      client.join('group-' + client.group);     // join group channel
-      console.log('Authentication Success: ', session);
-      return fn(200, 'Welcome ' + client.name);
-    }
-  });
+  
+  // Authenticated Access
+  if (!config.anonymous) {
+    if (!req.user || !req.token)
+      return fn(404, 'Bad request');
+    
+    // Retreive the session from Redis
+    client.token = req.token;                 // Remote session token
+    client.getSession(function(err, session) {
+      console.log('Authenticating: Token: ', req.token, 'Session:', session);
+      if (err || typeof session !== 'object' || typeof session.user !== 'object') {
+        console.log('Authentication Error: ', req.token, ':', err);
+        return fn(401, 'Authentication Error');
+      }
+      else {
+        console.log('Authentication Success: ', req.token);        
+        client.session = session;             // Remote session object
+        client.user = session.user.user;      // The client login name
+        client.group = session.user.group;    // The client's parent group
+        client.access = session.user.access;  // The client access level [1 - 10]
+        client.onAuthorize.apply(client, req);
+        return fn(200, 'Welcome ' + client.name);
+      }
+    });
+  }
+  
+  // Anonymous Access
+  else {
+    if (!req.user)
+      return fn(404, 'Bad request');      
+      
+    client.user = req.user;
+    client.group = req.group;
+    client.access = 1;
+    client.onAuthorize(req);
+    return fn(200, 'Welcome ' + client.name);
+  }
+}
+
+
+sio.Socket.prototype.onAuthorize = function(req) {
+  this.online = true;
+  this.name = req.name ?                 // The client display name
+      req.name : this.user;
+  this.type = req.type;                  // The client type
+  this.join('user-' + this.user);       // join user channel
+  this.join('group-' + this.group);     // join group channel
 }
 
 
@@ -128,18 +145,6 @@ sio.Socket.prototype.toPresence = function(p) {
     p.from.user = this.user;
     p.from.id = this.id;
   }
-  /*
-  p.from = this.sympleID;
-  p.data = p.data ? p.data : {};
-  p.data.id = this.sympleID;
-  p.data.group = this.group;
-  p.data.user = this.user;
-  p.data.name = this.name;
-  p.data.type = this.type;
-  p.data.node = this.node;
-  p.data.online = this.online;
-  p.data.address = this.handshake.address.address;
-  */
   return p;
 }
 
@@ -196,17 +201,15 @@ sio.Socket.prototype.touchSession = function(fn) {
 }
 
 
-/*
-sio.Socket.prototype.authorizedClients = function() {
-  var res = [];
-  var clients = io.sockets.clients(this.group);
-  for (i = 0; i < clients.length; i++) {
-    if (clients[i].access >= this.access)
-      res.push(clients[i]);
-  }
-  return res;
-}
-*/
+//sio.Socket.prototype.authorizedClients = function() {
+//  var res = [];
+//  var clients = io.sockets.clients(this.group);
+//  for (i = 0; i < clients.length; i++) {
+//    if (clients[i].access >= this.access)
+//      res.push(clients[i]);
+//  }
+//  return res;
+//}
 
 
 // Returns an array of authorized peers belonging to the currect
@@ -239,9 +242,8 @@ sio.Socket.prototype.unauthorizedIDs = function() {
 
 
 sio.Socket.prototype.sendAuthorized = function(message) {
-
   if (!message || typeof message !== 'object' || typeof message.from !== 'object') {
-    console.log('Received bad message from: ' + this.id);
+    console.log('Bad message received from:', this.id, ':', message);
   }
 
   // If no destination address was given we broadcast 
@@ -250,35 +252,26 @@ sio.Socket.prototype.sendAuthorized = function(message) {
     this.broadcast.to('group-' + this.group, this.unauthorizedIDs()).json.send(message);
   }
 
-  // If a session id was given we send          //but no user group
-  // a directed message to that session id.
-  else if (typeof message.to.id === 'string' //&&sockets.
-      //typeof message.to.user !== 'string' &&
-      //typeof message.to.group !== 'string' //
-    ) {
+  // If a session id was given (but no user group)
+  // we send a directed message to that session id.
+  else if (typeof message.to.id === 'string') {
     this.namespace.except(this.unauthorizedIDs()).socket(message.to.id).json.send(message);
   }
 
-  // If a user was given we                 //but no session id or group
-  // broadcast a message to user scope.
-  else if (typeof message.to.user === 'string' //&&
-      //typeof message.to.id !== 'string' &&
-      //typeof message.to.group !== 'string'
-    ) {
+  // If a user was given (but no session id or group) 
+  // we broadcast a message to user scope.
+  else if (typeof message.to.user === 'string') {
     this.broadcast.to('user-' + message.to.user, this.unauthorizedIDs()).json.send(message);
   }
 
-  // If a group was given we                 //but no session id or user
+  // If a group was given (but no session id or user) we
   // broadcast a message to the given group scope.
-  else if (typeof message.to.group === 'string' //&&
-      //typeof message.to.id !== 'string' &&
-      //typeof message.to.user !== 'string'
-    ) {
+  else if (typeof message.to.group === 'string') {
     this.broadcast.to('group-' + message.to.group, this.unauthorizedIDs()).json.send(message);
   }
 
   else {
-    console.log('Failed to send message with no scope: ' + message);
+    console.log('Failed to send message without scope: ' + message);
   }
 }
 
@@ -303,7 +296,8 @@ io.sockets.on('connection', function(client) {
 
     // Authorization
     //
-    client.authorize(req, function(status, message) {
+    client.authorize(req, function(status, message) {  
+      console.log('Announce Result: ', status, message);
       clearInterval(interval);
       //status = 404;
       if (status == 200)
@@ -317,7 +311,7 @@ io.sockets.on('connection', function(client) {
       // Message
       //
       client.on('message', function(m, ack) {
-        console.log(client.id + ' Received Message <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n', m);        
+        //console.log(client.id + ' Received Message <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n', m);        
         if (m) {
           // Populate some default fields.
           //m.from = this.sympleID;
@@ -343,7 +337,7 @@ io.sockets.on('connection', function(client) {
       // Peers
       // 
       client.on('peers', function(ack) {
-        console.log(client.id + ' Received Roster <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');        
+        //console.log(client.id + ' Received Roster <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');        
         
         respond(ack, 200, '', this.peers(false));
       });
@@ -377,7 +371,6 @@ io.sockets.on('connection', function(client) {
     client.leave('group-' + client.group);  // leave group channel
   });
 });
-
 
 
 
