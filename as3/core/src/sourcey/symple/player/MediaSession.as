@@ -38,7 +38,7 @@
 					state = Session.STATE_NEGOTIATING;
 					
 					for each(var candidate:Object in params.candidates) {
-						candidate.protocol = params.transport == "TLS" ? "https" : "http";
+						candidate.protocol = params.transport == "SSL" ? "https" : "http";
 						resolver.resolve(candidate);
 					}
 				}

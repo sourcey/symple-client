@@ -1,1 +1,0 @@
-copy D:\dev\projects\Sourcey\flex\SymplePlayer\bin-debug\SymplePlayer.swf D:\dev\projects\Sourcey\anionu.com\app\assets\vendors\symple\symple.player.swf

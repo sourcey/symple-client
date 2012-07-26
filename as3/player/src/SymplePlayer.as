@@ -45,6 +45,7 @@ package
 			//
 			// Tests
 			//
+			/*
 			player.open({
 				token: "test-flv",
 				format: "FLV",
@@ -63,8 +64,7 @@ package
 					}
 				]	
 			});
-			
-			/*
+				
 			player.open({
 				token: "test-mjpeg",
 				format: "MJPEG",
@@ -79,8 +79,8 @@ package
 						uri: "/mjpeg"
 					}
 				]	
-			});
-			*/			
+			});	
+			*/	
 		}
 		
 		override protected function addChildren():void
