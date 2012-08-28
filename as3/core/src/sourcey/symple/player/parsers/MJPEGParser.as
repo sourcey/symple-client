@@ -67,7 +67,7 @@ package sourcey.symple.player.parsers
 		
 		override public function parse(input:ByteArray):void 
 		{		
-			Logger.send(Logger.DEBUG, "[MJPEGParser] Parsing Data: " + input.length);				
+			//Logger.send(Logger.DEBUG, "[MJPEGParser] Parsing Data: " + input.length);				
 			var offset:int = input.position;
 			if (!input.length)
 				return;	
@@ -89,7 +89,7 @@ package sourcey.symple.player.parsers
 							input[x + 1] == 45) {
 							x += 2;
 							//boundaryPos = x;
-							Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary Start At: " + x);
+							//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary Start At: " + x);
 						}
 						
 						// The first carriage returns marks the beginning
@@ -105,7 +105,7 @@ package sourcey.symple.player.parsers
 							*/
 							headerStart = x;
 							setState(STATE_HEADERS);
-							Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + x);	
+							//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + x);	
 						}
 						
 						break;
@@ -118,15 +118,15 @@ package sourcey.symple.player.parsers
 							input.position = headerStart;							
 							onHeader(input.readUTFBytes(x - headerStart));
 							headerStart = (x += 2);
-							Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + headerStart);	
+							//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + headerStart);	
 						}
 							
 						// Find the JPEG start code
 						else if (//!started &&							
 							input[x] == 255 && 
 							input[x + 1] == 216) {
-							Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Start At: " + x);	
-							Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Data Remaining: " + (input.length - x));	
+							//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Start At: " + x);	
+							//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Data Remaining: " + (input.length - x));	
 							frameStart = x;
 							//started = true;
 							setState(STATE_FRAME);
@@ -139,7 +139,7 @@ package sourcey.symple.player.parsers
 							input[x + 1] == 217) {
 							if (input.length >= x + 2) {
 								x += 2;
-								Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: " + x);	
+								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: " + x);	
 								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Input Length: " + input.length);	
 								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Reading From: " + frameStart);	
 								buffer.writeBytes(input, frameStart, x - frameStart);
@@ -233,8 +233,7 @@ package sourcey.symple.player.parsers
 			// The packet may have been fragmented
 			if (state == STATE_FRAME && frameStart >= 0) {		
 				buffer.writeBytes(input, frameStart, input.length - frameStart);	
-				Logger.send(Logger.DEBUG, "[MJPEGParser] Continuing JPEG: Appending: " + (input.length - frameStart));	
-				//Logger.send(Logger.DEBUG, "[MJPEGParser] Continuing JPEG: Buffer Length: " + buffer.length);
+				//Logger.send(Logger.DEBUG, "[MJPEGParser] Continuing JPEG: Appending: " + (input.length - frameStart));	
 			}
 		}
 	}

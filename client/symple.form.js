@@ -47,6 +47,7 @@ Symple.Form.prototype = {
     */
 
     fromJSON: function(json) {
+        json = Sourcey.merge(this, json);
         for (var key in json)
             this[key] = json[key];
     }
@@ -64,21 +65,33 @@ Symple.Form.Builder = function(form, element, options) {
 
 Symple.Form.Builder.prototype = {
 
-    // Builds the entire form
+    // Builds the form.
     build: function() {
         this.element.html(this.buildForm(this.form));
         this.postProcess();
     },
 
-    // Updates fields values and errors.
-    // formData may be a partial subset of the complete form.
-    // Note that only Fields cannot be inserted via Update,
-    // not Pages and Sections.
+    // Updates fields values and errors on response.
+    // formData may be the complete form or a partial subset
+    // as long as the original structure is maintained.
+    // If the rebuild flag is set then the form will be rebuilt.
+    // Note that only Fields can be updated and inserted using
+    // this method, not Page or Section elements.
     update: function(formData) {
-        //if (form)
-        //    this.form.fromJSON(form);
-        this.updateElements(formData, 0);
-        this.postProcess();
+        if (formData.rebuild == true) {
+            this.form = new Symple.Form(formData);
+            console.log('Form Builder: Rebuilding Form: ', this.form.id);
+            //var html = this.buildElements(this.form, 0);
+            //this.element.html(this.buildForm(this.form));
+            this.build();
+        }
+        else {
+            console.log('Form Builder: Updating Form: ', this.form.id);
+            if (this.form)
+                this.form.fromJSON(formData);
+            this.updateElements(formData, 0);
+            this.postProcess();
+        }
     },
 
     // Prepares the form to be sent. This includes updating
@@ -98,7 +111,10 @@ Symple.Form.Builder.prototype = {
         el = $(el);
         var id = el.attr('id');
         var field = this.form.getField(id);
-        if (!id || !field || el.attr('name') == 'submit') return null;
+        if (!id || !field) { // || el.attr('name') == 'submit'
+            console.log('Form Builder: Invalid field: ', el.attr('name'));
+            return null;
+        }
         switch (el.get(0).nodeName) {
             case 'INPUT':
                 field.values = [ el.val() ];
@@ -112,52 +128,31 @@ Symple.Form.Builder.prototype = {
                     field.values.push($(this).val());
                 });
                 break;
-            default:return null;
+            default: return null;
         }
         //console.log('Form Builder: Updating Field: ', id, field.values)
         return field;
     },
 
-    // Updates field HTML from JSON.
-    updateHTMLFromField: function(field) {
-        //console.log('Form Builder: Updating Form HTML: ', field)
-
-        var el = this.element.find('[name="' + field.id + '"]');
-        if (el.length) {
-            switch (el.get(0).nodeName) {
-                case 'INPUT':
-                    el.val(field.values[0]);
-                    break;
-                case 'TEXTAREA':
-                    el.text(field.values[0]);
-                    break;
-                case 'SELECT':
-                    $('option:selected', el).attr('selected', false);
-                    for (var ia = 0; ia < field.values.length; ia++) {
-                        $('option[value="' + field.values[ia] + '"]', el).attr('selected', true);
-                    }
-                    break;
-                default: return null;
-            }
-
-            var fel = el.parents('.field:first');
-            fel.find('.error').text(field.error ? field.error : '');
-            fel.find('.loading').remove(); // for live fields, not built in yet
-        }
-
-        return el;
-    },
-
     postProcess: function() {
+        var self = this;
+
         this.element.find('.error', '.hint').each(function() {
             var empty = $(this).text().length == 0;
-            //console.log('Form Builder: Post Process: ', $(this).text(), empty)
             $(this)[empty ? 'hide' : 'show']();
         });
+
+        this.element.find('form').unbind().submit(function() {
+            self.prepareSubmit();
+            return self.options.onSubmit(self.form, self, self.element);
+        });
+
+        this.options.afterBuild(this.form, this, this.element);
+
     },
 
     getHTMLInputs: function() {
-        return this.element.find('input, select, textarea');
+        return this.element.find('input[name!=submit], select, textarea');
     },
 
     getHTMLElement: function(id) {
@@ -180,7 +175,9 @@ Symple.Form.Builder.prototype = {
             html += this.buildPageMenu(form, 0);
             html += '<div class="pages">';
         }
+        //html += '<div class="from-content">';
         html += this.buildElements(form, 0);
+        //html += '</div>';
         if (this.options.pageMenu)
             html += '</div>';
         html += this.endFormHTML(form);
@@ -198,12 +195,12 @@ Symple.Form.Builder.prototype = {
                 if (curr.type == 'page')
                     ; // nothing to do...
                 else if (curr.type == 'section')
-                    ; // nothing to do...
+                    this.updateSectionHTML(curr);
                 else {
 
                     // Update the element
                     if (this.hasHTMLElement(curr.id))
-                        this.updateHTMLFromField(curr);
+                        this.updateFieldHTML(curr);
 
                     // Insert the element
                     else {
@@ -279,7 +276,7 @@ Symple.Form.Builder.prototype = {
                     if (a.type == 'page') {
                         var label = a.label;
                         if (label) {
-                            var id = this.form.id + '-' + label.paramaterize();
+                            var id = this.getElementID(a); //form.id + '-' + label.paramaterize();
                             html += '<li><a rel="' + id + '" href="#' + id + '"><span>' + label + '</span></a></li>';
                         }
                     }
@@ -295,10 +292,10 @@ Symple.Form.Builder.prototype = {
 
     startFormHTML: function(o) {
         var className = this.options.formClass;
+        /*
         if (o.live)
             className += ' live';
 
-        /*
         var html = '';
         html += '<form id="' + o.id + '" name="' + o.id + '" class="' + className + '">';
         if (o.label)
@@ -332,14 +329,15 @@ Symple.Form.Builder.prototype = {
     },
 
     startPageHTML: function(o) {
-        var id = ''
-        if (o.label)
-            id = this.form.id + '-' + o.label.paramaterize();
+        //var id = ''
+        //if (o.label)
+        //    id = this.form.id + '-' + o.label.paramaterize();
+        var id = this.getElementID(o);
         var className = 'page';
+        /*
         if (o.live)
             className += ' live';
 
-        /*
         html += '<div class="' + className + '" id="' + id + '">';
         if (o.label)
             html += '<h2>' + o.label + '</h2>';
@@ -362,12 +360,12 @@ Symple.Form.Builder.prototype = {
     },
 
     startSectionHTML: function(o) {
-        var id = ''
-        if (o.label)
-            id = this.form.id + '-' + o.label.paramaterize();
+        var id = this.getElementID(o);
+        //if (id == 'undefined' && o.label)
+        //    id = this.form.id + '-' + o.label.paramaterize();
         var className = '';
-        if (o.live)
-            className += ' live';
+        //if (o.live)
+        //    className += ' live';
 
         return '\
             <fieldset class="' + className + '" id="' + id + '"> \
@@ -390,6 +388,28 @@ Symple.Form.Builder.prototype = {
 
     endSectionHTML: function(o) {
         return '</fieldset>';
+    },
+    
+    getElementID: function(o) {
+        return this.form.id + '-' + ((o.id && o.id.length ? o.id : o.label).paramaterize()); //.underscore(); //
+    },
+    
+    // Updates page or section HTML from JSON.
+    updateSectionHTML: function(o) {
+        console.log('Form Builder: Updating Element HTML: ', o)
+
+        // Just update errors
+        if (o.error == 'undefined')
+            return;
+
+        var id = this.getElementID(o);
+        var el = this.element.find('#' + id);
+        if (el.length) {
+            var err = el.children('.error:first');
+            err.text(o.error ? o.error : '');
+            //fel.find('.error').text(field.error ? field.error : '');
+            //fel.find('.loading').remove(); // for live fields, not built in yet
+        }
     },
 
     buildLabel: function(o) {
@@ -438,6 +458,34 @@ Symple.Form.Builder.prototype = {
         return this.buildListField(o, true);
     },
 
+    buildIntegerField: function(o) {
+        var html = this.startFieldHTML(o);
+        html += '<input type="number" id="' + o.id + '" name="' + o.id + '" value="' + (o.values ? o.values[0] : '') + '" size="20" />';
+        html += this.endFieldHTML(o);
+        return html;
+    },
+
+    buildDateField: function(o) {
+        var html = this.startFieldHTML(o);
+        html += '<input type="date" id="' + o.id + '" name="' + o.id + '" value="' + (o.values ? o.values[0] : '') + '" size="20" />';
+        html += this.endFieldHTML(o);
+        return html;
+    },
+
+    buildTimeField: function(o) {
+        var html = this.startFieldHTML(o);
+        html += '<input type="time" id="' + o.id + '" name="' + o.id + '" value="' + (o.values ? o.values[0] : '') + '" size="20" />';
+        html += this.endFieldHTML(o);
+        return html;
+    },
+
+    buildDatetimeField: function(o) {
+        var html = this.startFieldHTML(o);
+        html += '<input type="datetime" id="' + o.id + '" name="' + o.id + '" value="' + (o.values ? o.values[0] : '') + '" size="20" />';
+        html += this.endFieldHTML(o);
+        return html;
+    },
+
     buildBooleanField: function(o) {
         var html = this.startFieldHTML(o);
         html += '<input type="checkbox" id="' + o.id + '" name="' + o.id + '" />';
@@ -468,6 +516,36 @@ Symple.Form.Builder.prototype = {
         html += '</div>';
         html += '</div>';
         return html;
+    },
+
+    // Updates field HTML from JSON.
+    updateFieldHTML: function(field) {
+        console.log('Form Builder: Updating Field HTML: ', field)
+
+        var el = this.element.find('[name="' + field.id + '"]');
+        if (el.length) {
+            switch (el.get(0).nodeName) {
+                case 'INPUT':
+                    el.val(field.values[0]);
+                    break;
+                case 'TEXTAREA':
+                    el.text(field.values[0]);
+                    break;
+                case 'SELECT':
+                    $('option:selected', el).attr('selected', false);
+                    for (var ia = 0; ia < field.values.length; ia++) {
+                        $('option[value="' + field.values[ia] + '"]', el).attr('selected', true);
+                    }
+                    break;
+                default: return null;
+            }
+
+            var fel = el.parents('.field:first');
+            fel.find('.error').text(field.error ? field.error : '');
+            fel.find('.loading').remove(); // for live fields, not built in yet
+        }
+
+        return el;
     },
 
 
@@ -523,13 +601,8 @@ Symple.Form.Builder.prototype = {
         options = $.extend({}, $.sympleForm.options, options);
         var builder = new Symple.Form.Builder(form, el, options); //window[]
         builder.build();
-        options.afterBuild(form, builder, el);
         //el.data('form', form);
         el.data('builder', builder);
-        $('form', el).submit(function() {
-            builder.prepareSubmit();
-            return options.onSubmit(form, builder, el);
-        })
         return el;
     }
 })(jQuery);

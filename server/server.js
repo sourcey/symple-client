@@ -87,7 +87,7 @@ sio.Socket.prototype.authorize = function(req, fn) {
   // Authenticated Access
   if (!config.anonymous) {
     if (!req.user || !req.token)
-      return fn(404, 'Bad request');
+      return fn(400, 'Bad request');
     
     // Retreive the session from Redis
     client.token = req.token;                 // Remote session token
@@ -95,7 +95,7 @@ sio.Socket.prototype.authorize = function(req, fn) {
       console.log('Authenticating: Token: ', req.token, 'Session:', session);
       if (err || typeof session !== 'object' || typeof session.user !== 'object') {
         console.log('Authentication Error: ', req.token, ':', err);
-        return fn(401, 'Authentication Error');
+        return fn(401, 'Authentication Failed');
       }
       else {
         console.log('Authentication Success: ', req.token);        
@@ -112,7 +112,7 @@ sio.Socket.prototype.authorize = function(req, fn) {
   // Anonymous Access
   else {
     if (!req.user)
-      return fn(404, 'Bad request');      
+      return fn(400, 'Bad request');
       
     client.user = req.user;
     client.group = req.group;
@@ -299,7 +299,7 @@ io.sockets.on('connection', function(client) {
     client.authorize(req, function(status, message) {  
       console.log('Announce Result: ', status, message);
       clearInterval(interval);
-      //status = 404;
+      //status = 400;
       if (status == 200)
         respond(ack, status, message, client.toPeer());
       else {

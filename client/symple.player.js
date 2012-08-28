@@ -19,7 +19,7 @@
 // ----------------------------------------------------------------------------
 Symple.Player = function(options) {
     this.options = $.extend({
-        htmlRoot:       '/assetpipe/symple',
+        htmlRoot:       '/assetpipe/symple/client',
         element:        '#player',
         engine:         'auto',       // auto or engine class name
         screenWidth:    '100%',       // percentage or pixel value

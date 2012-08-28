@@ -1,0 +1,118 @@
+/* ----------------------------------------------------------------------------- SYMPLE FORMS 
+  This stylesheet uses mesh.forms.css stacked form as a base
+*/
+
+/* ............................................................................. Page Layout */
+
+form.symple-form {
+    position: relative;
+}
+
+form.symple-form .menu {
+    position: absolute;
+    width: 200px;
+    min-height: 150px;
+    border-top: 1px solid #eee;
+    overflow: hidden;
+}
+form.symple-form .menu li {
+    border-left: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+form.symple-form .menu li a {
+    display: block;
+    font-size: 14px;
+    padding: 10px;
+    text-decoration: none;
+    color: #333;
+    background: #fff;
+}
+form.symple-form .menu li a:hover {
+    background: #f6f6f6;
+}
+form.symple-form .menu li.selected a {
+    background: #EEF3FA;
+}
+
+
+form.symple-form .page {
+    width: 600px;
+    min-height: 150px;
+    margin-left: 199px;
+    border: 1px solid #eee;
+    background: #EEF3FA;
+    padding: 15px 20px;
+    margin-bottom: 12px !important;
+}
+
+form.symple-form .page h2 {
+    display: none;
+}
+
+
+/* ............................................................................. Form Markup */
+
+/*
+
+form.symple-form label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+form.symple-form .field {
+    margin-bottom: 15px;
+}
+*/
+form.symple-form h3 {
+}
+
+form.symple-form fieldset {
+    padding: 10px; 
+    background: #EEF3FA;
+    border-bottom: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+}
+
+form.symple-form .hint {
+  /*
+    color: #666;
+    */
+}
+form.symple-form .error {
+  /*
+    color: #c00;
+    */
+}
+
+form.symple-form .hint,
+form.symple-form .error {
+    margin: 0 0 20px !important;
+    text-align: left;
+}
+
+form.symple-form .field .hint,
+form.symple-form .field .error {
+    margin: 5px 0 0 !important;
+}
+
+form.symple-form .field {
+}
+
+form.symple-form .field .hint {
+    color: #666;
+}
+form.symple-form .field .error {
+    color: #c00;
+}
+form.symple-form .submit {
+    float: right;
+}
+
+/*
+form.symple-form input,
+form.symple-form select {
+    display: block !important;
+    margin-bottom: 15px !important;
+}
+*/

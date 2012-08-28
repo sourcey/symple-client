@@ -38,7 +38,7 @@ Symple.Client = Dispatcher.extend({
 
         this.socket = io.connect(this.options.url, options);
         this.socket.on('connect', function() {
-            console.log('Connected');
+            console.log('Symple Client: Connected');
             clearTimeout(timeout);
             self.socket.emit('announce', {
                 token:  self.options.token,
@@ -47,7 +47,7 @@ Symple.Client = Dispatcher.extend({
                 name:   self.options.name,
                 type:   self.options.type
             }, function(res) {
-                console.log('Authorized: ', res);
+                console.log('Symple Client: Authorization Response: ', res);
                 if (res.status != 200) {
                     self.setError('auth', res);
                     return;
@@ -58,7 +58,7 @@ Symple.Client = Dispatcher.extend({
                 self.sendPresence({probe: true});
                 self.doDispatch('announce', res);
                 self.socket.on('message', function(m) {
-                    console.log('Receive: ', m);
+                    console.log('Symple Client: Receive: ', m);
                     if (typeof(m) == 'object') {
                         if (m.type == 'message') {
                             self.doDispatch('message',
@@ -122,79 +122,48 @@ Symple.Client = Dispatcher.extend({
         m.from = self.ourID;
         if (m.to && m.to.id == m.from.id)
             throw 'The sender must not match the recipient';
-        console.log('Sending: ', m);
+        console.log('Symple Client: Sending: ', m);
         this.socket.json.send(m);
-
-        /*
-         *, function(res) {
-            console.log('Send Result: ', res)
-            //if (fn)
-            //    fn(res);
-        }*/
     },
 
     sendMessage: function(m) { //, fn
         this.send(new Symple.Message(m)); //, fn
     },
 
-    sendPresence: function(p) { //, fn
+    sendPresence: function(p) {
         p = p || {};
         if (p.data)
             p.data = Sourcey.merge(this.roster.getActive(), p.data);
-        else {
-            //var t = p;
-            //p = {}
-            p.data = this.roster.getActive(); //Sourcey.merge(this.roster.getActive(), t);
-        }
-        console.log('Sending Presence: ', p);
-        this.send(new Symple.Presence(p)); //, fn
+        else
+            p.data = this.roster.getActive();
+        console.log('Symple Client: Sending Presence: ', p);
+        this.send(new Symple.Presence(p));
     },
 
     sendCommand: function(c, fn, once) {
         var self = this;
         c = new Symple.Command(c);
-        this.send(c); //, fn
+        this.send(c);
         if (fn) {
             this.onResponse('command', { id: c.id }, fn, function(res) {
                 if (once || (
-                    // TODO: Properly define which command status codes will not
-                    // result on session termination. For now 202 (Accepted) and
-                    // 406 (Not acceptable) will be sufficient.
+                    // 202 (Accepted) and 406 (Not acceptable) response codes
+                    // signal that the command has not yet completed.
                     res.status != 202 &&
                     res.status != 406)) {
                     self.clear('command', fn);
                 }
-            }//once ?  : undefined
-            /*function(res) {
-                console.log('Command Response: ', res.status, res);
-                fn(res);
-            }*/);
+            });
         }
     },
 
-    // Sets the client to an error state and notifies the user.
+    // Sets the client to an error state and and dispatched an error event.
     setError: function(error, message) {
-        console.log('Symple Client Error: ', error, message);
+        console.log('Symple Client: Client Error: ', error, message);
         this.doDispatch('error', error, message);
         if (this.socket)
             this.socket.disconnect();
     },
-
-    /*
-    startCommandSession: function(c, fn) {
-        var self = this;
-        c = new Symple.Command(c);
-        this.send(c);
-        this.onResponse('command', {id: c.id}, function(res) {
-            console.log('Command Session Response: ', res);
-            fn(res);
-            console.log('Command Session Response Status: ', res.status );
-            if (res.status != 202 &&
-                res.status != 406)
-                self.clear('command', fn)
-        });
-    },
-    */
 
     onResponse: function(event, filters, fn, after) {
         if (typeof this.listeners[event] == 'undefined')
@@ -206,29 +175,15 @@ Symple.Client = Dispatcher.extend({
                 filters: filters    // event filter object for matching response
             });
     },
-
-    /*
-    clearResponse: function(event, fn) {
-        console.log('Clearing Callback: ', fn);
-        if (typeof this.listeners[event] != 'undefined') {
-            for (var i = 0; i < this.listeners[event].length; i++) {
-                if (this.listeners[event][i].fn == fn) {
-                    console.log('Cleared Callback: ', fn);
-                    this.listeners[event].splice(i, 1);
-                }
-            }
-        }
-    },
-    */
    
     clear: function(event, fn) {
-        console.log('Symple Clearing Callback: ', event, fn);
+        console.log('Symple Client: Clearing Callback: ', event);
         if (typeof this.listeners[event] != 'undefined') {
             for (var i = 0; i < this.listeners[event].length; i++) {
                 if (this.listeners[event][i] == fn ||
                     String(this.listeners[event][i].fn) == String(fn)) {
                     this.listeners[event].splice(i, 1);
-                    console.log('Symple Clearing Callback: OK: ', event, fn);
+                    console.log('Symple Client: Clearing Callback: OK: ', event);
                 }
             }
         }
@@ -241,6 +196,7 @@ Symple.Client = Dispatcher.extend({
             this.dispatch.apply(this, arguments);
     },
 
+    //
     dispatchResponse: function() {
         var event = arguments[0];
         var data = Array.prototype.slice.call(arguments, 1);
@@ -258,78 +214,8 @@ Symple.Client = Dispatcher.extend({
         }
         return false;
     }
-        /*
-                //if (this.listeners[event][i].constructor == Function)
-                //    this.listeners[event][i].apply(this, args);
-
-        var res = false;
-        if (typeof data == 'object' &&
-            typeof this.listeners[event] != 'undefined') {
-            for (var i = 0; i < this.listeners[event].length; i++) {
-                //console.log('Dispatch: Filtered: ', this.listeners[event][i].filters)
-                //console.log('Dispatch: Filtered: ', this.listeners[event][i].filters === 'undefined')event, data
-                //console.log('Dispatch: Filtered: ', this.listeners[event][i].filters === undefined)
-                if (typeof(this.listeners[event][i]) != 'object' ||
-                    this.listeners[event][i].filters == 'undefined' ||
-                    !Sourcey.match(this.listeners[event][i].filters, data)) {
-                    continue;
-                }
-                this.listeners[event][i].fn(data);
-                res = true;
-            }
-        }
-        return res;
-    }
-        */
 });
 
-    /*
-                console.log('Dispatch: Data: ', data)
-                console.log('Dispatch: Filtered: ', this.listeners[event][i].filters !== undefined)
-                console.log('Dispatch: Filtered: ', typeof(message) == 'object')
-                if (this.listeners[event][i].filters !== undefined)
-                    console.log('Dispatch: Filtered: ', !Sourcey.match(this.listeners[event][i].filters, data))
-
-        console.log('Dispatch: ', event)
-        //var event = arguments[0];
-                    console.log('Dispatch: No match')
-                var filtered = false;
-        //filters = filters || {};
-        //params.fn = fn;
-    onResponse: function(event, fn, filters) {
-        if (typeof this.listeners[event] == 'undefined')
-            this.listeners[event] = [];
-        if (typeof fn != 'undefined' && fn.constructor == Function)
-            this.listeners[event].push({
-                fn: fn,
-                filters: filters
-            });
-    },
-
-    */
-
-        //if (!p) {[fn, filters]
-                /*
-                // Clear
-                if (clear) {
-                    this.listeners[event].splice(i, 1);
-                    console.log('Dispatch: Clearing: ', this.listeners[event][i].fn);
-                }
-*/
-        //    p = {};
-        //    p.data = this.roster.getActive();
-        //}
-        //else if (typeof(p) == 'object') { // if (p.data) { //
-
-            //p.data = p.data ?
-            //    Sourcey.merge(p.data, this.roster.getActive()) :
-            //    Sourcey.merge(p, this.roster.getActive());
-        //}
-        //else {
-        //    p = {};
-        //    p.data = this.roster.getActive();
-        //}
-        //p.data = Sourcey.merge(p, this.roster.getActive());
 
 // -----------------------------------------------------------------------------
 //
@@ -338,19 +224,19 @@ Symple.Client = Dispatcher.extend({
 // -----------------------------------------------------------------------------
 Symple.Roster = Manager.extend({
     init: function(client) {
-        console.log('Creating Symple Roster');
+        console.log('Symple Roster: Creating');
         this._super();
         this.client = client;
     },
     
     add: function(peer) {
-        console.log('Roster: Adding: ' + peer.id);
+        console.log('Symple Roster: Adding: ' + peer.id);
         this._super(peer);
         this.client.doDispatch('addPeer', peer);
     },
 
     remove: function(id) {
-        console.log('Roster: Removing: ' + id);
+        console.log('Symple Roster: Removing: ' + id);
         var peer = this._super(id)
         if (peer)
             this.client.doDispatch('removePeer', peer);
@@ -377,6 +263,200 @@ Symple.Roster = Manager.extend({
     }
 
 });
+
+
+// -----------------------------------------------------------------------------
+//
+// Message
+//
+// TODO: All messages should inherit from here.
+//
+// -----------------------------------------------------------------------------
+Symple.Message = function(json) {
+    if (typeof(json) == 'object')
+        this.fromJSON(json);
+    this.type = "message";
+}
+
+Symple.Message.prototype = {
+    fromJSON: function(json) {
+        for (var key in json)
+            this[key] = json[key];
+    },
+
+    toHTML: function() {
+        var html = '<div class="message">';
+        var date = new Date();
+        var dateStr = date.getHours().toString() + ':' +
+                      date.getMinutes().toString() + ':' +
+                      date.getSeconds().toString() + ' ' +
+                      date.getDate().toString() + '/' +
+                      date.getMonth().toString();
+
+
+        html += '<span class="sender">' + this.sender + '</span>: ';
+        html += '<span class="date">' + dateStr + '</span>';
+        html += '<div class="body">' + this.body + '</div>';
+        html += '</div>';
+        return html;
+        //for (var key in json)
+        //    this[key] = json[key];
+    },
+
+    valid: function() {
+        return this['id']
+            && this['from'];
+    }
+};
+
+
+// -----------------------------------------------------------------------------
+//
+// Command
+//
+// -----------------------------------------------------------------------------
+Symple.Command = function(json) {
+    if (typeof(json) == 'object')
+        this.fromJSON(json);
+    this.type = "command";
+}
+
+Symple.Command.prototype = {
+    getData: function(name) {
+        return this['data'] ? this['data'][name] : null;
+    },
+
+    params: function() {
+        return this['node'].split(':');
+    },
+    
+    param: function(n) {
+        return this.params()[n-1];
+    },
+
+    matches: function(xuser) {
+        xparams = xuser.split(':');
+
+        // No match if x params are greater than ours.
+        if (xparams.length > this.params().length)
+            return false;
+
+        for (var i = 0; i < xparams.length; i++) {
+
+            // Wildcard * matches everything until next parameter.
+            if (xparams[i] == "*")
+                continue;
+            if (xparams[i] != this.params()[i])
+                return false;
+        }
+
+        return true;
+    },
+
+    fromJSON: function(json) {
+        for (var key in json)
+            this[key] = json[key];
+    },
+
+    valid: function() {
+        return this['id']
+            && this['from']
+            && this['node'];
+    }
+};
+
+
+// -----------------------------------------------------------------------------
+//
+// Presence
+//
+// -----------------------------------------------------------------------------
+Symple.Presence = function(json) {
+    if (typeof(json) == 'object')
+        this.fromJSON(json);
+    this.type = "presence";
+}
+
+Symple.Presence.prototype = {
+    fromJSON: function(json) {
+        for (var key in json)
+            this[key] = json[key];
+    },
+
+    valid: function() {
+        return this['id']
+            && this['from'];
+    }
+};
+
+
+// -----------------------------------------------------------------------------
+//
+// Event
+//
+// -----------------------------------------------------------------------------
+Symple.Event = function(json) {
+    if (typeof(json) == 'object')
+        this.fromJSON(json);
+    this.type = "event";
+}
+
+Symple.Event.prototype = {
+    fromJSON: function(json) {
+        for (var key in json)
+            this[key] = json[key];
+    },
+
+    valid: function() {
+        return this['id']
+            && this['from']
+            && this.name;
+    }
+};
+
+
+    /*
+    toID: function() {
+        return new Symple.Address(this['to']);
+    },
+
+    fromID: function() {
+        return new Symple.Address(this['from']);
+    },
+    */
+
+    /*
+    toID: function() {
+        return new Symple.Address(this['to']);
+    },
+
+    fromID: function() {
+        return new Symple.Address(this['from']);
+    },
+    */
+
+    /*
+    toID: function() {
+        return new Symple.Address(this['to']);
+    },
+
+    fromID: function() {
+        return new Symple.Address(this['from']);
+    },
+    */
+
+
+    /*
+    toID: function() {
+        return new Symple.Address(this['to']);
+    },
+
+    fromID: function() {
+        return new Symple.Address(this['from']);
+    },
+    */
+
+
 
 /*
 Symple.Roster = function (client) {
@@ -503,198 +583,6 @@ Symple.Address.prototype = {
     }
 }
 */
-
-
-// -----------------------------------------------------------------------------
-//
-// Message
-//
-// TODO: All messages should inherit from here.
-//
-// -----------------------------------------------------------------------------
-Symple.Message = function(json) {
-    if (typeof(json) == 'object')
-        this.fromJSON(json);
-    this.type = "message";
-}
-
-Symple.Message.prototype = {
-    /*
-    toID: function() {
-        return new Symple.Address(this['to']);
-    },
-
-    fromID: function() {
-        return new Symple.Address(this['from']);
-    },
-    */
-    
-    fromJSON: function(json) {
-        for (var key in json)
-            this[key] = json[key];
-    },
-
-    toHTML: function() {
-        var html = '<div class="message">';
-        var date = new Date();
-        var dateStr = date.getHours().toString() + ':' +
-                      date.getMinutes().toString() + ':' +
-                      date.getSeconds().toString() + ' ' +
-                      date.getDate().toString() + '/' +
-                      date.getMonth().toString();
-
-
-        html += '<span class="sender">' + this.sender + '</span>: ';
-        html += '<span class="date">' + dateStr + '</span>';
-        html += '<div class="body">' + this.body + '</div>';
-        html += '</div>';
-        return html;
-        //for (var key in json)
-        //    this[key] = json[key];
-    },
-
-    valid: function() {
-        return this['id']
-            && this['from'];
-    }
-};
-
-
-// -----------------------------------------------------------------------------
-//
-// Command
-//
-// -----------------------------------------------------------------------------
-Symple.Command = function(json) {
-    if (typeof(json) == 'object')
-        this.fromJSON(json);
-    this.type = "command";
-}
-
-Symple.Command.prototype = {
-    /*
-    toID: function() {
-        return new Symple.Address(this['to']);
-    },
-
-    fromID: function() {
-        return new Symple.Address(this['from']);
-    },
-    */
-
-    getData: function(name) {
-        return this['data'] ? this['data'][name] : null;
-    },
-
-    params: function() {
-        return this['node'].split(':');
-    },
-    
-    param: function(n) {
-        return this.params()[n-1];
-    },
-
-    matches: function(xuser) {
-        xparams = xuser.split(':');
-
-        // No match if x params are greater than ours.
-        if (xparams.length > this.params().length)
-            return false;
-
-        for (var i = 0; i < xparams.length; i++) {
-
-            // Wildcard * matches everything until next parameter.
-            if (xparams[i] == "*")
-                continue;
-            if (xparams[i] != this.params()[i])
-                return false;
-        }
-
-        return true;
-    },
-
-    fromJSON: function(json) {
-        for (var key in json)
-            this[key] = json[key];
-    },
-
-    valid: function() {
-        return this['id']
-            && this['from']
-            && this['node'];
-    }
-};
-
-
-// -----------------------------------------------------------------------------
-//
-// Presence
-//
-// -----------------------------------------------------------------------------
-Symple.Presence = function(json) {
-    if (typeof(json) == 'object')
-        this.fromJSON(json);
-    this.type = "presence";
-}
-
-Symple.Presence.prototype = {
-    /*
-    toID: function() {
-        return new Symple.Address(this['to']);
-    },
-
-    fromID: function() {
-        return new Symple.Address(this['from']);
-    },
-    */
-
-    fromJSON: function(json) {
-        for (var key in json)
-            this[key] = json[key];
-    },
-
-    valid: function() {
-        return this['id']
-            && this['from'];
-    }
-};
-
-
-// -----------------------------------------------------------------------------
-//
-// Event
-//
-// -----------------------------------------------------------------------------
-Symple.Event = function(json) {
-    if (typeof(json) == 'object')
-        this.fromJSON(json);
-    this.type = "event";
-}
-
-Symple.Event.prototype = {
-    /*
-    toID: function() {
-        return new Symple.Address(this['to']);
-    },
-
-    fromID: function() {
-        return new Symple.Address(this['from']);
-    },
-    */
-
-    fromJSON: function(json) {
-        for (var key in json)
-            this[key] = json[key];
-    },
-
-    valid: function() {
-        return this['id']
-            && this['from']
-            && this.name;
-    }
-};
-
-
 
 
 

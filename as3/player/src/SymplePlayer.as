@@ -22,7 +22,7 @@ package
 		
 		public function SymplePlayer()
 		{
-			Logger.addListener(Logger.DEBUG, onLogMessage);
+			//Logger.addListener(Logger.DEBUG, onLogMessage);
 			Logger.addListener(Logger.INFO, onLogMessage);
 			Logger.addListener(Logger.ERROR, onLogMessage);
 			

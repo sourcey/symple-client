@@ -68,7 +68,7 @@
 			
 		override protected function onData(data:IDataInput):void 
 		{
-			Logger.send(Logger.DEBUG, "MediaConnection[" + host + ":" + port + "] onData");
+			//Logger.send(Logger.DEBUG, "MediaConnection[" + host + ":" + port + "] onData");
 			if (_parser && !_paused) {
 				var buffer:ByteArray = new ByteArray();
 				data.readBytes(buffer, buffer.length);
