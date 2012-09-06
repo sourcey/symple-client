@@ -98,12 +98,12 @@ sio.Socket.prototype.authorize = function(req, fn) {
         return fn(401, 'Authentication Failed');
       }
       else {
-        console.log('Authentication Success: ', req.token);        
+        console.log('Authentication Success: ', req);        
         client.session = session;             // Remote session object
         client.user = session.user.user;      // The client login name
         client.group = session.user.group;    // The client's parent group
         client.access = session.user.access;  // The client access level [1 - 10]
-        client.onAuthorize.apply(client, req);
+        client.onAuthorize(req); //.apply(client, 
         return fn(200, 'Welcome ' + client.name);
       }
     });
@@ -124,10 +124,11 @@ sio.Socket.prototype.authorize = function(req, fn) {
 
 
 sio.Socket.prototype.onAuthorize = function(req) {
+  console.log('On Authorize: ', req);
   this.online = true;
-  this.name = req.name ?                 // The client display name
+  this.name = req.name ?                // The client display name
       req.name : this.user;
-  this.type = req.type;                  // The client type
+  this.type = req.type;                 // The client type
   this.join('user-' + this.user);       // join user channel
   this.join('group-' + this.group);     // join group channel
 }
@@ -172,7 +173,7 @@ sio.Socket.prototype.toPeer = function(p) {
 
 sio.Socket.prototype.getSessionKey = function(fn) {
   // token must be set
-  io.store.cmd.keys("*:" + this.token, function(err, keys) {
+  io.store.cmd.keys("symple:*:" + this.token, function(err, keys) {
     fn(err, keys.length ? keys[0] : null)
   });  
 }
@@ -248,25 +249,25 @@ sio.Socket.prototype.sendAuthorized = function(message) {
 
   // If no destination address was given we broadcast 
   // the message to the current client's group scope.
-  else if (typeof message.to !== 'object') {
+  else if (!message.to || typeof message.to !== 'object') {
     this.broadcast.to('group-' + this.group, this.unauthorizedIDs()).json.send(message);
   }
 
   // If a session id was given (but no user group)
   // we send a directed message to that session id.
-  else if (typeof message.to.id === 'string') {
+  else if (message.to.id && typeof message.to.id === 'string') {
     this.namespace.except(this.unauthorizedIDs()).socket(message.to.id).json.send(message);
   }
 
   // If a user was given (but no session id or group) 
   // we broadcast a message to user scope.
-  else if (typeof message.to.user === 'string') {
+  else if (message.to.user && typeof message.to.user === 'string') {
     this.broadcast.to('user-' + message.to.user, this.unauthorizedIDs()).json.send(message);
   }
 
   // If a group was given (but no session id or user) we
   // broadcast a message to the given group scope.
-  else if (typeof message.to.group === 'string') {
+  else if (message.to.group && typeof message.to.group === 'string') {
     this.broadcast.to('group-' + message.to.group, this.unauthorizedIDs()).json.send(message);
   }
 
@@ -288,16 +289,17 @@ io.sockets.on('connection', function(client) {
       client.disconnect();
   }, 5000);
 
-
-  // Announce
   //
+  // Announce
   client.on('announce', function(req, ack) {    
     console.log('Announcing: ', req);
 
-    // Authorization
+    try {
+
     //
-    client.authorize(req, function(status, message) {  
-      console.log('Announce Result: ', status, message);
+    // Authorization
+    client.authorize(req, function(status, message) {
+      //console.log('Announce Result: ', status, message);
       clearInterval(interval);
       //status = 400;
       if (status == 200)
@@ -308,10 +310,10 @@ io.sockets.on('connection', function(client) {
         return;
       }
 
-      // Message
       //
+      // Message
       client.on('message', function(m, ack) {
-        //console.log(client.id + ' Received Message <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n', m);        
+        //console.log(client.id + ' Received Message <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n', m);
         if (m) {
           // Populate some default fields.
           //m.from = this.sympleID;
@@ -327,36 +329,41 @@ io.sockets.on('connection', function(client) {
               name: this.name,
               id: this.id
           }
-    
+
           client.sendAuthorized(m);
-           
+
           respond(ack, 200, 'Message Received');
         }
       });
 
+      //
       // Peers
-      // 
       client.on('peers', function(ack) {
-        //console.log(client.id + ' Received Roster <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');        
-        
+        //console.log(client.id + ' Received Roster <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
+
         respond(ack, 200, '', this.peers(false));
       });
-      
+
+      //
       // Timer
-      // 
       interval = setInterval(function () {
         // Touch the client session event 10
-        // minutes to prevent it from expiring.   
+        // minutes to prevent it from expiring.
         client.touchSession(function(err, res) {
           console.log(client.id + 'Touching session: ', !!res);
-        });    
+        });
       }, 10 * 60000);
-    
-    }); 
+
+    });
+    }
+    catch (e) {
+        console.log('Client Error: ', e);
+        client.disconnect();
+    }
   }); 
 
-  // Disconnection
   //
+  // Disconnection
   client.on('disconnect', function() {
     console.log(client.id + ' is disconnecting');
     //client.name + ' (' + client.user + ') disconected.'

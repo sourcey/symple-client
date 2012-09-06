@@ -28,8 +28,9 @@ Symple.Client = Dispatcher.extend({
         self = this;
         console.log('Connecting: ', this.options.url, options);
         
-        // Implementing out own connection timer since socket.io's connect_failed
-        // event seems to be broken in the current version.
+        // Implementing out own connection timer since socket.io's
+        // connect_failed event seems to be broken in the current
+        // version.
         if (this.options.timeout) {
             var timeout = setTimeout(function() {
                 self.setError('connect', 'Connection timed out after ' + self.options.timeout);
@@ -55,7 +56,9 @@ Symple.Client = Dispatcher.extend({
                 self.online = true;
                 self.ourID = res.data.id;
                 self.roster.add(res.data);
-                self.sendPresence({probe: true});
+                self.sendPresence({
+                    probe: true
+                });
                 self.doDispatch('announce', res);
                 self.socket.on('message', function(m) {
                     console.log('Symple Client: Receive: ', m);
@@ -81,7 +84,7 @@ Symple.Client = Dispatcher.extend({
                                     new Symple.Presence({
                                         to: m['from']
                                     })
-                                );
+                                    );
                             }
                         }
                         else {
@@ -111,18 +114,23 @@ Symple.Client = Dispatcher.extend({
     },
 
     send: function(m) {
-        if (!m || typeof(m) != 'object')
+        if (!this.online)
+            throw 'Cannot send message while offline';
+        if (typeof(m) != 'object')
             throw 'Must send object';
-        if (!m.type)
-            throw 'Message must have a type';
+        //if (typeof(m.to) != 'object')
+        //    throw 'Cannot send message with no recipient';
+        if (typeof(m.type) != 'string')
+            throw 'Cannot send message with no type';
         if (!m.id)
             m.id = Sourcey.randomString(8);
-        if (!m.from)
-            m.from = {}
-        m.from = self.ourID;
-        if (m.to && m.to.id == m.from.id)
-            throw 'The sender must not match the recipient';
+        //if (!m.from)
+        //    m.from = {}
+        //m.from = self.ourID;
+        m.from = self.roster.ourPeer();
         console.log('Symple Client: Sending: ', m);
+        if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
+            throw 'The sender must not match the recipient';
         this.socket.json.send(m);
     },
 
@@ -133,9 +141,9 @@ Symple.Client = Dispatcher.extend({
     sendPresence: function(p) {
         p = p || {};
         if (p.data)
-            p.data = Sourcey.merge(this.roster.getActive(), p.data);
+            p.data = Sourcey.merge(this.roster.ourPeer(), p.data);
         else
-            p.data = this.roster.getActive();
+            p.data = this.roster.ourPeer();
         console.log('Symple Client: Sending Presence: ', p);
         this.send(new Symple.Presence(p));
     },
@@ -145,7 +153,9 @@ Symple.Client = Dispatcher.extend({
         c = new Symple.Command(c);
         this.send(c);
         if (fn) {
-            this.onResponse('command', { id: c.id }, fn, function(res) {
+            this.onResponse('command', {
+                id: c.id
+            }, fn, function(res) {
                 if (once || (
                     // 202 (Accepted) and 406 (Not acceptable) response codes
                     // signal that the command has not yet completed.
@@ -157,7 +167,33 @@ Symple.Client = Dispatcher.extend({
         }
     },
 
-    // Sets the client to an error state and and dispatched an error event.
+    // Adds a capability for our current peer
+    addCapability: function(name) {
+        var ourPeer = this.roster.ourPeer();
+        if (ourPeer) {
+            if (typeof ourPeer.capabilities == 'undefined')
+                ourPeer.capabilities = []; //{}
+            var idx = ourPeer.capabilities.indexOf(name)
+            if (idx == -1) {
+                ourPeer.capabilities.push(name);
+                this.sendPresence();
+            }
+        }
+    },
+
+    // Removes a capability from our current peer
+    removeCapability: function(name) {
+        var ourPeer = this.roster.ourPeer();
+        if (ourPeer && typeof(ourPeer.capabilities) != 'undefined') {
+            var idx = ourPeer.capabilities.indexOf(name)
+            if (idx != -1) {
+                ourPeer.capabilities.pop(name);
+                this.sendPresence();                
+            }
+        }        
+    },
+
+    // Sets the client to an error state and and dispatches an error event
     setError: function(error, message) {
         console.log('Symple Client: Client Error: ', error, message);
         this.doDispatch('error', error, message);
@@ -196,7 +232,6 @@ Symple.Client = Dispatcher.extend({
             this.dispatch.apply(this, arguments);
     },
 
-    //
     dispatchResponse: function() {
         var event = arguments[0];
         var data = Array.prototype.slice.call(arguments, 1);
@@ -243,7 +278,7 @@ Symple.Roster = Manager.extend({
         return peer;
     },
     
-    getActive: function() {
+    ourPeer: function() {
         return this.get(this.client.ourID);
     },
     
@@ -284,28 +319,9 @@ Symple.Message.prototype = {
             this[key] = json[key];
     },
 
-    toHTML: function() {
-        var html = '<div class="message">';
-        var date = new Date();
-        var dateStr = date.getHours().toString() + ':' +
-                      date.getMinutes().toString() + ':' +
-                      date.getSeconds().toString() + ' ' +
-                      date.getDate().toString() + '/' +
-                      date.getMonth().toString();
-
-
-        html += '<span class="sender">' + this.sender + '</span>: ';
-        html += '<span class="date">' + dateStr + '</span>';
-        html += '<div class="body">' + this.body + '</div>';
-        html += '</div>';
-        return html;
-        //for (var key in json)
-        //    this[key] = json[key];
-    },
-
     valid: function() {
         return this['id']
-            && this['from'];
+        && this['from'];
     }
 };
 
@@ -360,8 +376,8 @@ Symple.Command.prototype = {
 
     valid: function() {
         return this['id']
-            && this['from']
-            && this['node'];
+        && this['from']
+        && this['node'];
     }
 };
 
@@ -385,7 +401,7 @@ Symple.Presence.prototype = {
 
     valid: function() {
         return this['id']
-            && this['from'];
+        && this['from'];
     }
 };
 
@@ -409,8 +425,8 @@ Symple.Event.prototype = {
 
     valid: function() {
         return this['id']
-            && this['from']
-            && this.name;
+        && this['from']
+        && this.name;
     }
 };
 
@@ -1117,11 +1133,11 @@ Symple.prototype = {
 
               //$user = $symple.peers.findOne({ username: '<%= @peer.username %>', type: 'user' });
               //console.log($user);
-                //self.peers.getActive()
+                //self.peers.ourPeer()
               //$symple.sendPresence({ to: $user.id, probe: true })
                 /*{
                     from:   self.ourID,
-                    peer: self.peers.getActive(),
+                    peer: self.peers.ourPeer(),
                     probe:  true }
                 self.peers.add({
                     id:     self.socket.socket.sessionid,
@@ -1132,8 +1148,8 @@ Symple.prototype = {
 
                 //,
                 //    probe:  true
-                //console.log('getActive: ' + self.peers.getActive())
-                //self.sendPresence(self.peers.getActive());
+                //console.log('ourPeer: ' + self.peers.ourPeer())
+                //self.sendPresence(self.peers.ourPeer());
 
 /*
 // -----------------------------------------------------------------------------
@@ -1200,7 +1216,7 @@ Symple.Roster.prototype = {
         return res.length ? res[0] : undefined;
     },
 
-    getActive: function() {
+    ourPeer: function() {
         return this.Symples[this.ourID];
     },
 
@@ -1334,7 +1350,7 @@ function Symple(options) {
     getOrActive: function(id) {
         var peer = this.get(id);
         if (!peer && this.ourID) // && Spot.session && Spot.session.active()
-            peer = this.getActive();
+            peer = this.ourPeer();
         return peer;
     },
 
@@ -1370,7 +1386,7 @@ function Symple(options) {
     getOrActive: function(id) {
         var Symple = this.get(id);
         if (!Symple && this.ourID) // && Spot.session && Spot.session.active()
-            Symple = this.getActive();
+            Symple = this.ourPeer();
         return Symple;
     },
 
