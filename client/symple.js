@@ -79,12 +79,11 @@ Symple.Client = Dispatcher.extend({
                             self.roster.update(m.data);
                             self.doDispatch('presence',
                                 new Symple.Presence(m));
-                            if (m['probe'] == true) {
+                            if (m.probe == true) {
                                 self.sendPresence(
                                     new Symple.Presence({
-                                        to: m['from']
-                                    })
-                                    );
+                                        to: m.from
+                                    }));
                             }
                         }
                         else {
@@ -211,7 +210,7 @@ Symple.Client = Dispatcher.extend({
                 filters: filters    // event filter object for matching response
             });
     },
-   
+
     clear: function(event, fn) {
         console.log('Symple Client: Clearing Callback: ', event);
         if (typeof this.listeners[event] != 'undefined') {
@@ -296,7 +295,6 @@ Symple.Roster = Manager.extend({
         else
             this.remove(data.id);
     }
-
 });
 
 

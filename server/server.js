@@ -75,6 +75,43 @@ function respond(ack, status, message, data) {
   }
 }
 
+//
+// Socket.IO Manager Extensions
+//
+
+/*
+function packetSender(packet) {
+  var res = packet.match(/\"from\"[ :]+[ {]+[^}]*\"id\"[ :]+\"(.*?)\"/);
+  return res ? io.sockets.sockets[res[1]] : null;
+}
+
+onDispatchOriginal = sio.Manager.prototype.onDispatch;
+sio.Manager.prototype.onDispatch = function(room, packet, volatile, exceptions) {
+
+  // Authorise outgoing messages via the onDispatch method so unprotected
+  // data can not be published directly from Redis.
+  var sender = packetSender(packet);
+  if (sender) {
+    if (!exceptions)
+      exceptions = [sender.id]; // dont send to self
+    exceptions = exceptions.concat(sender.unauthorizedIDs());
+    //console.log("Sending a message excluding: ", exceptions, ': ', sender.unauthorizedIDs());
+    onDispatchOriginal.call(this, room, packet, volatile, exceptions)
+  }
+}
+
+onClientDispatchOriginal = sio.Manager.prototype.onClientDispatch;
+sio.Manager.prototype.onClientDispatch = function (id, packet) {
+    
+  // Ensure the recipient has sufficient permission to recieve the message
+  var sender = packetSender(packet);
+  var recipient = io.sockets.sockets[id];
+  if (sender && recipient && recipient.access >= sender) {
+      onClientDispatchOriginal.call(this, id, packet);
+  }
+}
+*/
+
 
 //
 // Socket.IO Socket Extensions
@@ -100,10 +137,11 @@ sio.Socket.prototype.authorize = function(req, fn) {
       else {
         console.log('Authentication Success: ', req);        
         client.session = session;             // Remote session object
-        client.user = session.user.user;      // The client login name
         client.group = session.user.group;    // The client's parent group
         client.access = session.user.access;  // The client access level [1 - 10]
-        client.onAuthorize(req); //.apply(client, 
+        client.user = session.user.user;      // The client login name
+        client.user_id = session.user.user_id;// The client login user ID
+        client.onAuthorize(req);
         return fn(200, 'Welcome ' + client.name);
       }
     });
@@ -114,9 +152,11 @@ sio.Socket.prototype.authorize = function(req, fn) {
     if (!req.user)
       return fn(400, 'Bad request');
       
-    client.user = req.user;
+    client.access = 0;
+    client.name = req.name;
     client.group = req.group;
-    client.access = 1;
+    client.user = req.user;
+    client.user_id = req.user_id;
     client.onAuthorize(req);
     return fn(200, 'Welcome ' + client.name);
   }
@@ -141,10 +181,7 @@ sio.Socket.prototype.toPresence = function(p) {
   p.data = this.toPeer(p.data);
   if (!p.from || typeof p.from !== 'object') {
     p.from = {};
-    p.from.group = this.group;
     p.from.name = this.name;
-    p.from.user = this.user;
-    p.from.id = this.id;
   }
   return p;
 }
@@ -154,12 +191,14 @@ sio.Socket.prototype.toPeer = function(p) {
   if (!p || typeof p !== 'object')
     p = {};
   p.id = this.id; //sympleID;
-  p.group = this.group;
-  p.user = this.user;
   p.type = this.type;
   p.node = this.node;
+  p.user = this.user;
+  p.user_id = this.user_id;
+  p.group = this.group;
+  p.access = this.access;
   p.online = this.online;
-  p.address = this.handshake.address.address;
+  p.address = this.handshake ? this.handshake.address.address : '';
 
   // allow client to change name
   if (typeof p.name === 'string')
@@ -215,64 +254,74 @@ sio.Socket.prototype.touchSession = function(fn) {
 
 // Returns an array of authorized peers belonging to the currect
 // client socket group.
-sio.Socket.prototype.peers = function(includeSelf) {
-  res = []
-  //var clients = this.authorizedClients();
-  var clients = io.sockets.clients(this.group);
-  for (i = 0; i < clients.length; i++) {
-    if ((!includeSelf && clients[i] == this) ||
-            this.access > clients[i].access)
-      continue;
-    res.push(clients[i].toPeer());
+//sio.Socket.prototype.peers = function(includeSelf) {
+//  res = []
+//  //var clients = this.authorizedClients();
+//  var clients = io.sockets.clients('group-' + this.group);
+//  for (i = 0; i < clients.length; i++) {
+//    if ((!includeSelf && clients[i] == this) ||
+//            clients[i].access > this.access)
+//      continue;
+//    res.push(clients[i].toPeer());
+//  }
+//  return res;
+//}
+
+
+// Returns an array of group peer IDs that dont have permission
+// to receive messages broadcast by the current peer ie. access
+// is lower than the current peer.
+//sio.Socket.prototype.unauthorizedIDs = function() {
+//  var res = [];
+//  var clients = io.sockets.clients('group-' + this.group);
+//  for (i = 0; i < clients.length; i++) {
+//    if (clients[i].access < this.access)
+//      res.push(clients[i].id);
+//  }
+//  console.log('Unauthorized IDs:', this.name, ':', this.access, ':', res);
+//  return res;
+//}
+
+
+sio.Socket.prototype.broadcastMessage = function(message) {
+  if (!message || typeof message !== 'object' || !message.from || typeof message.from !== 'object') {
+    console.log('ERROR: Dropping invalid message from ', this.id, ':', message);
+    return;
   }
-  return res;
-}
 
-
-// Returns an array of session IDs which are not authorized
-// to view messages broadcast from the current client socket.
-sio.Socket.prototype.unauthorizedIDs = function() {
-  var res = [];
-  var clients = io.sockets.clients(this.group);
-  for (i = 0; i < clients.length; i++) {
-    if (clients[i].access <= this.access)
-      res.push(clients[i].id);
-  }
-  return res;
-}
-
-
-sio.Socket.prototype.sendAuthorized = function(message) {
-  if (!message || typeof message !== 'object' || typeof message.from !== 'object') {
-    console.log('Bad message received from:', this.id, ':', message);
-  }
+  // Always use server-side peer info for security.
+  message.from.id = this.id;
+  message.from.group = this.group;
+  message.from.access = this.access;
+  message.from.user = this.user;
+  message.from.user_id = this.user_id;
 
   // If no destination address was given we broadcast 
   // the message to the current client's group scope.
-  else if (!message.to || typeof message.to !== 'object') {
-    this.broadcast.to('group-' + this.group, this.unauthorizedIDs()).json.send(message);
+  if (!message.to || typeof message.to !== 'object') {
+    this.broadcast.to('group-' + this.group/*, this.unauthorizedIDs()*/).json.send(message);
   }
 
   // If a session id was given (but no user group)
   // we send a directed message to that session id.
   else if (message.to.id && typeof message.to.id === 'string') {
-    this.namespace.except(this.unauthorizedIDs()).socket(message.to.id).json.send(message);
+    this.namespace/*.except(this.unauthorizedIDs())*/.socket(message.to.id).json.send(message);
   }
 
   // If a user was given (but no session id or group) 
   // we broadcast a message to user scope.
   else if (message.to.user && typeof message.to.user === 'string') {
-    this.broadcast.to('user-' + message.to.user, this.unauthorizedIDs()).json.send(message);
+    this.broadcast.to('user-' + message.to.user/*, this.unauthorizedIDs()*/).json.send(message);
   }
 
   // If a group was given (but no session id or user) we
   // broadcast a message to the given group scope.
   else if (message.to.group && typeof message.to.group === 'string') {
-    this.broadcast.to('group-' + message.to.group, this.unauthorizedIDs()).json.send(message);
+    this.broadcast.to('group-' + message.to.group/*, this.unauthorizedIDs()*/).json.send(message);
   }
 
   else {
-    console.log('Failed to send message without scope: ' + message);
+    console.log('ERROR: Failed to send message: ', message);
   }
 }
 
@@ -315,23 +364,9 @@ io.sockets.on('connection', function(client) {
       client.on('message', function(m, ack) {
         //console.log(client.id + ' Received Message <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n', m);
         if (m) {
-          // Populate some default fields.
-          //m.from = this.sympleID;
-          //m.sender = this.name;
-
           if (m.type == 'presence')
             this.toPresence(m);
-
-          // TODO: Allow client to change name!
-          m.from = {
-              group: this.group,
-              user: this.user,
-              name: this.name,
-              id: this.id
-          }
-
-          client.sendAuthorized(m);
-
+          client.broadcastMessage(m);
           respond(ack, 200, 'Message Received');
         }
       });
@@ -340,7 +375,6 @@ io.sockets.on('connection', function(client) {
       // Peers
       client.on('peers', function(ack) {
         //console.log(client.id + ' Received Roster <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
-
         respond(ack, 200, '', this.peers(false));
       });
 
@@ -372,7 +406,7 @@ io.sockets.on('connection', function(client) {
       client.online = false;
       var p = client.toPresence();
       console.log('disconnecting', p);
-      client.sendAuthorized(p);
+      client.broadcastMessage(p);
     }
     client.leave('user-' + client.user);    // leave user channel
     client.leave('group-' + client.group);  // leave group channel
@@ -601,7 +635,7 @@ sio.Socket.prototype.packet = function (packet) {
         
         client.toPresence(p);
         console.log(client.id + ' Received Presence <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 1111111111'); // \n', p);
-        client.sendAuthorized('presence', p);
+        client.broadcast('presence', p);
         
         respond(ack, 200, "Presence Received");
       }); 
@@ -612,7 +646,7 @@ sio.Socket.prototype.packet = function (packet) {
       client.on('command', function(c, ack) {
         console.log(client.id + ' Received Command <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'); // \n', p);
         
-        client.sendAuthorized('command', c);
+        client.broadcast('command', c);
          
         respond(ack, 200, "Command Received");
       });

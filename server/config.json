@@ -6,11 +6,11 @@
   "port" : 443,  
   
   /* Allow anonymous connections */
-  "anonymous" : true,  
+  "anonymous" : false,  
     
   /* Redis configuration */
   "redis" : {
-    "host" : "74.207.248.97",
+    "host" : "173.230.150.125",
     "port" : 6379,
     "password" : "8461e2c92b2848975c058cb4fbba735f"
   },
@@ -18,7 +18,7 @@
   /* SSL configuration */
   "ssl" : {
     "enabled" : true,
-    "key" : "D:\\dev\\projects\\Sourcey\\share\\ssl\\symple.key",
-    "cert" : "D:\\dev\\projects\\Sourcey\\share\\ssl\\symple.crt"
+    "key" : "D:\\dev\\projects\\Sourcey\\shared\\ssl\\symple.key",
+    "cert" : "D:\\dev\\projects\\Sourcey\\shared\\ssl\\symple.crt"
   }
 }
