@@ -1,5 +1,5 @@
 //
-// Symple Form
+// Symple Form Message
 //
 Symple.Form = function(json) {
     if (typeof(json) == 'object')
@@ -14,6 +14,10 @@ Symple.Form.prototype = {
 
     hasElementType: function(type) {
         return Sourcey.findNestedWithProperty(this, 'type', type) != null;
+    },
+
+    hasMultiplePages: function() {
+        return Sourcey.countNestedWithProperty(this, 'type', 'page') > 1
     },
 
     /*
@@ -143,12 +147,13 @@ Symple.Form.Builder.prototype = {
         });
 
         this.element.find('form').unbind().submit(function() {
+            //console.log('Form Builder: Prepare Submit: ', self.form);
             self.prepareSubmit();
+            //console.log('Form Builder: After Prepare Submit: ', self.form);
             return self.options.onSubmit(self.form, self, self.element);
         });
 
         this.options.afterBuild(this.form, this, this.element);
-
     },
 
     getHTMLInputs: function() {
@@ -606,57 +611,3 @@ Symple.Form.Builder.prototype = {
         return el;
     }
 })(jQuery);
-
-
-
-
-
-
-                    //console.log('AAAAAAAAAAAAAAAAAAAAA', field.error)
-                    //console.log('AAAAAAAAAAAAAAAAAAAAA fel', fel)
-                    //fel.addClass('errors');
-                    //var err = el.parent('.field').find('.error');
-                    //err = err || el.after('<div class="error">' + field.error + '</div>');
-                    //'<div class="error">' + o.error + '</div>';
-                    //var id = el.attr('id');
-
-            /*
-            try {
-
-            }
-            catch(e) {
-                console.log(e)
-            }
-            var element = $(this);
-            if (element.find('.scrollbar').length == 0) {
-                var content = element.children();
-                element.append(options.template);
-                element.find('.viewcontent').append(content);
-            }
-            element.addClass(options.axis == 'y' ?
-                'vertical-scroller' : 'hotizontal-scroller');
-            */
-    /*
-    $.scroller.options = {
-        axis: 'y',          // vertical or horizontal scrollbar? ( x || y ).
-        wheel: 80,          // how many pixels must the mouswheel scroll at a time.
-        scroll: true,       // enable or disable the mousewheel;
-        size: 'auto',       // set the size of the scrollbar to auto or a fixed number.
-        thumbSize: 'auto',  // set the size of the thumb to auto or a fixed number.
-        autohide: false,    // auto hides the scrollbar on mouse out.
-        template: '\
-      <div class="scrollbar"><div class="track"><div class="thumb"><div class="end"></div></div></div></div> \
-      <div class="viewport"> \
-        <div class="viewcontent"> \
-        </div> \
-      </div>'
-    };
-    */
-
-
-
-
-
-
-
-

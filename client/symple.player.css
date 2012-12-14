@@ -1,10 +1,10 @@
-#player {
+.symple-player {
     width: 100%;
     height: 100%;
     background: #000;
 }
 
-#player-status {
+.symple-player-status {
     position: absolute;
     top: 10px;
     left: 10px;
@@ -14,7 +14,7 @@
     z-index: 1000;
 }
 
-#player-message {
+.symple-player-message {
     display: none;
     position: absolute;
     width: 100%;
@@ -24,23 +24,23 @@
     display: table;
 }
 
-#player-message p {
+.symple-player-message p {
     display: table-cell;
     vertical-align: middle;
     text-align: center;
     color: #ccc;
 }
 
-#player-screen {
+.symple-player-screen {
     width: 100%;
     height: 100%;
 }
 
-#player-screen #player-frame {
+.symple-player-screen .symple-player-frame {
     position: absolute;
 }
 
-#player-controls {
+.symple-player-controls {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -50,7 +50,7 @@
     z-index: 10000;
 }
 
-#player-controls .ui-btn {
+.symple-player-controls .ui-btn {
     filter: alpha(opacity=75);
     -ms-filter: "alpha(opacity=75)";
     -khtml-opacity: .75;
@@ -58,14 +58,14 @@
     opacity: .75;    
 }
 
-#player-controls .ui-btn-icon-notext { width: 30px; height: 30px; }
-#player-controls .ui-btn-icon-notext .ui-btn-inner { padding: 0px; }
-#player-controls .ui-btn-corner-all {
+.symple-player-controls .ui-btn-icon-notext { width: 30px; height: 30px; }
+.symple-player-controls .ui-btn-icon-notext .ui-btn-inner { padding: 0px; }
+.symple-player-controls .ui-btn-corner-all {
     -moz-border-radius: 30px;
     -webkit-border-radius: 30px;
     border-radius: 30px;
 }
-#player-controls .ui-icon {
+.symple-player-controls .ui-icon {
     -moz-border-radius: 24px;
     -webkit-border-radius: 24px;
     border-radius: 24px;

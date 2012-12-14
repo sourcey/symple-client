@@ -20,10 +20,10 @@
 Symple.Player = function(options) {
     this.options = $.extend({
         htmlRoot:       '/assetpipe/symple/client',
-        element:        '#player',
+        element:        '.symple-player:first',
         engine:         'auto',       // auto or engine class name
-        screenWidth:    '100%',       // percentage or pixel value
-        screenHeight:   '100%',       // percentage or pixel value
+        screenWidth:    '100%',       // player screen css width (percentage or pixel value)
+        screenHeight:   '100%',       // player screen css height (percentage or pixel value)
 
         // Streaming Parameters
         params: {
@@ -33,20 +33,36 @@ Symple.Player = function(options) {
 
         // Callbacks
         onCommand:       function(player, cmd) { },
-        onStateChange:   function(player, state) { }
+        onStateChange:   function(player, state) { },
+        
+        // Markup
+        template: '\
+        <div class="symple-player"> \
+            <div class="symple-player-message"></div> \
+            <div class="symple-player-status"></div> \
+            <div class="symple-player-screen"></div> \
+            <div class="symple-player-controls"> \
+                <a class="play-btn" rel="play" href="#">Play</a> \
+                <a class="stop-btn" rel="stop" href="#">Stop</a> \
+            </div> \
+        </div>'
 
     }, options);
 
     this.element = $(this.options.element);
+    if (!this.element.hasClass('.symple-player'))
+        this.element.html(this.options.template);
     if (!this.element.length)
         throw 'The player element doesn\'t exist';
     
-    this.screen = this.element.find('#player-screen');
+    this.screen = this.element.find('.symple-player-screen');
+    if (!this.screen.length)
+        throw 'The player screen element doesn\'t exist';
 
     if (this.options.engine == 'auto')
         this.selectBestEngine(); // FIXME
     this.engine = new Symple.Player.Engine[this.options.engine](this);
-    this.engine.create();
+    this.engine.setup();
 
     this.playing = false;
 
@@ -86,7 +102,7 @@ Symple.Player.prototype = {
     },
 
     setState: function(state) {
-        console.log('[Symple:Player] Setting State from ' + this.state + ' to ' + state)
+        console.log('Symple Player: Setting State from ' + this.state + ' to ' + state)
         if (this.state == state)
             return;
 
@@ -116,25 +132,25 @@ Symple.Player.prototype = {
     // Helpers
     //
     displayStatus: function(data) {
-        this.element.find('#player-status').html(data);
+        this.element.find('.symple-player-status').html(data);
     },
 
     // Display an overlayed player message
     // error, warning, info
     displayMessage: function(type, message) {
         if (type != '') {
-            this.element.find('#player-message').attr('class', type).html('<p>' + message + '</p>');
-            this.element.find('#player-message').show();
+            this.element.find('.symple-player-message').attr('class', type).html('<p>' + message + '</p>');
+            this.element.find('.symple-player-message').show();
         }
         else {
-            this.element.find('#player-message').html('');
-            this.element.find('#player-message').hide();
+            this.element.find('.symple-player-message').html('');
+            this.element.find('.symple-player-message').hide();
         }
     },
 
 
     getButton: function(cmd) {
-      return this.element.find('#player-controls a[rel="' + cmd + '"]');
+      return this.element.find('.symple-player-controls a[rel="' + cmd + '"]');
     },
 
     getBestVideoResolution: function() {
@@ -152,7 +168,7 @@ Symple.Player.prototype = {
     },
 
     rescaleVideo: function(srcW, srcH, maxW, maxH) {
-        console.log('[Symple:Player] Rescale Video: ', srcW, srcH, maxW, maxH);
+        console.log('Symple Player: Rescale Video: ', srcW, srcH, maxW, maxH);
 
         var maxRatio = maxW / maxH;
         var srcRatio = 1.33; //srcW / srcH;
@@ -168,6 +184,7 @@ Symple.Player.prototype = {
     },
 
     refresh: function() {
+        /*
         var css = { position: 'relative' };
         if (this.options.screenWidth == '100%' ||
             this.options.screenHeight == '100%') {
@@ -190,7 +207,10 @@ Symple.Player.prototype = {
             css.left = css.left ? css.left : 0;
             css.top = css.top ? css.top : 0;
         }
-        /*
+        console.log('Symple Player: Setting Size: ', css);
+
+        this.screen.css(css);
+
         //var e = this.element.find('#player-screen');
             //console.log('refresh: scaled:', size)
             console.log('refresh: screenWidth:', this.options.screenWidth)
@@ -199,21 +219,18 @@ Symple.Player.prototype = {
             console.log('refresh: height:', this.screen.height())
             console.log('refresh: css:', css)
         */
-        console.log('[Symple:Player] Setting Size: ', css);
-
-        this.screen.css(css);
     },
 
     bindEvents: function() {
         var self = this;
-        this.element.find('#player-controls a').unbind().bind('click tap', function() {
+        this.element.find('.symple-player-controls a').unbind().bind('click tap', function() {
             self.sendCommand(this.rel);
             return false;
         })
 
         /*
         // Support JQuery Mobile button markup
-        this.element.find('#player-controls .ui-btn-text').click(function() {
+        this.element.find('.symple-player-controls .ui-btn-text').click(function() {
             var cmd = $(this).parents('.ui-btn:first').find('a').attr('rel');
             self[cmd]();
             self.options.onCommand(self, cmd);
@@ -297,7 +314,7 @@ Symple.Player.Engine = Class.extend({
         this.player = player;
     },
 
-    create: function() {},
+    setup: function() {},
     destroy: function() {},
     play: function() {},
     stop: function() {},
@@ -312,19 +329,20 @@ Symple.Player.Engine = Class.extend({
 // -----------------------------------------------------------------------------
 Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     init: function(player) {
-        console.log("Flash Player: Init");
+        console.log("Symple Flash Player: Init");
         this._super(player);
         this.initialized = false;
         this.playOnInit = false;
+        this.id = "symple-player-" + Sourcey.randomString(6)
     },
 
-    create: function(/*fn*/) {
-        console.log("Flash Player: Create");
+    setup: function(/*fn*/) {
+        console.log("Symple Flash Player: Create");
         this.initialized = false;
         //this.initFn = fn;
-        this.player.screen.prepend('<div id="playerSwf">Flash version 10.0.0 or newer is required.</div>');
-        JFlashBridge.bind('playerSwf', this);
-        swfobject.embedSWF(this.player.options.htmlRoot + '/symple.player.swf', 'playerSwf',
+        this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
+        JFlashBridge.bind(this.id, this);
+        swfobject.embedSWF(this.player.options.htmlRoot + '/symple.player.swf', this.id,
             this.player.options.screenWidth, this.player.options.screenHeight, '10.0.0',
             this.player.options.htmlRoot + '/playerProductInstall.swf', {
             }, {
@@ -333,12 +351,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
                 allowScriptAccess: 'sameDomain',
                 allowFullScreen: 'true'
             }, {
-                name: 'playerSwf'
+                name: this.id //'playerSwf'
             });        
     },
 
     play: function() {
-        console.log("Flash Player: Play");
+        console.log("Symple Flash Player: Play");
         if (this.initialized) {
             this.swf().open(this.player.options.params);
             this.player.setState('playing'); // TODO: Flash callback set state
@@ -348,7 +366,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log("Flash Player: Stop");
+        console.log("Symple Flash Player: Stop");
         if (this.initialized) {
             this.swf().stop();
             this.player.setState('stopped');
@@ -356,16 +374,16 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     swf: function() {
-        return getSWF('playerSwf');
+        return getSWF(this.id);
     },
 
     isJSReady: function() {
-        console.log("JavaScript Ready Status: " + $.isReady);
+        console.log("Symple Flash Player: JavaScript Ready: " + $.isReady);
         return $.isReady;
     },
 
     onSWFLoaded: function() {
-        console.log("Flash Player Loaded");
+        console.log("Symple Flash Player: Loaded");
         this.initialized = true;
         //if (this.initFn)
         //    this.initFn(true);
@@ -374,12 +392,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onPlayerState: function(state) {
-        console.log("Flash Player State: ", state);
+        console.log("Symple Flash Player: State: ", state);
     },
 
     onMetadata: function(data) {
-        //console.log("Flash Player Metadata: ", data);
-        if (data&& data.length) {
+        console.log("Symple Flash Player: Metadata: ", data);
+        if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {
                 status += data[i][0];
@@ -392,7 +410,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onLogMessage: function(type, text) {
-        console.log(type, 'Flash Player: ' + text);
+        console.log(type, 'Symple Flash Player: ' + text);
     }
 });
 
@@ -413,7 +431,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
         this.seq = 0;
     },
 
-    create: function() {
+    setup: function() {
     },
 
     play: function() {
@@ -480,7 +498,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         this.boundary = 0;
     },
 
-    create: function(fn) {
+    setup: function(fn) {
     },
 
     play: function() {

@@ -291,6 +291,7 @@ sio.Socket.prototype.broadcastMessage = function(message) {
 
   // Always use server-side peer info for security.
   message.from.id = this.id;
+  message.from.type = this.type;
   message.from.group = this.group;
   message.from.access = this.access;
   message.from.user = this.user;

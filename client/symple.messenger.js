@@ -36,20 +36,35 @@ Symple.Messenger = Class.extend({
         this.textArea = $(this.options.textSelector, this.element);
 
         this.client = client;
-        this.client.on('message', function(m) {
-            console.log('Symple Messenger: Message:', m, self.options.recipient, m.from.user);
+        this.client.on('Message', function(m) {
+            console.log('Symple Messenger: On Message:', m, self.options.recipient, m.from.user);
             //self.roster.onPresence(p);
 
-            try {
-                if (!self.options.recipient)
-                    throw 'No recipient has been set.';
+            //try {
+                //if ()
+                //    throw 'No recipient has been set.';
 
-                if (self.options.recipient.user == m.from.user)
-                    self.addMessage(m);
-            }
-            catch (e) {
-                console.log('Symple Messenger: Message Error: ', e);
-            }
+                if (!self.options.recipient || 
+                    self.options.recipient.user == m.from.user) {
+
+                    var e = self.messages.find('.message[data-temp-id="' + m.temp_id + '"]');
+                    if (e.length) {
+                        console.log('Symple Messenger: Message Confimed: ', m);
+                        e.attr('data-message-id', m.id);
+                        e.removeClass('pending');
+                    }
+                    else {
+                        console.log('Symple Messenger: Message Received: ', m);
+                        self.addMessage(m);
+                    }
+                }
+
+                //else if (self.sender().user == m.to.user)
+                //    self.addMessage(m);
+            //}
+            //catch (e) {
+            //    console.log('Symple Messenger: Message Error: ', e);
+            //}
         });
 
         this.fixedScrollPosition = false;
@@ -74,11 +89,13 @@ Symple.Messenger = Class.extend({
                 var message = new Symple.Message({
                     to: self.options.recipient,
                     from: self.sender(),
-                    body: self.textArea.val()
+                    body: self.textArea.val(),
+                    temp_id: Sourcey.randomString(8)
                 });
 
                 var e = self.addMessage(message);
-                self.sendMessage(message, e);
+                e.addClass('pending');
+                self.sendMessage(message);
                 self.textArea.val('');
             }
             return false;
@@ -87,7 +104,7 @@ Symple.Messenger = Class.extend({
 
     // The sender is the current peer
     sender: function() {
-        return this.client.roster.ourPeer()
+        return this.client.ourPeer;
     },
     
     // Sends a message using the Symple client
@@ -110,7 +127,6 @@ Symple.Messenger = Class.extend({
             messages.each(function() {
                 var e = $(this);
                 if (e.data('time') > message.time) {
-                    //console.log('Symple Messenger: Prepending Message To Parent: ', e);
                     e.before(element)
                     handled = true;
                     return false;
@@ -120,7 +136,6 @@ Symple.Messenger = Class.extend({
 
         // Otherwise append the message to the section
         if (!handled) {
-            //console.log('Symple Messenger: Appending Message To Section');
             section.append(element);
         }
 
@@ -152,8 +167,10 @@ Symple.Messenger = Class.extend({
     },
 
     messageToHTML: function(message) {
+
+
         var time = message.time ? message.time : this.messageTime(message);
-        var html = '<div class="message" data-message-id="' + message.id + '">';
+        var html = '<div class="message" data-message-id="' + message.id + '" data-temp-id="' + message.temp_id + '">';
         html += '<div class="details">';
         if (message.from &&
             typeof(message.from) == 'object' &&

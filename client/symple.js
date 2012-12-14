@@ -21,7 +21,7 @@ Symple.Client = Dispatcher.extend({
         this._super(options);
         this.roster = new Symple.Roster(this);
         this.socket = null;
-        this.online = false;
+        this.ourPeer = null;
     },
 
     connect: function(options) {
@@ -48,13 +48,12 @@ Symple.Client = Dispatcher.extend({
                 name:   self.options.name,
                 type:   self.options.type
             }, function(res) {
-                console.log('Symple Client: Authorization Response: ', res);
+                console.log('Symple Client: Authorize Response: ', res);
                 if (res.status != 200) {
                     self.setError('auth', res);
                     return;
                 }
-                self.online = true;
-                self.ourID = res.data.id;
+                self.ourPeer = res.data;
                 self.roster.add(res.data);
                 self.sendPresence({
                     probe: true
@@ -76,7 +75,12 @@ Symple.Client = Dispatcher.extend({
                                 new Symple.Event(m));
                         }
                         else if (m.type == 'presence') {
-                            self.roster.update(m.data);
+                            if (m.data.online)
+                                self.roster.update(m.data);
+                            else {
+                                self.ourPeer = null;
+                                self.roster.remove(m.data.id);
+                            }
                             self.doDispatch('presence',
                                 new Symple.Presence(m));
                             if (m.probe == true) {
@@ -95,10 +99,19 @@ Symple.Client = Dispatcher.extend({
         });
         this.socket.on('disconnect', function() {
             console.log('Disconnect');
-            self.online = false;
+            self.ourPeer = null;
+            //self.online = false;
             self.doDispatch('disconnect');
         });
     },
+
+    online: function() {
+        return this.ourPeer != null;
+    },
+
+    //ourPeer: function() {
+    //    return this.ourID ? this.roster.get(this.ourID) : null;
+    //},
 
     getPeers: function(fn) {
         self = this;
@@ -113,7 +126,7 @@ Symple.Client = Dispatcher.extend({
     },
 
     send: function(m) {
-        if (!this.online)
+        if (!this.online())
             throw 'Cannot send message while offline';
         if (typeof(m) != 'object')
             throw 'Must send object';
@@ -126,7 +139,7 @@ Symple.Client = Dispatcher.extend({
         //if (!m.from)
         //    m.from = {}
         //m.from = self.ourID;
-        m.from = self.roster.ourPeer();
+        m.from = this.ourPeer;
         console.log('Symple Client: Sending: ', m);
         if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
             throw 'The sender must not match the recipient';
@@ -139,10 +152,14 @@ Symple.Client = Dispatcher.extend({
 
     sendPresence: function(p) {
         p = p || {};
-        if (p.data)
-            p.data = Sourcey.merge(this.roster.ourPeer(), p.data);
+        if (!this.online())
+            throw 'Cannot send message while offline';
+        if (p.data) {
+            //console.log('Symple Client: Sending Presence: ', p.data, this.ourPeer);
+            p.data = Sourcey.merge(this.ourPeer, p.data);
+        }
         else
-            p.data = this.roster.ourPeer();
+            p.data = this.ourPeer;
         console.log('Symple Client: Sending Presence: ', p);
         this.send(new Symple.Presence(p));
     },
@@ -168,7 +185,7 @@ Symple.Client = Dispatcher.extend({
 
     // Adds a capability for our current peer
     addCapability: function(name) {
-        var ourPeer = this.roster.ourPeer();
+        var ourPeer = this.ourPeer;
         if (ourPeer) {
             if (typeof ourPeer.capabilities == 'undefined')
                 ourPeer.capabilities = []; //{}
@@ -182,7 +199,7 @@ Symple.Client = Dispatcher.extend({
 
     // Removes a capability from our current peer
     removeCapability: function(name) {
-        var ourPeer = this.roster.ourPeer();
+        var ourPeer = this.ourPeer;
         if (ourPeer && typeof(ourPeer.capabilities) != 'undefined') {
             var idx = ourPeer.capabilities.indexOf(name)
             if (idx != -1) {
@@ -277,23 +294,15 @@ Symple.Roster = Manager.extend({
         return peer;
     },
     
-    ourPeer: function() {
-        return this.get(this.client.ourID);
-    },
-    
     update: function(data) {
         if (!data || !data.id)
             return;
-        if (data.online) {
-            var peer = this.get(data.id);
-            if (peer)
-                for (var key in data)
-                    peer[key] = data[key];
-            else
-                this.add(data);
-        }
+        var peer = this.get(data.id);
+        if (peer)
+            for (var key in data)
+                peer[key] = data[key];
         else
-            this.remove(data.id);
+            this.add(data);
     }
 });
 
