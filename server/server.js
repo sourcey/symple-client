@@ -288,6 +288,8 @@ sio.Socket.prototype.broadcastMessage = function(message) {
     console.log('ERROR: Dropping invalid message from ', this.id, ':', message);
     return;
   }
+  
+  //console.log('broadcastMessage: ', this.id, ':', message);
 
   // Always use server-side peer info for security.
   message.from.id = this.id;

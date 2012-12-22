@@ -7,7 +7,7 @@ var Symple = {}
 // -----------------------------------------------------------------------------
 Symple.Client = Dispatcher.extend({
     init: function(options) {
-        console.log('Creating Symple Client');
+        console.log('Symple Client: Creating');
         options = $.extend({
             url:     'http://localhost:4000',
             token:   undefined,     // pre-arranged server session token
@@ -26,7 +26,7 @@ Symple.Client = Dispatcher.extend({
 
     connect: function(options) {
         self = this;
-        console.log('Connecting: ', this.options.url, options);
+        console.log('Symple Client: Connecting: ', this.options.url, options);
         
         // Implementing out own connection timer since socket.io's
         // connect_failed event seems to be broken in the current
@@ -48,7 +48,7 @@ Symple.Client = Dispatcher.extend({
                 name:   self.options.name,
                 type:   self.options.type
             }, function(res) {
-                console.log('Symple Client: Authorize Response: ', res);
+                console.log('Symple Client: Announce Response: ', res);
                 if (res.status != 200) {
                     self.setError('auth', res);
                     return;
@@ -78,8 +78,10 @@ Symple.Client = Dispatcher.extend({
                             if (m.data.online)
                                 self.roster.update(m.data);
                             else {
-                                self.ourPeer = null;
                                 self.roster.remove(m.data.id);
+                                //if (self.ourPeer && 
+                                //    self.ourPeer.id == m.from.id)
+                                //    self.ourPeer = null;
                             }
                             self.doDispatch('presence',
                                 new Symple.Presence(m));
@@ -126,6 +128,7 @@ Symple.Client = Dispatcher.extend({
     },
 
     send: function(m) {
+        //console.log('Symple Client: Sending: Pre: ', m); 
         if (!this.online())
             throw 'Cannot send message while offline';
         if (typeof(m) != 'object')
@@ -152,6 +155,7 @@ Symple.Client = Dispatcher.extend({
 
     sendPresence: function(p) {
         p = p || {};
+        //console.log('Symple Client: Sending: sendPresence: ', p, this.ourPeer); 
         if (!this.online())
             throw 'Cannot send message while offline';
         if (p.data) {
@@ -281,14 +285,14 @@ Symple.Roster = Manager.extend({
     },
     
     add: function(peer) {
-        console.log('Symple Roster: Adding: ' + peer.id);
+        console.log('Symple Roster: Adding: ', peer);
         this._super(peer);
         this.client.doDispatch('addPeer', peer);
     },
 
     remove: function(id) {
-        console.log('Symple Roster: Removing: ' + id);
         var peer = this._super(id)
+        console.log('Symple Roster: Removing: ', id, peer);
         if (peer)
             this.client.doDispatch('removePeer', peer);
         return peer;

@@ -15,14 +15,12 @@ Symple.Messenger = Class.extend({
             //doSendMessage: self.sendMessage,    // send message impl (send via symple by default)
             onAddMessage: function(message, el) {}, // message added callback
             template: '\
-            <div class="message-view"> \
-                <a href="#" class="load-more">Show more...</a> \
-            </div> \
-            <div class="message-compose"> \
-              <div class="message-compose-text"> \
-                <textarea></textarea> \
-              </div> \
-              <button>Send</button> \
+            <div class="message-view">\
+                <a href="#" class="load-more">Show more...</a>\
+            </div>\
+            <div class="message-compose">\
+                <textarea></textarea>\
+                <button>Send</button>\
             </div>'
         }, options);
 
@@ -32,39 +30,12 @@ Symple.Messenger = Class.extend({
         if (this.element.children().length == 0)
             this.element.html(this.options.template);
         this.messages = $(this.options.viewSelector, this.element);
-        this.sendButton = $(this.options.sendSelector, this.element);
-        this.textArea = $(this.options.textSelector, this.element);
+        //this.sendButton = $(this.options.sendSelector, this.element);
+        //this.textArea = $(this.options.textSelector, this.element);
 
         this.client = client;
         this.client.on('Message', function(m) {
-            console.log('Symple Messenger: On Message:', m, self.options.recipient, m.from.user);
-            //self.roster.onPresence(p);
-
-            //try {
-                //if ()
-                //    throw 'No recipient has been set.';
-
-                if (!self.options.recipient || 
-                    self.options.recipient.user == m.from.user) {
-
-                    var e = self.messages.find('.message[data-temp-id="' + m.temp_id + '"]');
-                    if (e.length) {
-                        console.log('Symple Messenger: Message Confimed: ', m);
-                        e.attr('data-message-id', m.id);
-                        e.removeClass('pending');
-                    }
-                    else {
-                        console.log('Symple Messenger: Message Received: ', m);
-                        self.addMessage(m);
-                    }
-                }
-
-                //else if (self.sender().user == m.to.user)
-                //    self.addMessage(m);
-            //}
-            //catch (e) {
-            //    console.log('Symple Messenger: Message Error: ', e);
-            //}
+            self.onMessage(m);
         });
 
         this.fixedScrollPosition = false;
@@ -77,35 +48,39 @@ Symple.Messenger = Class.extend({
         // Detect message scrolling
         this.messages.scroll(function() {
             self.fixedScrollPosition = !self.isScrollBottom(self.messages);
-            console.log('Symple Messenger: Message Scrolling: Fixed: ', self.fixedScrollPosition);
+            //console.log('Symple Messenger: Message Scrolling: Fixed: ', self.fixedScrollPosition);
         });
 
         // Send account message
-        this.element.find('.message-compose button').unbind().click(function() {
-            if (self.textArea.val().length) {
+        this.element.find(this.options.sendSelector).unbind().click(function() {
+            var textArea = self.element.find(self.options.textSelector);
+            var text = textArea.val();
+            if (text.length) {
                 if (!self.options.recipient)
                     throw 'A message recipient must be set.';
 
                 var message = new Symple.Message({
                     to: self.options.recipient,
-                    from: self.sender(),
-                    body: self.textArea.val(),
+                    from: self.client.ourPeer ? self.client.ourPeer : self.client.options,
+                    body: text,
                     temp_id: Sourcey.randomString(8)
                 });
 
                 var e = self.addMessage(message);
                 e.addClass('pending');
                 self.sendMessage(message);
-                self.textArea.val('');
+                textArea.val('');
             }
+            else
+                alert('Cannot send an empty message.');
             return false;
         });
     },
 
     // The sender is the current peer
-    sender: function() {
-        return this.client.ourPeer;
-    },
+    //sender: function() {
+    //    return this.client.ourPeer;
+    //},
     
     // Sends a message using the Symple client
     sendMessage: function(message) {
@@ -113,10 +88,29 @@ Symple.Messenger = Class.extend({
         this.client.send(message);
     },
 
+    onMessage: function(message) {
+        console.log('Symple Messenger: On Message: ', message);
+
+        if (!this.options.recipient ||
+            this.options.recipient.user == message.from.user) {
+
+            var e = this.messages.find('.message[data-temp-id="' + message.temp_id + '"]');
+            if (e.length) {
+                console.log('Symple Messenger: Message Confimed: ', message);
+                e.attr('data-message-id', message.id);
+                e.removeClass('pending');
+            }
+            else {
+                console.log('Symple Messenger: Message Received: ', message);
+                this.addMessage(message);
+            }
+        }
+    },
+
     addMessage: function(message) {
         var self = this;
         message.time = this.messageTime(message);
-        var section = this.getOrCreateDateContainer(message);
+        var section = this.getOrCreateDateSection(message);
         var element = $(this.messageToHTML(message))
         element.data('time', message.time)
 
@@ -156,7 +150,7 @@ Symple.Messenger = Class.extend({
     },
 
     //
-    // Utilities
+    // Utilities & Helpers
     //
     formatTime: function(date) {
         return date.getHours().toString() + ':' +
@@ -167,19 +161,14 @@ Symple.Messenger = Class.extend({
     },
 
     messageToHTML: function(message) {
-
-
         var time = message.time ? message.time : this.messageTime(message);
         var html = '<div class="message" data-message-id="' + message.id + '" data-temp-id="' + message.temp_id + '">';
-        html += '<div class="details">';
         if (message.from &&
             typeof(message.from) == 'object' &&
             typeof(message.from.name) == 'string')
             html += '<span class="sender">' + message.from.name + '</span>: ';
+        html += '<span class="body">' + (typeof(message.body) == 'undefined' ? message.data : message.body) + '</span>';
         html += '<span class="date">' + this.formatTime(time) + '</span>';
-        //html += '<span class="delete">&nbsp</span>';
-        html += '</div>';
-        html += '<div class="body">' + (typeof(message.body) == 'undefined' ? message.data : message.body) + '</div>';
         html += '</div>';
         return html;
     },
@@ -192,7 +181,7 @@ Symple.Messenger = Class.extend({
         return (elem[0].scrollHeight - elem.scrollTop() == elem.outerHeight());
     },
 
-    getOrCreateDateContainer: function(message) {
+    getOrCreateDateSection: function(message) {
         var time = message.time ? message.time : this.messageTime(message);
         var dateStr = time.toDateString();
         //var date = new Date(dateStr);
