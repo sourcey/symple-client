@@ -63,7 +63,7 @@ Symple.Form.prototype = {
 //
 Symple.Form.Builder = function(form, element, options) {
     this.form = form;
-    this.element = $(element);
+    this.element = $(element); // ? $(element) : $('<form></form>');
     this.options = options || {};
 }
 
@@ -71,8 +71,13 @@ Symple.Form.Builder.prototype = {
 
     // Builds the form.
     build: function() {
+        //if (this.element)
+        //this.element = .replaceWith(this.buildForm(this.form))
+        //else
+        //this.element = $(this.buildForm(this.form));
         this.element.html(this.buildForm(this.form));
         this.postProcess();
+        return this.element;
     },
 
     // Updates fields values and errors on response.
@@ -186,7 +191,7 @@ Symple.Form.Builder.prototype = {
         if (this.options.pageMenu)
             html += '</div>';
         html += this.endFormHTML(form);
-        return html.replace(/undefined/g, '')
+        return html; //.replace(/undefined/g, '')
     },
 
     updateElements: function(o, depth) {
@@ -297,23 +302,26 @@ Symple.Form.Builder.prototype = {
 
     startFormHTML: function(o) {
         var className = this.options.formClass;
+        if (this.options.pageMenu)
+            className += ' symple-paged-form';
+            
         /*
         if (o.live)
             className += ' live';
-
-        var html = '';
-        html += '<form id="' + o.id + '" name="' + o.id + '" class="' + className + '">';
-        if (o.label)
-            html += '<h2 class="title">' + o.label + '</h2>';
-        if (o.hint)
-            html += '<div class="hint">' + o.hint + '</div>';name="' + o.id + '"
-        return html;
-        */
 
         return '\
             <form id="' + o.id + '" class="' + className + '"> \
                 <h2 class="title">' + o.label + '</h2> \
                 <div class="hint">' + o.hint + '</div>';
+        */
+
+        var html = '<form id="' + o.id + '" name="' + o.id + '" class="symple-form ' + className + '">';
+        if (o.label)
+            html += '<h2 class="title">' + o.label + '</h2>';
+        if (o.hint)
+            html += '<div class="hint">' + o.hint + '</div>';
+        html += '<div class="symple-form-content">';
+        return html;
     },
 
     endFormHTML: function(o) {
@@ -326,6 +334,7 @@ Symple.Form.Builder.prototype = {
         */
 
         return '\
+                </div> \
                 <div class="actions"> \
                     <input type="submit" name="submit" class="button submit" value="Save" /> \
                 </div> \
@@ -334,16 +343,14 @@ Symple.Form.Builder.prototype = {
     },
 
     startPageHTML: function(o) {
-        //var id = ''
-        //if (o.label)
-        //    id = this.form.id + '-' + o.label.paramaterize();
         var id = this.getElementID(o);
         var className = 'page';
         /*
         if (o.live)
             className += ' live';
+        */
 
-        html += '<div class="' + className + '" id="' + id + '">';
+        var html = '<div class="' + className + '" id="' + id + '">';
         if (o.label)
             html += '<h2>' + o.label + '</h2>';
         if (o.hint)
@@ -351,13 +358,14 @@ Symple.Form.Builder.prototype = {
         if (o.error)
             html += '<div class="error">' + o.error + '</div>';
         return html;
-        */
 
+        /*
         return '\
             <div class="' + className + '" id="' + id + '"> \
                 <h2>' + o.label + '</h2> \
                 <div class="hint">' + o.hint + '</div> \
                 <div class="error">' + o.error + '</div>';
+                */
     },
 
     endPageHTML: function(o) {
@@ -372,13 +380,14 @@ Symple.Form.Builder.prototype = {
         //if (o.live)
         //    className += ' live';
 
+        /*
         return '\
             <fieldset class="' + className + '" id="' + id + '"> \
                 <h3>' + o.label + '</h3> \
                 <div class="hint">' + o.hint + '</div> \
                 <div class="error">' + o.error + '</div>';
+        */
 
-        /*
         var html = ''
         html += '<fieldset class="' + className + '" id="' + id + '">';
         if (o.label)
@@ -388,7 +397,6 @@ Symple.Form.Builder.prototype = {
         if (o.error)
             html += '<div class="error">' + o.error + '</div>';
         return html;
-        */
     },
 
     endSectionHTML: function(o) {
@@ -516,8 +524,9 @@ Symple.Form.Builder.prototype = {
         var html = '';
         if (o.hint)
             html += '<div class="hint">' + o.hint + '</div>';
-        //if (o.error)
-        html += '<div class="error">' + (o.error ? o.error : '') + '</div>';
+        if (o.error)
+          html += '<div class="error">' + (o.error) + '</div>';
+        //html += '<div class="error">' + (o.error ? o.error : '') + '</div>';
         html += '</div>';
         html += '</div>';
         return html;
@@ -575,14 +584,14 @@ Symple.Form.Builder.prototype = {
     $.sympleForm = $.sympleForm || {}
 
     $.sympleForm.options = {
-        formClass: 'symple-form stacked',
+        formClass: 'stacked',
         pageMenu: false,
         afterBuild: function(form, el) {},
         onSubmit: function(form, el) {}
     };
 
     $.sympleForm.build = function(form, options) {
-        return createForm(form, $('<div></div>'), options);
+        return createForm(form, $('<div class="symple-form-wrapper"></div>'), options);
     }
 
     $.fn.sympleForm = function(form, options) {
@@ -594,19 +603,12 @@ Symple.Form.Builder.prototype = {
 
     $.fn.sympleFormUpdate = function(form) {
         return $(this).data('builder').update(form);
-        //return createForm(form, this);
-        //var builder = $(this).data('builder');
-        //builder.from = form;
-        //builder.build();
-        //options.afterBuild(form, builder, el);
-        //return $(this).data('builder').build(form);
     };
 
     function createForm(form, el, options) {
         options = $.extend({}, $.sympleForm.options, options);
-        var builder = new Symple.Form.Builder(form, el, options); //window[]
+        var builder = new Symple.Form.Builder(form, el, options);
         builder.build();
-        //el.data('form', form);
         el.data('builder', builder);
         return el;
     }
