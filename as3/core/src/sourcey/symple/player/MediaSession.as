@@ -95,11 +95,10 @@
 			Logger.send(Logger.DEBUG, 
 				"[MediaSession] Creating Video Element");
 			
-			//var candidate:Object = resolver.bestCandidate;
 			if (!params.url)
 				throw new Error("No streaming candidate");
 			
-			if (!params.video == null)
+			if (params.video == null)
 				throw new Error("No streaming video params");	
 			
 			var video:IVideoElement;		
@@ -133,30 +132,23 @@
 			if (!params.url)
 				throw new Error("No streaming candidate");
 			
-			if (!params.audio == null)
+			if (params.audio == null)
 				throw new Error("No streaming audio params");	
 			
 			// TODO: We need to check that the container format
 			// is FLV otherwise we can't use the FLVElement.
 			var audio:IVideoElement;		
 			if (params.audio.codec == "Speex" ||
-				params.audio.codec == "Nellymoser") {				
-				audio = new FLVElement(
-					params.url,
-					params.protocol);
+				params.audio.codec == "Nellymoser"
+			) {				
+				audio = new FLVElement(params.url, params.protocol);
+			} 
+			else if (
+				params.audio.codec == "MP3"
+			) {				
+				audio = new SoundElement(params.url, params.protocol);
 			} 
 			
-			/*
-			else if (
-				params.video.codec == "FLV" || 
-				params.video.codec == "H263" || 
-				params.video.codec == "H263p" || 
-				params.video.codec == "H264") {
-				video = new FLVElement(
-					params.url,
-					params.protocol);
-			}		
-			*/
 			if (!audio)
 				throw new Error("Unsupported audio format " + 
 					params.audio.codec);

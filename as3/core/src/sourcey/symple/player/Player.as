@@ -10,6 +10,7 @@ package sourcey.symple.player
 	import sourcey.symple.player.MediaSession;
 	import sourcey.ui.Element;
 	import sourcey.util.Logger;
+	import sourcey.util.Util;
 	
 	//[Event(name="stateChanged", type="sourcey.events.BasicEvent")]
 	
@@ -48,8 +49,11 @@ package sourcey.symple.player
 		
 		public function open(params:Object = null):Boolean
 		{
-			if (params)
+			if (params) {
+				// TODO: Assert via session params setter
+				//Util.assertObjectProperties(params, [ "protocol", "video", "audio", "token", "candidates" ]);	
 				session.params = params;
+			}
 			return session.initialize();
 		}
 		
@@ -108,16 +112,6 @@ package sourcey.symple.player
 			if (element && width && height)
 				element.setSize(width, height);
 		}
-		
-		/*
-		private function onResize(event:Event):void 
-		{
-			//setSize((video as Element).width, (video as Element).height);
-			//var sprite:Sprite = event.currentTarget as Sprite;
-			//if (sprite)
-			//	setSize(stage.stageWidth, stage.stageHeight);
-		}
-		*/
 		
 		protected function setVideo(element:IVideoElement):void 
 		{
@@ -233,6 +227,16 @@ package sourcey.symple.player
 					break;
 			}
 		}	
+		
+		/*
+		private function onResize(event:Event):void 
+		{
+		//setSize((video as Element).width, (video as Element).height);
+		//var sprite:Sprite = event.currentTarget as Sprite;
+		//if (sprite)
+		//	setSize(stage.stageWidth, stage.stageHeight);
+		}
+		*/
 		
 		// Implements the player state machine
 		private var _state:String = STATE_NONE;		

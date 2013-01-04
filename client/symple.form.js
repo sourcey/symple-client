@@ -335,6 +335,7 @@ Symple.Form.Builder.prototype = {
 
         return '\
                 </div> \
+                <div class="break"></div> \
                 <div class="actions"> \
                     <input type="submit" name="submit" class="button submit" value="Save" /> \
                 </div> \
@@ -471,7 +472,7 @@ Symple.Form.Builder.prototype = {
         return this.buildListField(o, true);
     },
 
-    buildIntegerField: function(o) {
+    buildNumberField: function(o) {
         var html = this.startFieldHTML(o);
         html += '<input type="number" id="' + o.id + '" name="' + o.id + '" value="' + (o.values ? o.values[0] : '') + '" size="20" />';
         html += this.endFieldHTML(o);

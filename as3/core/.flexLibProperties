@@ -9,6 +9,7 @@
     <classEntry path="sourcey.symple.player.Player"/>
     <classEntry path="sourcey.symple.CommandListener"/>
     <classEntry path="sourcey.symple.EventListener"/>
+    <classEntry path="sourcey.symple.player.SoundElement"/>
   </includeClasses>
   <includeResources/>
   <namespaceManifests/>

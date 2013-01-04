@@ -2,14 +2,17 @@ package
 {
 	import flash.display.LoaderInfo;
 	import flash.events.Event;
+	import flash.media.Sound;
+	import flash.net.URLRequest;
 	import flash.text.Font;
 	import flash.utils.Dictionary;
 	
+	import sourcey.events.BasicEvent;
+	import sourcey.symple.player.FLVElement;
 	import sourcey.symple.player.IVideoElement;
 	import sourcey.symple.player.MediaEvent;
 	import sourcey.symple.player.MediaSession;
 	import sourcey.symple.player.Player;
-	import sourcey.events.BasicEvent;
 	import sourcey.ui.Element;
 	import sourcey.util.JFlashBridge;
 	import sourcey.util.Logger;
@@ -42,29 +45,52 @@ package
 			
 			stage.addEventListener(Event.RESIZE, onResize); 
 			
+			/*
+			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
+			//var req:URLRequest = new URLRequest("http://127.0.0.1/enctest.mp3");
+			var s:Sound = new Sound();
+			s.load(req);
+			s.play();
+			mp3test.mp3
+			var audio:FLVElement = new FLVElement(
+				"http://127.0.0.1/vidtest.flv",
+				"Raw");
+			 addChild(audio);
+			 audio.play();
+			
+			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
+			var s:Sound = new Sound();
+			s.load(req);
+			s.play();
+			*/
+			
 			//
 			// Tests
 			//
-			/*
 			player.open({
 				token: "test-flv",
 				format: "FLV",
 				protocol: "Raw",
-				//video: {
-				//	codec: "FLV"
-				//},
-				audio: {
-					codec: "Speex"
+				video: {
+					codec: "MJPEG"
+					//codec: "FLV"
 				},
+				//audio: {
+				//	codec: "Speex"
+				//	codec: "Nellymoser"
+				//	codec: "MP3"
+				//},
 				candidates: [
 					{
 						address: "127.0.0.1:328",
 						protocol: "HTTP",
-						uri: "/flv"
+						//uri: "/flv"
+						uri: "/s.mp3"
 					}
 				]	
 			});
-				
+			
+			/*
 			player.open({
 				token: "test-mjpeg",
 				format: "MJPEG",

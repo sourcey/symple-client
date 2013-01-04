@@ -63,23 +63,10 @@ form.symple-form select {
 }
 */
 
-/* ............................................................................. Page Layout */
-
-
-/* Symple form styles */
+/* ............................................................................. Paged Form Layout */
 
 .symple-form-wrapper {
     height: 100%;
-}
-
-form.symple-paged-form {
-    height: 100%;
-    width: 100%;
-}
-
-form.symple-paged-form .symple-form-content {
-    height: 100%;
-    width: 100%;
 }
 
 form.symple-paged-form .symple-form-content .menu {
@@ -117,9 +104,8 @@ form.symple-paged-form .symple-form-content .pages .page {
     background: #EEF3FA;
 }
 
-form.symple-paged-form .actions {
-    text-align: right;
-    padding: 5px;
+form.symple-paged-form .symple-form-content .pages .page h2 {
+    display: none;
 }
 
 
