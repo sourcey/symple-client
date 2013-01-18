@@ -3,6 +3,7 @@ package
 	import flash.display.LoaderInfo;
 	import flash.events.Event;
 	import flash.media.Sound;
+	import flash.net.URLLoader;
 	import flash.net.URLRequest;
 	import flash.text.Font;
 	import flash.utils.Dictionary;
@@ -67,10 +68,14 @@ package
 			//
 			// Tests
 			//
+			//testTURNMediaProvider()
+			
+			/*
 			player.open({
 				token: "test-flv",
-				format: "FLV",
-				protocol: "Raw",
+				format: "MJPEG",
+				//protocol: "Raw",
+				protocol: "HTTP",
 				video: {
 					codec: "MJPEG"
 					//codec: "FLV"
@@ -82,15 +87,16 @@ package
 				//},
 				candidates: [
 					{
-						address: "127.0.0.1:328",
-						protocol: "HTTP",
-						//uri: "/flv"
-						uri: "/s.mp3"
+						address: "127.0.0.1:6781", //328
+						//protocol: "HTTP",HTTP
+						//protocol: "TURN",
+						//uri: "/flv"/s.mjpeg
+						type: "relay",
+						uri: ""
 					}
 				]	
 			});
 			
-			/*
 			player.open({
 				token: "test-mjpeg",
 				format: "MJPEG",
@@ -107,6 +113,43 @@ package
 				]	
 			});	
 			*/	
+		}
+		
+		protected function testTURNMediaProvider():void
+		{				
+			Logger.send(Logger.INFO, "Test TURN Media Provider");
+			
+			// Send a GET request to obtain the relayed address.
+			var request:URLRequest = new URLRequest();
+			request.url = "http://localhost:800";
+			request.method = "GET";			
+			var loader:URLLoader = new URLLoader();
+			loader.addEventListener(Event.COMPLETE, function loaderCompleteHandler(e:Event):void 
+			{
+				player.open({
+					token: "MJPEG-TURN",
+					format: "MJPEG",
+					protocol: "HTTP",
+					video: {
+						codec: "MJPEG"
+						//codec: "FLV"
+					},
+					//audio: {
+					//	codec: "Speex"
+					//	codec: "Nellymoser"
+					//	codec: "MP3"
+					//},
+					candidates: [
+						{
+							address: e.target.data, //"127.0.0.1:6781",
+							protocol: "turn", // "http"
+							type: "relay",
+							uri: ""
+						}
+					]	
+				});	
+			});
+			loader.load(request);
 		}
 		
 		override protected function addChildren():void

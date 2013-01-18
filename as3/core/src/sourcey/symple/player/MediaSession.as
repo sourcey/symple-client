@@ -38,7 +38,10 @@
 					state = Session.STATE_NEGOTIATING;
 					
 					for each(var candidate:Object in params.candidates) {
-						candidate.protocol = params.transport == "SSL" ? "https" : "http";
+						if (!candidate.protocol)
+							candidate.protocol = candidate.type == "relay" ? 
+								"turn" : params.transport == "SSL" ? 
+									"https" : "http";
 						resolver.resolve(candidate);
 					}
 				}
@@ -69,7 +72,7 @@
 		public function onCandidatesGathered(event:CandidateEvent):void
 		{
 			Logger.send(Logger.DEBUG, 
-				"[MediaSession] Candidates Gathered: " + state + ": " + event.data);
+				"[MediaSession] Candidates Gathered: " + state + ": " + event.data.success + ": " + event.data.url);
 			
 			// TODO: Change candidates mid-stream
 			var bastCandidate:Object = event.data as Object;
@@ -81,13 +84,15 @@
 			}
 			else {				
 				error = "Unable to resolve peer";
+				if (bastCandidate)
+					error += ": " + bastCandidate.url;
 				state = Session.STATE_FAILED;		
 				Logger.send(Logger.ERROR, 
 					"[MediaSession] Session Failed: " + error);	
 			}
 			
-			Logger.send(Logger.DEBUG, 
-				"[MediaSession] Candidates Gathered: OK: " + state + ": " + event.data);
+			//Logger.send(Logger.DEBUG, 
+			//	"[MediaSession] Candidates Gathered: OK: " + state + ": " + event.data);
 		}
 		
 		public function createVideoElement():IVideoElement 

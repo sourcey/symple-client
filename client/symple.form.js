@@ -318,9 +318,9 @@ Symple.Form.Builder.prototype = {
         var html = '<form id="' + o.id + '" name="' + o.id + '" class="symple-form ' + className + '">';
         if (o.label)
             html += '<h2 class="title">' + o.label + '</h2>';
+        html += '<div class="symple-form-content">';
         if (o.hint)
             html += '<div class="hint">' + o.hint + '</div>';
-        html += '<div class="symple-form-content">';
         return html;
     },
 
@@ -356,8 +356,9 @@ Symple.Form.Builder.prototype = {
             html += '<h2>' + o.label + '</h2>';
         if (o.hint)
             html += '<div class="hint">' + o.hint + '</div>';
-        if (o.error)
-            html += '<div class="error">' + o.error + '</div>';
+        html += '<div class="error" ' + (o.error ? '' : 'style="display:none"') + '>' + (o.error ? o.error : '') + '</div>';
+        //if (o.error)
+        //    html += '<div class="error">' + o.error + '</div>';
         return html;
 
         /*
@@ -395,8 +396,9 @@ Symple.Form.Builder.prototype = {
             html += '<h3>' + o.label + '</h3>';
         if (o.hint)
             html += '<div class="hint">' + o.hint + '</div>';
-        if (o.error)
-            html += '<div class="error">' + o.error + '</div>';
+        html += '<div class="error" ' + (o.error ? '' : 'style="display:none"') + '>' + (o.error ? o.error : '') + '</div>';
+        //if (o.error)
+        //    html += '<div class="error">' + o.error + '</div>';
         return html;
     },
 
@@ -417,10 +419,15 @@ Symple.Form.Builder.prototype = {
             return;
 
         var id = this.getElementID(o);
-        var el = this.element.find('#' + id);
+        var el = this.element.find('#' + id);        
         if (el.length) {
             var err = el.children('.error:first');
-            err.text(o.error ? o.error : '');
+            if (o.error)
+                err.text(o.error).show();
+            else
+                err.hide();
+                
+            //err.text(o.error ? o.error : '');                
             //fel.find('.error').text(field.error ? field.error : '');
             //fel.find('.loading').remove(); // for live fields, not built in yet
         }
@@ -524,10 +531,8 @@ Symple.Form.Builder.prototype = {
     endFieldHTML: function(o) {
         var html = '';
         if (o.hint)
-            html += '<div class="hint">' + o.hint + '</div>';
-        if (o.error)
-          html += '<div class="error">' + (o.error) + '</div>';
-        //html += '<div class="error">' + (o.error ? o.error : '') + '</div>';
+          html += '<div class="hint">' + o.hint + '</div>';
+        html += '<div class="error" ' + (o.error ? '' : 'style="display:none"') + '>' + (o.error ? o.error : '') + '</div>';
         html += '</div>';
         html += '</div>';
         return html;
@@ -556,7 +561,11 @@ Symple.Form.Builder.prototype = {
             }
 
             var fel = el.parents('.field:first');
-            fel.find('.error').text(field.error ? field.error : '');
+            if (field.error) {
+              console.log('Form Builder: Updating Field HTML: Error Field: ', fel.html())
+                fel.find('.error').text(field.error).show();
+            } else
+                fel.find('.error').hide();
             fel.find('.loading').remove(); // for live fields, not built in yet
         }
 

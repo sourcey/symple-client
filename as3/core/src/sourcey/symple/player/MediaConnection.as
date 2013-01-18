@@ -25,7 +25,7 @@
 		
 		public function play():void
 		{
-			Logger.send(Logger.DEBUG, "[MediaConnection] Play");
+			Logger.send(Logger.DEBUG, "[MediaConnection] Play: " + _url.host + ":" + _url.port);
 			super.connect(_url.host, _url.port);
 		}
 		
@@ -61,8 +61,10 @@
 		
 		override protected function onConnect(event:Event):void 
 		{			
-			Logger.send(Logger.DEBUG, "[MediaConnection] Connected");
-			sendInitHeader();
+			Logger.send(Logger.DEBUG, "[MediaConnection] Connected: " + _url.protocol);
+			if (_url.protocol == "HTTP" || 
+				_url.protocol == "http")
+				sendInitHeader();
 			super.onConnect(event);				
         }
 			

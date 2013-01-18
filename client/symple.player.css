@@ -2,6 +2,7 @@
     width: 100%;
     height: 100%;
     background: #000;
+    position: relative;
 }
 
 .symple-player-status {
@@ -11,7 +12,7 @@
     height: 0px;
     color: #ccc;
     text-shadow: none;
-    z-index: 1000;
+    z-index: 2;
 }
 
 .symple-player-message {
@@ -20,7 +21,7 @@
     width: 100%;
     height: 100%;
     background: #000;
-    z-index: 9999;
+    z-index: 1;
     display: table;
 }
 
@@ -34,6 +35,7 @@
 .symple-player-screen {
     width: 100%;
     height: 100%;
+    text-align: center;
 }
 
 .symple-player-screen .symple-player-frame {
@@ -47,7 +49,7 @@
     right: 0;
     padding-bottom: 25px;
     text-align: center;
-    z-index: 10000;
+    z-index: 2;
 }
 
 .symple-player-controls .ui-btn {

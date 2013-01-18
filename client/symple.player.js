@@ -50,8 +50,10 @@ Symple.Player = function(options) {
     }, options);
 
     this.element = $(this.options.element);
-    if (!this.element.hasClass('.symple-player'))
+    if (!this.element.hasClass('.symple-player')) {
         this.element.html(this.options.template);
+        this.element = this.element.children('.symple-player:first');
+    }
     if (!this.element.length)
         throw 'The player element doesn\'t exist';
     
@@ -105,25 +107,13 @@ Symple.Player.prototype = {
         console.log('Symple Player: Setting State from ' + this.state + ' to ' + state)
         if (this.state == state)
             return;
-
+        
         this.state = state;
         this.displayStatus('');
         this.displayMessage('');
         this.playing = state == 'playing';
-        /*
-        switch (state) {
-            case 'stopped':
-                break;
-            case 'loading':
-                break;
-            case 'playing':
-                break;
-            case 'paused':
-                break;
-            case 'error':
-                break;
-        }
-        */
+        this.element.removeClass('state-stopped state-loading state-playing state-paused state-error');
+        this.element.addClass('state-' + state);
         this.refresh();
         this.options.onStateChange(this, state);
     },
@@ -378,7 +368,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     isJSReady: function() {
-        console.log("Symple Flash Player: JavaScript Ready: " + $.isReady);
+        //console.log("Symple Flash Player: JavaScript Ready: " + $.isReady);
         return $.isReady;
     },
 
@@ -392,11 +382,11 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onPlayerState: function(state) {
-        console.log("Symple Flash Player: State: ", state);
+        //console.log("Symple Flash Player: State: ", state);
     },
 
     onMetadata: function(data) {
-        console.log("Symple Flash Player: Metadata: ", data);
+        //console.log("Symple Flash Player: Metadata: ", data);
         if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {

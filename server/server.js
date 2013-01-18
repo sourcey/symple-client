@@ -198,7 +198,7 @@ sio.Socket.prototype.toPeer = function(p) {
   p.group = this.group;
   p.access = this.access;
   p.online = this.online;
-  p.address = this.handshake ? this.handshake.address.address : '';
+  p.host = this.handshake ? this.handshake.address.address : '';
 
   // allow client to change name
   if (typeof p.name === 'string')

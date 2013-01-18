@@ -8,34 +8,25 @@
 form.symple-form {
     position: relative;
 }
-
 form.symple-form h3 {
 }
-
 form.symple-form fieldset {
     padding: 10px; 
     background: #EEF3FA;
     border-bottom: 1px solid #ddd;
     border-right: 1px solid #ddd;
 }
-
 form.symple-form .hint {
-  /*
     color: #666;
-    */
 }
 form.symple-form .error {
-  /*
     color: #c00;
-    */
 }
-
 form.symple-form .hint,
 form.symple-form .error {
-    padding: 0 0 20px !important;
+    padding: 5px 0 15px 10px !important;
     text-align: left;
 }
-
 form.symple-form .field .hint,
 form.symple-form .field .error {
     padding: 5px 0 0 !important;
@@ -44,14 +35,14 @@ form.symple-form .field .error {
 form.symple-form .field {
 }
 
+/*
 form.symple-form .field .hint {
     color: #666;
 }
+form.symple-form fieldset .error,
 form.symple-form .field .error {
     color: #c00;
 }
-
-/*
 form.symple-form .submit {
     float: right;
 }

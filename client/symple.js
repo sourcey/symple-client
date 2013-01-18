@@ -6,58 +6,43 @@ var Symple = {}
 //
 // -----------------------------------------------------------------------------
 Symple.Client = Dispatcher.extend({
-    init: function(options) {
-        console.log('Symple Client: Creating');
-        options = $.extend({
+    init: function(peer, options) {
+        console.log('Symple Client: Creating: ', peer, options);
+        this.peer = peer;
+        this.options = $.extend({
             url:     'http://localhost:4000',
-            token:   undefined,     // pre-arranged server session token
-            group:   undefined,     // node group scope
-            user:    undefined,     // node user scope
-            name:    undefined,     // node name
-            type:    'node',        // node type
-            timeout: 0              // set to positive for connection timeout
+            token:   undefined     // pre-arranged server session token
+            //timeout: 0              // set to positive for connection timeout
         }, options);
-        this.options = options
-        this._super(options);
+        this._super(this.options);
         this.roster = new Symple.Roster(this);
         this.socket = null;
-        this.ourPeer = null;
     },
 
-    connect: function(options) {
+    // Connects and authenticates on the server.
+    // If the server is down the 'error' event will fire.
+    connect: function() {
         self = this;
-        console.log('Symple Client: Connecting: ', this.options.url, options);
+        console.log('Symple Client: Connecting: ', this.options);
         
-        // Implementing out own connection timer since socket.io's
-        // connect_failed event seems to be broken in the current
-        // version.
-        if (this.options.timeout) {
-            var timeout = setTimeout(function() {
-                self.setError('connect', 'Connection timed out after ' + self.options.timeout);
-            }, this.options.timeout);
-        }
-
-        this.socket = io.connect(this.options.url, options);
+        this.socket = io.connect(this.options.url, this.options);
         this.socket.on('connect', function() {
             console.log('Symple Client: Connected');
-            clearTimeout(timeout);
             self.socket.emit('announce', {
                 token:  self.options.token,
-                group:  self.options.group,
-                user:   self.options.user,
-                name:   self.options.name,
-                type:   self.options.type
+                group:  self.peer.group,
+                user:   self.peer.user,
+                name:   self.peer.name,
+                type:   self.peer.type
             }, function(res) {
                 console.log('Symple Client: Announce Response: ', res);
                 if (res.status != 200) {
                     self.setError('auth', res);
                     return;
                 }
-                self.ourPeer = res.data;
+                self.peer = $.extend(self.peer, res.data);
                 self.roster.add(res.data);
-                self.sendPresence({
-                    probe: true
-                });
+                self.sendPresence({ probe: true });
                 self.doDispatch('announce', res);
                 self.socket.on('message', function(m) {
                     console.log('Symple Client: Receive: ', m);
@@ -77,12 +62,8 @@ Symple.Client = Dispatcher.extend({
                         else if (m.type == 'presence') {
                             if (m.data.online)
                                 self.roster.update(m.data);
-                            else {
+                            else
                                 self.roster.remove(m.data.id);
-                                //if (self.ourPeer && 
-                                //    self.ourPeer.id == m.from.id)
-                                //    self.ourPeer = null;
-                            }
                             self.doDispatch('presence',
                                 new Symple.Presence(m));
                             if (m.probe == true) {
@@ -99,21 +80,31 @@ Symple.Client = Dispatcher.extend({
                 });
             });
         });
+        this.socket.on('error', function() {
+            self.setError('connect');       
+        });
+        this.socket.on('connecting', function() {
+            console.log('Symple Client: Connecting');            
+            self.doDispatch('connecting');
+        });
+        this.socket.on('reconnecting', function() {
+            console.log('Symple Client: Reconnecting');            
+            self.doDispatch('reconnecting');
+        });
+        this.socket.on('connect_failed', function() {
+            console.log('Symple Client: Connect Failed');            
+            self.doDispatch('connect_failed');
+        });
         this.socket.on('disconnect', function() {
-            console.log('Disconnect');
-            self.ourPeer = null;
-            //self.online = false;
+            console.log('Symple Client: Disconnect');
+            self.peer.online = false;
             self.doDispatch('disconnect');
         });
     },
 
     online: function() {
-        return this.ourPeer != null;
+        return this.peer.online;
     },
-
-    //ourPeer: function() {
-    //    return this.ourID ? this.roster.get(this.ourID) : null;
-    //},
 
     getPeers: function(fn) {
         self = this;
@@ -142,7 +133,7 @@ Symple.Client = Dispatcher.extend({
         //if (!m.from)
         //    m.from = {}
         //m.from = self.ourID;
-        m.from = this.ourPeer;
+        m.from = this.peer;
         console.log('Symple Client: Sending: ', m);
         if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
             throw 'The sender must not match the recipient';
@@ -155,15 +146,15 @@ Symple.Client = Dispatcher.extend({
 
     sendPresence: function(p) {
         p = p || {};
-        //console.log('Symple Client: Sending: sendPresence: ', p, this.ourPeer); 
+        //console.log('Symple Client: Sending: sendPresence: ', p, this.peer); 
         if (!this.online())
             throw 'Cannot send message while offline';
         if (p.data) {
-            //console.log('Symple Client: Sending Presence: ', p.data, this.ourPeer);
-            p.data = Sourcey.merge(this.ourPeer, p.data);
+            //console.log('Symple Client: Sending Presence: ', p.data, this.peer);
+            p.data = Sourcey.merge(this.peer, p.data);
         }
         else
-            p.data = this.ourPeer;
+            p.data = this.peer;
         console.log('Symple Client: Sending Presence: ', p);
         this.send(new Symple.Presence(p));
     },
@@ -189,13 +180,13 @@ Symple.Client = Dispatcher.extend({
 
     // Adds a capability for our current peer
     addCapability: function(name) {
-        var ourPeer = this.ourPeer;
-        if (ourPeer) {
-            if (typeof ourPeer.capabilities == 'undefined')
-                ourPeer.capabilities = []; //{}
-            var idx = ourPeer.capabilities.indexOf(name)
+        var peer = this.peer;
+        if (peer) {
+            if (typeof peer.capabilities == 'undefined')
+                peer.capabilities = []; //{}
+            var idx = peer.capabilities.indexOf(name)
             if (idx == -1) {
-                ourPeer.capabilities.push(name);
+                peer.capabilities.push(name);
                 this.sendPresence();
             }
         }
@@ -203,11 +194,11 @@ Symple.Client = Dispatcher.extend({
 
     // Removes a capability from our current peer
     removeCapability: function(name) {
-        var ourPeer = this.ourPeer;
-        if (ourPeer && typeof(ourPeer.capabilities) != 'undefined') {
-            var idx = ourPeer.capabilities.indexOf(name)
+        var peer = this.peer;
+        if (peer && typeof(peer.capabilities) != 'undefined') {
+            var idx = peer.capabilities.indexOf(name)
             if (idx != -1) {
-                ourPeer.capabilities.pop(name);
+                peer.capabilities.pop(name);
                 this.sendPresence();                
             }
         }        
@@ -216,6 +207,9 @@ Symple.Client = Dispatcher.extend({
     // Sets the client to an error state and and dispatches an error event
     setError: function(error, message) {
         console.log('Symple Client: Client Error: ', error, message);
+        //if (this.error == error)
+        //    return;
+        //this.error = error;
         this.doDispatch('error', error, message);
         if (this.socket)
             this.socket.disconnect();
@@ -655,6 +649,16 @@ Symple.Address.prototype = {
 
 
 
+        // Implementing out own connection timer since socket.io's
+        // connect_failed event is broken in the current version 0.9.1.
+        //if (this.options.timeout) {
+        //    var timeout = setTimeout(function() {
+        //        self.setError('connect', 'Connection timed out after ' + self.options.timeout);
+        //    }, this.options.timeout);
+        //}
+
+        //this.error = null;
+            //clearTimeout(timeout);
 
 
 
@@ -1144,11 +1148,11 @@ Symple.prototype = {
 
               //$user = $symple.peers.findOne({ username: '<%= @peer.username %>', type: 'user' });
               //console.log($user);
-                //self.peers.ourPeer()
+                //self.peers.peer()
               //$symple.sendPresence({ to: $user.id, probe: true })
                 /*{
                     from:   self.ourID,
-                    peer: self.peers.ourPeer(),
+                    peer: self.peers.peer(),
                     probe:  true }
                 self.peers.add({
                     id:     self.socket.socket.sessionid,
@@ -1159,8 +1163,8 @@ Symple.prototype = {
 
                 //,
                 //    probe:  true
-                //console.log('ourPeer: ' + self.peers.ourPeer())
-                //self.sendPresence(self.peers.ourPeer());
+                //console.log('peer: ' + self.peers.peer())
+                //self.sendPresence(self.peers.peer());
 
 /*
 // -----------------------------------------------------------------------------
@@ -1227,7 +1231,7 @@ Symple.Roster.prototype = {
         return res.length ? res[0] : undefined;
     },
 
-    ourPeer: function() {
+    peer: function() {
         return this.Symples[this.ourID];
     },
 
@@ -1361,7 +1365,7 @@ function Symple(options) {
     getOrActive: function(id) {
         var peer = this.get(id);
         if (!peer && this.ourID) // && Spot.session && Spot.session.active()
-            peer = this.ourPeer();
+            peer = this.peer();
         return peer;
     },
 
@@ -1397,7 +1401,7 @@ function Symple(options) {
     getOrActive: function(id) {
         var Symple = this.get(id);
         if (!Symple && this.ourID) // && Spot.session && Spot.session.active()
-            Symple = this.ourPeer();
+            Symple = this.peer();
         return Symple;
     },
 

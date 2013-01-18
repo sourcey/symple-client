@@ -46,8 +46,9 @@ package sourcey.symple.player
 			}
 	 	}
 		
+		// Return the best candidate by latency
 		public function get bestCandidate():Object 
-		{   
+		{   			
 			var candidate:Object = null;
 			for each(var o:Object in candidates) {
 				if (!candidate || (candidate.success && 
