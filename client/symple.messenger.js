@@ -7,7 +7,7 @@ Symple.Messenger = Class.extend({
     init: function(client, options) {
         var self = this;
         this.options = $.extend({
-            recipient: null,                    // recipient peer object (will send to group scope if unset)
+            recipient: null,                   // recipient peer object (will send to group scope if unset)
             element: '#messenger',              // root element
             viewSelector: '.message-view',
             sendSelector: '.message-compose button',
@@ -16,7 +16,6 @@ Symple.Messenger = Class.extend({
             onAddMessage: function(message, el) {}, // message added callback
             template: '\
             <div class="message-view">\
-                <a href="#" class="load-more">Show more...</a>\
             </div>\
             <div class="message-compose">\
                 <textarea></textarea>\
@@ -40,8 +39,18 @@ Symple.Messenger = Class.extend({
 
         this.fixedScrollPosition = false;
         this.bind();
+        this.invalidate();
     },
+    
+    invalidate: function() {
 
+        // Scroll to bottom unless position is fixed
+        if (!this.fixedScrollPosition) {
+            this.messages.scrollTop(this.messages[0].scrollHeight);
+            console.log('Symple Messenger: Update Scroll Position: ', this.messages[0].scrollHeight);
+        }
+    },
+    
     bind: function() {
         var self = this;
 
@@ -52,7 +61,7 @@ Symple.Messenger = Class.extend({
         });
 
         // Send account message
-        this.element.find(this.options.sendSelector).unbind().click(function() {
+        this.element.find(this.options.sendSelector).click(function() {
             var textArea = self.element.find(self.options.textSelector);
             var text = textArea.val();
             if (text.length) {
@@ -61,9 +70,9 @@ Symple.Messenger = Class.extend({
 
                 var message = new Symple.Message({
                     to: self.options.recipient,
-                    from: self.client.ourPeer ? self.client.ourPeer : self.client.options,
+                    from: self.client.peer,
                     body: text,
-                    temp_id: Sourcey.randomString(8)
+                    temp_id: Sourcey.randomString(8) // Enables us to track sent messages
                 });
 
                 var e = self.addMessage(message);
@@ -76,11 +85,6 @@ Symple.Messenger = Class.extend({
             return false;
         });
     },
-
-    // The sender is the current peer
-    //sender: function() {
-    //    return this.client.ourPeer;
-    //},
     
     // Sends a message using the Symple client
     sendMessage: function(message) {
@@ -134,19 +138,11 @@ Symple.Messenger = Class.extend({
         }
 
         // Scroll to bottom unless position is fixed
-        this.updateScrollPosition();
+        this.invalidate();
 
         console.log('Symple Messenger: Added Message');
         this.options.onAddMessage(message, element);
         return element;
-    },
-
-    updateScrollPosition: function() {
-        console.log('Symple Messenger: Update Scroll Position: ', this.fixedScrollPosition, this.messages[0].scrollHeight);
-
-        // Scroll to bottom unless position is fixed
-        if (!this.fixedScrollPosition)
-            this.messages.scrollTop(this.messages[0].scrollHeight);
     },
 
     //
@@ -224,9 +220,3 @@ Symple.Messenger = Class.extend({
         return section;
     }
 });
-
-
-        //if (!this.fixedScrollPosition) {
-        //    console.log('Symple Messenger: Added Message: ', this.fixedScrollPosition, this.messages, this.messages[0].scrollHeight);
-        //    this.messages.scrollTop(this.messages[0].scrollHeight);
-        //}

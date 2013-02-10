@@ -10,9 +10,10 @@
     
   /* Redis configuration */
   "redis" : {
-    "host" : "173.230.150.125",
-    "port" : 6379,
-    "password" : "8461e2c92b2848975c058cb4fbba735f"
+    "host" : "localhost",
+    /* "host" : "173.230.150.125", */
+    "port" : 6379
+    /* "password" : "8461e2c92b2848975c058cb4fbba735f" */
   },
   
   /* SSL configuration */

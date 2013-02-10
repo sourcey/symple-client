@@ -2,26 +2,12 @@
 //
 //  Symple Player
 //
-//  Example Markup:
-//  <div id="player">
-//    <div id="player-message">
-//    </div>
-//    <div id="player-status">
-//    </div>
-//    <div id="player-screen">
-//    </div>
-//    <div id="player-controls">
-//      <a class="play-btn" rel="play" href="#">Play</a>
-//      <a class="stop-btn" rel="stop" href="#">Stop</a>
-//    </div>
-//  </div>
-//
 // ----------------------------------------------------------------------------
 Symple.Player = function(options) {
     this.options = $.extend({
         htmlRoot:       '/assetpipe/symple/client',
         element:        '.symple-player:first',
-        engine:         'auto',       // auto or engine class name
+        engine:         'MJPEG',      // engine class name
         screenWidth:    '100%',       // player screen css width (percentage or pixel value)
         screenHeight:   '100%',       // player screen css height (percentage or pixel value)
 
@@ -50,26 +36,27 @@ Symple.Player = function(options) {
     }, options);
 
     this.element = $(this.options.element);
-    if (!this.element.hasClass('.symple-player')) {
+    if (!this.element.hasClass('symple-player')) {
         this.element.html(this.options.template);
         this.element = this.element.children('.symple-player:first');
     }
     if (!this.element.length)
-        throw 'The player element doesn\'t exist';
+        throw 'Player element not found';
     
     this.screen = this.element.find('.symple-player-screen');
     if (!this.screen.length)
-        throw 'The player screen element doesn\'t exist';
+        throw 'Player screen element not found';
 
-    if (this.options.engine == 'auto')
-        this.selectBestEngine(); // FIXME
+    if (typeof Symple.Player.Engine[this.options.engine] == 'undefined')
+        throw 'Streaming engine not available';   
     this.engine = new Symple.Player.Engine[this.options.engine](this);
+    if (!this.engine.supported())
+        throw 'Streaming engine not supported';      
     this.engine.setup();
 
-    this.playing = false;
-
     this.bindEvents();
-    this.setState('stopped');
+    this.playing = false;
+    //this.setState('stopped');
 
     var self = this;
     $(window).resize(function() {
@@ -84,14 +71,25 @@ Symple.Player.prototype = {
     // Player Controls
     //
     play: function() {
-        if (this.state != 'playing' &&
-            this.state != 'loading') {
-            this.setState('loading');
-            this.engine.play(); // engine updates state to playing
-        }
+        console.log('Symple Player: Play')
+        try {    
+            if (this.state != 'playing' //&&
+                // The player may be set to loading state by the
+                // outside application before play is called.
+                //this.state != 'loading'
+                ) {
+                this.setState('loading');
+                this.engine.play(); // engine updates state to playing
+            }
+        } catch (e) {
+            this.setState('error');      
+            this.displayMessage('error', e)
+            throw e;
+        } 
     },
 
     stop: function() {
+        console.log('Symple Player: Stop')
         if (this.state != 'stopped') {
             if (this.engine)
                 this.engine.stop(); // engine updates state to stopped
@@ -103,14 +101,14 @@ Symple.Player.prototype = {
             this.engine.destroy();
     },
 
-    setState: function(state) {
-        console.log('Symple Player: Setting State from ' + this.state + ' to ' + state)
+    setState: function(state, message) {
+        console.log('Symple Player: Setting State from ', this.state, ' to ', state)
         if (this.state == state)
             return;
         
         this.state = state;
-        this.displayStatus('');
-        this.displayMessage('');
+        this.displayStatus(null);
+        this.displayMessage(null);
         this.playing = state == 'playing';
         this.element.removeClass('state-stopped state-loading state-playing state-paused state-error');
         this.element.addClass('state-' + state);
@@ -122,17 +120,19 @@ Symple.Player.prototype = {
     // Helpers
     //
     displayStatus: function(data) {
-        this.element.find('.symple-player-status').html(data);
+        this.element.find('.symple-player-status').html(data ? data : '');
     },
 
     // Display an overlayed player message
     // error, warning, info
     displayMessage: function(type, message) {
-        if (type != '') {
-            this.element.find('.symple-player-message').attr('class', type).html('<p>' + message + '</p>');
+        if (message) {
+            console.log('Symple Player: Display Message:', message)
+            this.element.find('.symple-player-message').html('<p class="' + type + '">' + message + '</p>');
             this.element.find('.symple-player-message').show();
         }
         else {
+            console.log('Symple Player: Hiding Message')
             this.element.find('.symple-player-message').html('');
             this.element.find('.symple-player-message').hide();
         }
@@ -230,7 +230,6 @@ Symple.Player.prototype = {
     },
 
     sendCommand: function(cmd) {
-
         if (!this.options.onCommand ||
             !this.options.onCommand(this, cmd)) {
 
@@ -244,51 +243,6 @@ Symple.Player.prototype = {
                   this.stop();
                   break;
             }
-
-        }
-    },
-
-    // FIXME
-    selectBestEngine: function() {
-        var ua = navigator.userAgent;
-        //var forcePseudo = this.options.engine == 'pseudo';
-
-        // Safari has great MJPEG support.
-        // BUG: The MJPEG socket is not closed until the page is refreshed.
-        if (ua.match(/(Safari|iPhone|iPod|iPad)/))
-            this.options.engine = 'mjpeg';
-
-        // Android's WebKit has disabled multipart HTTP requests for
-        // some stupid reason: http://code.google.com/p/android/issues/detail?id=301
-        // Android support will have to wait untill Spot goes mjpeg.
-        else if(ua.match(/(Android)/))
-            this.options.engine = 'pseudo';
-
-        // BlackBerry doesn't understand multipart/x-mixed-replace ... duh
-        else if(ua.match(/(BlackBerry)/))
-            this.options.engine = 'pseudo';
-
-        // Internet Explorer... nuff said
-        else if(ua.match(/(MSIE)/))
-            this.options.engine = 'pseudo';
-
-        // Firefox to the rescue! Nag user's to install firefox if mjpeg
-        // streaming is unavailable.
-        else if(ua.match(/(Mozilla)/))
-            this.options.engine = 'mjpeg';
-
-        // Opera does not support mjpeg MJPEG, but their home grown image
-        // processing library is super fast so pseudo streaming is nearly
-        // as fast as other mjpeg implementations!
-        else if(ua.match(/(Opera)/))
-            this.options.engine = 'pseudo';
-
-        // Display a nag screen to install a real browser if we are is
-        // pseudo streaming mode.
-        if (this.options.engine == 'pseudo') { //!forcePseudo &&
-            this.displayMessage('warning',
-                'Unfortunately your browser does not support native streaming so playback preformance will be severely limited. ' +
-                'For the best streaming experience <a href="http://www.mozilla.org/en-US/firefox/">click here</a> to download the firefox web browser.');
         }
     }
 }
@@ -304,11 +258,48 @@ Symple.Player.Engine = Class.extend({
         this.player = player;
     },
 
+    //
+    // Methods
+    //
+    supported: function() { return true; },
     setup: function() {},
     destroy: function() {},
     play: function() {},
     stop: function() {},
-    resize: function(w, h) {}
+    resize: function(w, h) {},
+
+    //
+    // Helpers
+    //
+    setState: function(state) {
+        this.player.setState(state);
+    },
+    
+    setError: function(reason) {
+        this.setState('error');
+        if (reason)
+            this.player.displayMessage('error', reason)
+    },
+
+    updateFPS: function() {
+        if (typeof this.fps == 'undefined') {
+            this.fps = 0;
+            this.seq = 0;
+            this.prevTime = new Date().getTime();
+        }
+        else if (this.seq > 0) {
+            var now = new Date().getTime();
+            this.delta = this.prevTime ? now - this.prevTime : 0;
+            this.fps = (1000.0 / this.delta).toFixed(3);
+            this.prevTime  = now;
+        }
+        this.seq++;
+    },
+    
+    displayFPS: function() {
+        this.updateFPS()
+        this.player.displayStatus(this.delta + " ms (" + this.fps + " this.fps)");
+    }
 });
 
 
@@ -349,7 +340,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         console.log("Symple Flash Player: Play");
         if (this.initialized) {
             this.swf().open(this.player.options.params);
-            this.player.setState('playing'); // TODO: Flash callback set state
+            this.setState('playing'); // TODO: Flash callback set state
         }
         else
             this.playOnInit = true;
@@ -359,7 +350,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         console.log("Symple Flash Player: Stop");
         if (this.initialized) {
             this.swf().stop();
-            this.player.setState('stopped');
+            this.setState('stopped');
         }
     },
 
@@ -409,62 +400,69 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
 //
 // Native MJPEG Engine
 //
-// FIXME
-//
 // -----------------------------------------------------------------------------
 Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     init: function(player) {
         this._super(player);
         this.img = null;
-        this.prevTime = new Date().getTime();
-        this.fps = 0;
-        this.seq = 0;
     },
 
-    setup: function() {
+    supported: function() {  
+        // There must be a better way, 
+        // but this will do for now.
+        var ua = navigator.userAgent;
+        return !ua.match(/(Android|BlackBerry|MSIE|Opera)/);
     },
 
-    play: function() {
-        img =  document.getElementById("image");
-        img.onload = this.onload;
-        img.width = this.player.options.screenWidth;
-        img.height = this.player.options.screenHeight;
-        //img.style.width = '100%';
-        //img.style.height = '100%';
-        img.src = player.options.url + "&rand=" + Math.random();
-
-        this.player.setState('playing');
+    play: function() {      
+        console.log("Symple MJPEG Player: Play");
+        
+        if (this.img)
+          throw 'Streaming already initialized'
+        if (!this.player.options.url)
+          throw 'Invalid streaming URL'
+        
+        var self = this;
+        var init = true;
+        this.img = new Image();
+        //this.img.style.width = '100%';
+        this.img.style.height = '100%';
+        //this.img.width = this.player.options.screenWidth;
+        //this.img.height = this.player.options.screenHeight;
+        this.img.style.display = 'none';
+        this.img.onload = function() {
+            // NOTE: Using init flag since Firefox calls onload
+            // on each multipart image load. 
+            // Most browsers inclusing WebKit just call it once.
+            if (init) {
+                if (self.img)
+                    self.img.style.display = 'inline';
+                self.setState('playing');
+                init = false;
+            }
+            else
+                self.displayFPS();
+        }
+        this.img.onerror = function() {
+            self.setError('Failed to load stream')
+        }
+        this.img.src = this.player.options.url + "&rand=" + Math.random();
+        this.player.screen.prepend(this.img);        
     },
 
     stop: function() {
-        if (img) {
-            img.style.display = 'none';
-            img.src = "#"; // closes socket in ff, but not safari
-            img = null;
+        console.log("Symple MJPEG Player: Stop");
+        if (this.img) {
+            this.img.style.display = 'none';
+            this.img.src = "#"; // closes socket in ff, but not safari
+            this.img.onload = null;
+            this.img.onerror = null;
+            console.log("Symple MJPEG Player: Stop: ", this.img);
+            this.player.screen[0].removeChild(this.img);
+            this.img = null;
         }
-
-        this.player.setState('stopped');
-    },
-
-    update: function() {
-        // Only display status if we receive onload events for each image.
-        // Only firefox appears does this.
-        if (player && seq > 0) {
-            var now = new Date().getTime();
-            var delta = prevTime ? now - prevTime : 0;
-            fps = (1000.0 / delta).toFixed(3);
-            player.displayStatus(delta + " ms (" + fps + " fps)");
-            prevTime  = now;
-        }
-
-        seq++;
-    },
-
-    onload: function() {
-        if (this.style)
-            this.style.display = 'block';
-
-        update.call(window)
+        console.log("Symple MJPEG Player: Stop: OK");
+        this.setState('stopped');
     }
 });
 
@@ -474,7 +472,12 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
 // MXHR Base64 MJPEG Engine
 //
 // - Multipart data MUST be base64 encoded to use this engine.
-// - Safari/WebKit parses and removes chunk headers and boundaries for us.
+// - Provides smooth playback in browsers that don't support MJPEG natively.
+// - Chrome doesn't support multipart/x-mixed-replace over XMLHttpRequest,
+//   which is required for some older browsers to trigger readyState == 3.
+//   Server side for Chrome should just push data to the client (HTTP Streaming). 
+// - Safari WebKit, and Firefox (tested on 15.0.1) parses and removes chunk
+//   headers and boundaries for us.
 //
 // -----------------------------------------------------------------------------
 Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
@@ -482,22 +485,17 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         this._super(player);
         this.xhr = null;
         this.img = null;
-        this.prevTime = new Date().getTime();
-        this.fps = 0;
+        this.mime = null;
+        this.parsing = false;
         this.parsed = 0;
         this.boundary = 0;
     },
 
-    setup: function(fn) {
-    },
-
     play: function() {
-        var self = this;
-
-        this.img = new Image();
-        this.img.style.width = '100%';
-        this.img.style.height = '100%';
-        this.player.screen.prepend(this.img);
+        if (this.img)
+          throw 'Streaming already initialized'
+        if (!this.player.options.url)
+          throw 'Invalid streaming URL'
 
         // These versions of XHR are known to work with MXHR
         try { this.xhr = new ActiveXObject('MSXML2.XMLHTTP.6.0'); } catch(nope) {
@@ -507,28 +505,44 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
                 }
             }
         }
+          
+        //console.log('Symple MJPEGBase64MXHR: Play: ', this.player.options.url)
+        
+        this.img = new Image();
+        //this.img.style.width = '100%';
+        this.img.style.height = '100%';
+        //this.img.width = this.player.options.screenWidth;
+        //this.img.height = this.player.options.screenHeight;
+        this.player.screen.prepend(this.img);
 
-        // If possible don't let the browser parse any data
-        if (this.xhr.overrideMimeType)
-            this.xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        var self = this;
+        var init = true;
         this.xhr.onreadystatechange = function() {
-            //console.log('[Symple.Player.Engine.MJPEGBase64MXHR] Ready State Change: ', self.xhr.readyState )
+            //console.log('Symple MJPEGBase64MXHR: Ready State Change: ', self.xhr.readyState)
 
-            // Safari does not return initial headers here, only chunk headers.
-            if (self.xhr.readyState == 2 && !navigator.userAgent.match(/(AppleWebKit)/)) {
+            // If a multipart/x-mixed-replace header is received then we will
+            // be parsing the multipart response ourselves. 
+            // Some browsers like Safari WebKit (not Chrome) handle this internally
+            // so we don't require any fancy parsing. 
+            // The same is also the case for HTTP Streaming.
+            if (self.xhr.readyState == 2) {             
                 var contentTypeHeader = self.xhr.getResponseHeader("Content-Type");
+                console.log('Symple MJPEGBase64MXHR: Content Type Header: ', contentTypeHeader)
                 if (contentTypeHeader &&
-                    contentTypeHeader.indexOf("multipart/") == -1) {
-                    // ERROR: Not multipart
-                    self.player.displayMessage('error', 'Bad multipart response');
-                    //xhr.abort(); // safari windows crash
-                    return;
-                } else
-                    // TODO: Boundaries enclosed in commas
+                    contentTypeHeader.indexOf("multipart/") != -1) {
+                    // TODO: Handle boundaries enclosed in commas
                     self.boundary = '--' + contentTypeHeader.split('=')[1];
+                    self.parsing = true;
+                }
             }
             else if (self.xhr.readyState == 3) {
                 self.processChunk();
+                if (init) {
+                    init = false;
+                    if (self.img.style)
+                        self.img.style.display = 'inline';
+                    self.setState('playing');
+                }
             }
             if (self.xhr.readyState == 4) {
                 self.onComplete(self.xhr.status);
@@ -536,8 +550,6 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         };
         this.xhr.open('GET', this.player.options.url, true);
         this.xhr.send(null);
-
-        this.player.setState('playing');
     },
 
     stop: function() {
@@ -545,36 +557,32 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
             this.xhr.abort();
         }
         if (this.img) {
+            this.player.screen[0].removeChild(this.img);
             this.img.style.display = 'none';
             this.img.src = "#"; // closes socket in ff, but not safari
             this.img = null;
         }
-        this.player.setState('stopped');
+        this.setState('stopped');
     },
-
-    update: function() {
-        if (this.player && this.seq > 0) {
-            var now = new Date().getTime();
-            var delta = this.prevTime ? now - prevTime : 0;
-            this.fps = (1000.0 / delta).toFixed(3);
-            this.player.displayStatus(delta + " ms (" + this.fps + " this.fps)");
-            this.prevTime  = now;
-        }
-
-        this.seq++;
-    },
-
+        
     processChunk: function() {
         var length = this.xhr.responseText.length,
             buffer = this.xhr.responseText.substring(this.parsed, length);
 
-        if (navigator.userAgent.match(/(AppleWebKit)/)) {
-            var mime = this.xhr.getResponseHeader("Content-Type");
-            this.draw(mime, buffer);
+        if (!buffer.length) 
+            return;
+            
+        // HTTP Streaming
+        if (!this.parsing) {
+            (!this.mime)
+              this.mime = this.xhr.getResponseHeader("Content-Type") ? 
+                  this.xhr.getResponseHeader("Content-Type") : 'image/jpeg';   
+            this.draw(buffer);
             this.parsed += buffer.length;
         }
+        
+        // Multipart
         else {
-            // [this.parsed_length, header_and_payload]
             var res = this.incrParse(buffer);
             if (res[0] > 0) {
                 this.processPart(res[1]);
@@ -585,25 +593,25 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         }
     },
 
-    processPart: function(part) {
-        //console.log('processPart')
+    processPart: function(part) { 
+        console.log('processPart: ', this.boundary)
         part = part.replace(this.boundary + "\r\n", '');
         var lines = part.split("\r\n");
-        var mime = null;
         var headers = {};
         while(/^[-a-z0-9]+:/i.test(lines[0])) {
             var header = lines.shift().split(':');
             headers[header[0]] = header[1].trim();
-            if (header[0] == 'Content-Type')
-                mime = header[1].trim();
+            if (!this.mime) {
+                if (header[0] == 'Content-Type')
+                    this.mime = header[1].trim();
+            }
         }
-
         var payload = lines.join("\r\n");
-        this.draw(mime, payload);
+        this.draw(payload);
     },
 
     incrParse: function(buffer) {
-        //console.log('incrParse:', buffer.length)
+        console.log('incrParse:', buffer.length)
         if (buffer.length < 1) return [-1];
         var start = buffer.indexOf(this.boundary);
         if (start == -1) return [-1];
@@ -618,39 +626,136 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         return [-1];
     },
 
-    draw: function(mime, data) {
-        //console.log('draw', mime, data.length)
-        if (this.img.style)
-            this.img.style.display = 'block';
-
-        this.img.src = 'data:' + mime + ';base64,' + data;
-
-        this.update();
+    draw: function(data) {
+        //console.log('Symple MJPEGBase64MXHR: Draw:', this.mime, data.length)
+        this.img.src = 'data:' + this.mime + ';base64,' + data;
+        this.displayFPS();
     },
 
     onComplete: function(status) {
-        this.processChunk();
-        // ERROR
-        this.player.displayMessage('info', 'The stream has ended');
-        /*
+        console.log('Symple MJPEGBase64MXHR: Complete: ', status)
+        
+        if (this.player.playing) {
+            stop();
+            this.processChunk();
+            this.player.displayMessage('info', 'The stream has ended');
+        }
+        else if (status == 200)
+            this.setError('Not a multipart stream');
+        else
+            this.setError('Streaming failed');
+    },
+
+    resize: function(width, height) {
+        if (this.img) {
+            this.img.width = width;
+            this.img.height = height;
+        }
+    }
+});
+
+
+          
+        
+        //
+        
+        // TODO: error?        
+        /*                
         if (status >= 200 && status < 300) {
             invoke('complete', status);
         } else {
             invoke('error', status);
         }
         */
-    }
-    
-    /*,
+        // If possible don't let the browser parse any data
+        //if (this.xhr.overrideMimeType)
+        //    this.xhr.overrideMimeType('text/plain; charset=x-user-defined');
 
-    resize: function(width, height) {
-        if (img) {
-            img.width = width;
-            img.height = height;
+
+            
+                // For other browsers we need to parse the multipart response ourselves.
+                
+                // If no multipart header was given we can still support
+                // HTTP streaming, so long as the browser does.
+                //else {
+                    // ERROR: Not a multipart response
+                    //self.setError('Bad multipart response');
+                    //xhr.abort(); // safari windows crash
+                    //return;
+                //}
+                                  
+                // Safari WebKit handles multipart responses internally, and does not 
+                // return initial headers here, only chunk headers, so there is no 
+                // need to determine the boundary for parsing.
+                //if (navigator.userAgent.match(/(AppleWebKit)/))
+                //    return;   
+
+        
+        /* //navigator.userAgent.match(/(Chrome)/)) {
+            //var mime = this.xhr.getResponseHeader("Content-Type");
+            //console.log('##### Symple MJPEGBase64MXHR: Chrome: ', buffer)
+            //console.log('Symple MJPEGBase64MXHR:  Access-Control-Allow-Origin: ', this.xhr.getResponseHeader("Cache-Control"))
+        // Safari
+        // TODO: Test latest version
+        else if (navigator.userAgent.match(/(AppleWebKit)/)) {        
+            this.draw(mime, buffer);
+            this.parsed += buffer.length;
         }
+        */
+
+    /*
+    update: function() {
+        if (this.player && this.seq > 0) {
+            var now = new Date().getTime();
+            var delta = this.prevTime ? now - prevTime : 0;
+            this.fps = (1000.0 / delta).toFixed(3);
+            this.player.displayStatus(delta + " ms (" + this.fps + " this.fps)");
+            this.prevTime  = now;
+        }
+
+        this.seq++;
+    },
+    */
+    
+    /*
+    */
+
+
+        
+        /*
+        if (this.player && this.seq > 0) {
+            var now = new Date().getTime();
+            var delta = this.prevTime ? now - this.prevTime : 0;
+            this.fps = (1000.0 / delta).toFixed(3);
+            this.player.displayStatus(delta + " ms (" + fps + " fps)");
+            this.prevTime  = now;
+        }        
+
+        this.seq++;
+        */  
+    /*
+    ,
+    onload: function() {
+        if (this.style)
+            this.style.display = 'inline';
+
+        this.update().call(window)
     }
     */
-});
+
+
+
+
+
+
+
+        
+        //this.onload;
+        //this.img.width = this.player.options.screenWidth;
+        //this.img.height = this.player.options.screenHeight;
+        //this.img = document.getElementById("image");
+        //this.img.style.width = '100%';
+        //this.img.style.height = '100%';
 
 
 
@@ -835,8 +940,8 @@ NativeMJPEGEngine.prototype = {
         //if (this.engine)
         //    this.engine.stop();
 
-        this.displayStatus('');
-        this.displayMessage('');
+        this.displayStatus(null);
+        this.displayMessage(null);
 
         if (fn)
             fn.call(this, self);
@@ -867,7 +972,7 @@ NativeMJPEGEngine.prototype = {
         // Recording
         //recordingURI: '/record',
     this.iframe = $(
-        '<iframe id="player-frame" ' +
+        '<iframe class="symple-player-frame" ' +
             //' width="' + this.options.screenWidth + '" height="' + this.options.screenHeight + '" ' +
             ' marginwidth="0" marginheight="0" frameBorder="0" scrolling="no" ' +
             ' hspace="0" vspace="0">Your browser does not support iframes.</iframe>');

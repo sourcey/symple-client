@@ -76,7 +76,7 @@ Symple.Form.Builder.prototype = {
         //else
         //this.element = $(this.buildForm(this.form));
         this.element.html(this.buildForm(this.form));
-        this.postProcess();
+        this.postBuild();
         return this.element;
     },
 
@@ -95,11 +95,13 @@ Symple.Form.Builder.prototype = {
             this.build();
         }
         else {
-            console.log('Form Builder: Updating Form: ', this.form.id);
-            if (this.form)
-                this.form.fromJSON(formData);
+            console.log('Form Builder: Updating Form: ', this.form.id, this.form);
+            // TODO: Update internal form data with formData
+            //if (this.form)
+            //    this.form.fromJSON(formData);
+            console.log('Form Builder: Updating Form AFTER: ', this.form.id, this.form);
             this.updateElements(formData, 0);
-            this.postProcess();
+            this.postBuild();
         }
     },
 
@@ -121,7 +123,7 @@ Symple.Form.Builder.prototype = {
         var id = el.attr('id');
         var field = this.form.getField(id);
         if (!id || !field) { // || el.attr('name') == 'submit'
-            console.log('Form Builder: Invalid field: ', el.attr('name'));
+            console.log('Form Builder: Invalid field: ', id);
             return null;
         }
         switch (el.get(0).nodeName) {
@@ -143,7 +145,7 @@ Symple.Form.Builder.prototype = {
         return field;
     },
 
-    postProcess: function() {
+    postBuild: function() {
         var self = this;
 
         this.element.find('.error', '.hint').each(function() {
