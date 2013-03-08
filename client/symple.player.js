@@ -298,7 +298,7 @@ Symple.Player.Engine = Class.extend({
     
     displayFPS: function() {
         this.updateFPS()
-        this.player.displayStatus(this.delta + " ms (" + this.fps + " this.fps)");
+        this.player.displayStatus(this.delta + " ms (" + this.fps + " fps)");
     }
 });
 
