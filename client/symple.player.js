@@ -323,9 +323,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         //this.initFn = fn;
         this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
         JFlashBridge.bind(this.id, this);
+        
+        // swfobject.embedSWF(swfUrl, id, width, height, version, expressInstallSwfurl, flashvars, params, attributes, callbackFn)
         swfobject.embedSWF(this.player.options.htmlRoot + '/symple.player.swf', this.id,
             this.player.options.screenWidth, this.player.options.screenHeight, '10.0.0',
             this.player.options.htmlRoot + '/playerProductInstall.swf', {
+                debug: true,
             }, {
                 quality: 'high',
                 wmode: 'transparent',
@@ -373,11 +376,11 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onPlayerState: function(state) {
-        //console.log("Symple Flash Player: State: ", state);
+        console.log("Symple Flash Player: State: ", state);
     },
 
     onMetadata: function(data) {
-        //console.log("Symple Flash Player: Metadata: ", data);
+        console.log("Symple Flash Player: Metadata: ", data);
         if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {
@@ -391,7 +394,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onLogMessage: function(type, text) {
-        console.log(type, 'Symple Flash Player: ' + text);
+        console.log('Symple Flash Player: ' + type + ': ' + text);
     }
 });
 

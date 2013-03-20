@@ -26,9 +26,10 @@ package
 		
 		public function SymplePlayer()
 		{
-			//Logger.addListener(Logger.DEBUG, onLogMessage);
 			Logger.addListener(Logger.INFO, onLogMessage);
 			Logger.addListener(Logger.ERROR, onLogMessage);
+			if (LoaderInfo(this.root.loaderInfo).parameters.debug)
+				Logger.addListener(Logger.DEBUG, onLogMessage);
 			
 			jsBridge = new JFlashBridge();
 			jsBridge.addMethod("open", open);
@@ -45,6 +46,55 @@ package
 			initStage(stage);
 			
 			stage.addEventListener(Event.RESIZE, onResize); 
+						
+			//
+			// Tests
+			//
+			//testTURNMediaProvider()
+			//testMJPEGSource();
+		}
+		
+		protected function testMJPEGSource():void
+		{				
+			player.open({
+				token: "",
+				format: "MJPEG",
+				protocol: "HTTP",
+				video: {
+					codec: "MJPEG"
+				},
+				candidates: [
+					{
+						address: "127.0.0.1:328",
+						protocol: "HTTP",
+						uri: "" //mjpeg
+					}
+				]	
+			});				
+		}
+		
+		protected function testFLVSource():void
+		{		
+			player.open({
+				token: "",
+				protocol: "Raw",
+				video: {
+					codec: "FLV"
+				},
+				//audio: {
+				//	codec: "Speex"
+				//	codec: "Nellymoser"
+				//	codec: "MP3"
+				//},
+				candidates: [
+					{
+						address: "127.0.0.1:328",
+						protocol: "HTTP",
+						type: "relay",
+						uri: ""
+					}
+				]	
+			});	
 			
 			/*
 			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
@@ -56,63 +106,14 @@ package
 			var audio:FLVElement = new FLVElement(
 				"http://127.0.0.1/vidtest.flv",
 				"Raw");
-			 addChild(audio);
-			 audio.play();
+			addChild(audio);
+			audio.play();
 			
 			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
 			var s:Sound = new Sound();
 			s.load(req);
 			s.play();
 			*/
-			
-			//
-			// Tests
-			//
-			//testTURNMediaProvider()
-			
-			/*
-			player.open({
-				token: "test-flv",
-				format: "MJPEG",
-				//protocol: "Raw",
-				protocol: "HTTP",
-				video: {
-					codec: "MJPEG"
-					//codec: "FLV"
-				},
-				//audio: {
-				//	codec: "Speex"
-				//	codec: "Nellymoser"
-				//	codec: "MP3"
-				//},
-				candidates: [
-					{
-						address: "127.0.0.1:6781", //328
-						//protocol: "HTTP",HTTP
-						//protocol: "TURN",
-						//uri: "/flv"/s.mjpeg
-						type: "relay",
-						uri: ""
-					}
-				]	
-			});
-			
-			player.open({
-				token: "test-mjpeg",
-				format: "MJPEG",
-				protocol: "HTTP",
-				video: {
-					codec: "MJPEG"
-				},
-				candidates: [
-					{
-						address: "127.0.0.1:328",
-						protocol: "HTTP",
-						uri: "/mjpeg"
-					}
-				]	
-			});	
-			*/	
 		}
 		
 		protected function testTURNMediaProvider():void

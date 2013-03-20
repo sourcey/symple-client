@@ -56,7 +56,7 @@
 		{
     		var request:String = "GET " + _url.pathAndQuery + " HTTP/1.1\r\n\r\n"
 			Logger.send(Logger.DEBUG, "[MediaConnection] Sending Request: " + request);
-			super.send(request);
+			super.sendUTF(request);
         }
 		
 		override protected function onConnect(event:Event):void 
