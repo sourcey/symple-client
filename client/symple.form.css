@@ -22,6 +22,11 @@ form.symple-form .hint {
 form.symple-form .error {
     color: #c00;
 }
+/* Mesh compatability */
+form.symple-form .hint:hover:before, 
+form.symple-form .hint:hover:after {
+    opacity: 0;
+}
 form.symple-form .hint,
 form.symple-form .error {
     padding: 5px 0 15px 10px !important;
@@ -31,6 +36,7 @@ form.symple-form .field .hint,
 form.symple-form .field .error {
     padding: 5px 0 0 !important;
 }
+
 
 form.symple-form .field {
 }

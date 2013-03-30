@@ -75,8 +75,7 @@ Symple.Messenger = Class.extend({
                     temp_id: Sourcey.randomString(8) // Enables us to track sent messages
                 });
 
-                var e = self.addMessage(message);
-                e.addClass('pending');
+                self.addMessage(message, true);
                 self.sendMessage(message);
                 textArea.val('');
             }
@@ -111,7 +110,7 @@ Symple.Messenger = Class.extend({
         }
     },
 
-    addMessage: function(message) {
+    addMessage: function(message, pending) {
         var self = this;
         message.time = this.messageTime(message);
         var section = this.getOrCreateDateSection(message);
@@ -139,6 +138,11 @@ Symple.Messenger = Class.extend({
 
         // Scroll to bottom unless position is fixed
         this.invalidate();
+        
+        // Add a pending class which will be removed 
+        // when the message is confirmed
+        if (pending)
+            element.addClass('pending');
 
         console.log('Symple Messenger: Added Message');
         this.options.onAddMessage(message, element);
@@ -148,17 +152,18 @@ Symple.Messenger = Class.extend({
     //
     // Utilities & Helpers
     //
-    formatTime: function(date) {
-        return date.getHours().toString() + ':' +
-        date.getMinutes().toString() + ':' +
-        date.getSeconds().toString() + ' ' +
-        date.getDate().toString() + '/' +
-        date.getMonth().toString();
+    formatTime: function(date) {        
+        function pad(n){return n<10 ? '0'+n : n}
+        return pad(date.getHours()).toString() + ':' +
+            pad(date.getMinutes()).toString() + ':' +
+            pad(date.getSeconds()).toString() + ' ' +
+            pad(date.getDate()).toString() + '/' +
+            pad(date.getMonth()).toString();
     },
 
     messageToHTML: function(message) {
         var time = message.time ? message.time : this.messageTime(message);
-        var html = '<div class="message" data-message-id="' + message.id + '" data-temp-id="' + message.temp_id + '">';
+        var html = '<div class="message" data-message-id="' + (message.id || '-1') + '" data-temp-id="' + message.temp_id + '">';
         if (message.from &&
             typeof(message.from) == 'object' &&
             typeof(message.from.name) == 'string')

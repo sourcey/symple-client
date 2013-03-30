@@ -140,7 +140,7 @@ Symple.Player.prototype = {
 
 
     getButton: function(cmd) {
-      return this.element.find('.symple-player-controls a[rel="' + cmd + '"]');
+      return this.element.find('.symple-player-controls [rel="' + cmd + '"]');
     },
 
     getBestVideoResolution: function() {
@@ -157,6 +157,12 @@ Symple.Player.prototype = {
         return [width, height];
     },
 
+    refresh: function() {
+        if (this.engine)
+            this.engine.refresh();
+    },
+    
+    /*
     rescaleVideo: function(srcW, srcH, maxW, maxH) {
         console.log('Symple Player: Rescale Video: ', srcW, srcH, maxW, maxH);
 
@@ -174,7 +180,6 @@ Symple.Player.prototype = {
     },
 
     refresh: function() {
-        /*
         var css = { position: 'relative' };
         if (this.options.screenWidth == '100%' ||
             this.options.screenHeight == '100%') {
@@ -208,13 +213,13 @@ Symple.Player.prototype = {
             console.log('refresh: screenHeight:', this.options.screenHeight)
             console.log('refresh: height:', this.screen.height())
             console.log('refresh: css:', css)
-        */
     },
+    */
 
     bindEvents: function() {
         var self = this;
         this.element.find('.symple-player-controls a').unbind().bind('click tap', function() {
-            self.sendCommand(this.rel);
+            self.sendCommand(this.rel, $(this));
             return false;
         })
 
@@ -229,9 +234,9 @@ Symple.Player.prototype = {
         */
     },
 
-    sendCommand: function(cmd) {
+    sendCommand: function(cmd, e) {
         if (!this.options.onCommand ||
-            !this.options.onCommand(this, cmd)) {
+            !this.options.onCommand(this, cmd, e)) {
 
             // If there is no command callback function or the callback returns
             // false then we process these default behaviours.
@@ -266,7 +271,8 @@ Symple.Player.Engine = Class.extend({
     destroy: function() {},
     play: function() {},
     stop: function() {},
-    resize: function(w, h) {},
+    refresh: function() {},
+    //resize: function(w, h) {},
 
     //
     // Helpers
@@ -339,6 +345,28 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
             });        
     },
 
+    toggleFullScreen: function() {    
+        if (!document.fullscreenElement &&    // alternative standard method
+            !document.mozFullScreenElement && !document.webkitFullscreenElement) {  // current working methods
+            if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+              document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+              document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+            }
+        } 
+        else {
+            if (document.cancelFullScreen) {
+              document.cancelFullScreen();
+            } else if (document.mozCancelFullScreen) {
+              document.mozCancelFullScreen();
+            } else if (document.webkitCancelFullScreen) {
+              document.webkitCancelFullScreen();
+            }
+        }
+    },
+
     play: function() {
         console.log("Symple Flash Player: Play");
         if (this.initialized) {
@@ -366,6 +394,14 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         return $.isReady;
     },
 
+    refresh: function() {
+        console.log("Symple Flash Player: Refresh");
+        try {
+          if (this.initialized)
+            this.swf().refresh();
+        } catch (e) {}
+    },
+        
     onSWFLoaded: function() {
         console.log("Symple Flash Player: Loaded");
         this.initialized = true;
@@ -647,7 +683,8 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
             this.setError('Not a multipart stream');
         else
             this.setError('Streaming failed');
-    },
+    }
+    /*,
 
     resize: function(width, height) {
         if (this.img) {
@@ -655,6 +692,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
             this.img.height = height;
         }
     }
+    */
 });
 
 

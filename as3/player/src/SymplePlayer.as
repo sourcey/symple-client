@@ -20,7 +20,7 @@ package
 	import sourcey.util.Util;
 	
 	public class SymplePlayer extends Element
-	{		
+	{
 		public var player:Player;
 		public var jsBridge:JFlashBridge;
 		
@@ -36,6 +36,7 @@ package
 			jsBridge.addMethod("close", close);
 			jsBridge.addMethod("play", play);
 			jsBridge.addMethod("stop", stop);
+			jsBridge.addMethod("refresh", invalidate);
 			
 			super();
 			

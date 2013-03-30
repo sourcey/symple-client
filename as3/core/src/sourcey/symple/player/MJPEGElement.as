@@ -34,14 +34,11 @@ package sourcey.symple.player
 	{
 		public var url:String;
 		public var protocol:String;
-		public var counter:FPSCounter;
-		
+		public var counter:FPSCounter;		
 		
 		//private var fpsCounter:FPSCounter;
 		private var _connection:MediaConnection;
 		private var _parser:Parser;
-		//private var loader:BufferedLoader;
-		//private var text:TextField;
 		
 		public function MJPEGElement(url:String = "", protocol:String = "HTTP") //, port:int = 0, token:String = ""
 		{	
