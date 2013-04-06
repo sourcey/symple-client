@@ -12,10 +12,10 @@ Symple.Player = function(options) {
         screenHeight:   '100%',       // player screen css height (percentage or pixel value)
 
         // Streaming Parameters
-        params: {
-            format:      'MJPEG',
-            protocol:    'HTTP'
-        },
+        //params: {
+        //    format:      'MJPEG',
+        //    protocol:    'HTTP'
+        //},
 
         // Callbacks
         onCommand:       function(player, cmd) { },
@@ -70,8 +70,8 @@ Symple.Player.prototype = {
     //
     // Player Controls
     //
-    play: function() {
-        console.log('Symple Player: Play')
+    play: function(params) {
+        console.log('Symple Player: Play: ', params)
         try {    
             if (this.state != 'playing' //&&
                 // The player may be set to loading state by the
@@ -79,7 +79,7 @@ Symple.Player.prototype = {
                 //this.state != 'loading'
                 ) {
                 this.setState('loading');
-                this.engine.play(); // engine updates state to playing
+                this.engine.play(params); // engine updates state to playing
             }
         } catch (e) {
             this.setState('error');      
@@ -102,14 +102,17 @@ Symple.Player.prototype = {
     },
 
     setState: function(state, message) {
-        console.log('Symple Player: Setting State from ', this.state, ' to ', state)
+        console.log('Symple Player: Set State:', this.state, '=>', state, message)
         if (this.state == state)
             return;
         
         this.state = state;
         this.displayStatus(null);
-        this.displayMessage(null);
         this.playing = state == 'playing';
+        if (message)
+            this.displayMessage(state == 'error' ? 'error' : 'info', message);
+        else
+            this.displayMessage(null);
         this.element.removeClass('state-stopped state-loading state-playing state-paused state-error');
         this.element.addClass('state-' + state);
         this.refresh();
@@ -126,6 +129,7 @@ Symple.Player.prototype = {
     // Display an overlayed player message
     // error, warning, info
     displayMessage: function(type, message) {
+        console.log('Symple Player: Display Message:', type, message)
         if (message) {
             console.log('Symple Player: Display Message:', message)
             this.element.find('.symple-player-message').html('<p class="' + type + '">' + message + '</p>');
@@ -269,7 +273,7 @@ Symple.Player.Engine = Class.extend({
     supported: function() { return true; },
     setup: function() {},
     destroy: function() {},
-    play: function() {},
+    play: function(params) {},
     stop: function() {},
     refresh: function() {},
     //resize: function(w, h) {},
@@ -277,14 +281,14 @@ Symple.Player.Engine = Class.extend({
     //
     // Helpers
     //
-    setState: function(state) {
-        this.player.setState(state);
+    setState: function(state, message) {
+        this.player.setState(state, message);
     },
     
-    setError: function(reason) {
-        this.setState('error');
-        if (reason)
-            this.player.displayMessage('error', reason)
+    setError: function(error) {
+        this.setState('error', error);
+        //if (error)
+        //    this.player.displayMessage('error', error)
     },
 
     updateFPS: function() {
@@ -345,6 +349,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
             });        
     },
 
+    // TODO: Move to Symple.Player
     toggleFullScreen: function() {    
         if (!document.fullscreenElement &&    // alternative standard method
             !document.mozFullScreenElement && !document.webkitFullscreenElement) {  // current working methods
@@ -367,11 +372,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         }
     },
 
-    play: function() {
-        console.log("Symple Flash Player: Play");
+    play: function(params) {
+        console.log("Symple Flash Player: Play", params);
+        this.params = params; // if params
         if (this.initialized) {
-            this.swf().open(this.player.options.params);
-            this.setState('playing'); // TODO: Flash callback set state
+            this.swf().open(params); //this.player.options.params
+            //this.setState('playing'); // TODO: Flash callback set state
         }
         else
             this.playOnInit = true;
@@ -381,7 +387,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         console.log("Symple Flash Player: Stop");
         if (this.initialized) {
             this.swf().stop();
-            this.setState('stopped');
+            this.setState('stopped'); // No need to wait for callback
         }
     },
 
@@ -408,11 +414,14 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         //if (this.initFn)
         //    this.initFn(true);
         if (this.playOnInit)
-            this.play();
+            this.play(this.params);
     },
 
-    onPlayerState: function(state) {
-        console.log("Symple Flash Player: State: ", state);
+    onPlayerState: function(state, error) {
+        console.log("Symple Flash Player: State: ", state, error);
+        // None, Loading, Playing, Paused, Stopped, Error
+        if (state != 'None')
+            this.setState(state.lowercase(), error);
     },
 
     onMetadata: function(data) {
@@ -453,8 +462,9 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
         return !ua.match(/(Android|BlackBerry|MSIE|Opera)/);
     },
 
-    play: function() {      
-        console.log("Symple MJPEG Player: Play");
+    play: function(params) {      
+        this.params = params;
+        console.log("Symple MJPEG Player: Play", params);
         
         if (this.img)
           throw 'Streaming already initialized'

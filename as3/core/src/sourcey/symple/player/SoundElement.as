@@ -14,18 +14,20 @@ package sourcey.symple.player
 	
 	public class SoundElement extends Element implements IVideoElement
 	{
+		public var session:MediaSession;
 		public var url:String;
 		public var protocol:String;
 			
 		private var _sound:Sound;
 		private var _req:URLRequest;
 		
-		public function SoundElement(url:String = "", protocol:String = "Raw")
+		public function SoundElement(session:MediaSession, url:String = "", protocol:String = "Raw")
 		{
 			Logger.send(Logger.DEBUG, "[SoundElement] Creating");
 			
 			super();
 			
+			this.session = session;
 			this.url = url;
 			this.protocol = protocol;
 					

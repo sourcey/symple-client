@@ -16,14 +16,14 @@ package sourcey.symple.player
 	
 	public class Player extends Element
 	{
-		public static const STATE_CHANGED:String 		= "stateChanged";
+		public static const STATE_CHANGED:String 	= "stateChanged";
 		
-		public static const STATE_NONE:String 			= "None";
-		public static const STATE_LOADING:String 		= "Loading";
-		public static const STATE_PLAYING:String 		= "Playing";
-		public static const STATE_PAUSED:String 		= "Paused";
-		public static const STATE_STOPPED:String 		= "Stopped";
-		public static const STATE_FAILED:String 		= "Failed";
+		public static const STATE_NONE:String 		= "None";
+		public static const STATE_LOADING:String 	= "Loading";
+		public static const STATE_PLAYING:String 	= "Playing";
+		public static const STATE_PAUSED:String 	= "Paused";
+		public static const STATE_STOPPED:String 	= "Stopped";
+		public static const STATE_ERROR:String 		= "Error";
 		
 		public var autoPlay:Boolean = true;
 		public var session:MediaSession;
@@ -215,15 +215,15 @@ package sourcey.symple.player
 					} 
 					catch (error:Error) {	
 						showMessage("error", error.toString());
-						state = STATE_FAILED;
+						state = STATE_ERROR;
 					}
 					break;
 				
-				case Session.STATE_FAILED:	
+				case Session.STATE_ERROR:	
 					removeVideo();	
 					removeAudio();
 					showMessage("error", session.error);
-					state = STATE_FAILED;
+					state = STATE_ERROR;
 					break;
 			}
 		}	

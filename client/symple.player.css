@@ -16,13 +16,15 @@
 }
 
 .symple-player-message {
-    display: none;
-    position: absolute;
+    display: table;
     width: 100%;
     height: 100%;
+    /*
+    position: absolute;
+    display: none;
     background: #000;
     z-index: 1;
-    display: table;
+    */
 }
 
 .symple-player-message p {

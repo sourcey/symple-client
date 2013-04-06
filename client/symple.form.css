@@ -78,7 +78,7 @@ form.symple-paged-form .symple-form-content .menu li {
 form.symple-paged-form .symple-form-content .menu li a {
     display: block;
     font-size: 12px;
-    padding: 8px 10px;
+    padding: 8px 10px 8px 15px;
     text-decoration: none;
     color: #333;
     background: #fff;

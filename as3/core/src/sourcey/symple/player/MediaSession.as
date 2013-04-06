@@ -50,12 +50,8 @@
 				
 				return true;
 			} 
-			catch (e:Error) {
-				Logger.send(Logger.ERROR, 
-					"[MediaSession] Initializing Error: " + params.token);
-				
-				error = e.toString();
-				state = Session.STATE_FAILED;
+			catch (e:Error) {				
+				setError(e.toString());
 			}
 			
 			return false;
@@ -67,6 +63,14 @@
 			if (resolver)
 				resolver.terminate();
 			state = Session.STATE_INACTIVE;
+		}
+		
+		public function setError(error:String):void
+		{	
+			Logger.send(Logger.ERROR, 
+				"[MediaSession] Error: " + error);
+			this.error = error;
+			state = Session.STATE_ERROR;			
 		}
 		
 		public function onCandidatesGathered(event:CandidateEvent):void
@@ -86,7 +90,7 @@
 				error = "Unable to resolve peer";
 				if (bastCandidate)
 					error += ": " + bastCandidate.url;
-				state = Session.STATE_FAILED;		
+				state = Session.STATE_ERROR;		
 				Logger.send(Logger.ERROR, 
 					"[MediaSession] Session Failed: " + error);	
 			}
@@ -108,16 +112,16 @@
 			
 			var video:IVideoElement;		
 			if (params.video.codec == "MJPEG") {
-				video = new MJPEGElement(
+				video = new MJPEGElement(this,
 					params.url,
 					params.protocol);
 			} 
 			else if (
 				params.video.codec == "FLV" || 
-				params.video.codec == "H263" || 
-				params.video.codec == "H263p" || 
+				//params.video.codec == "H263" || 
+				//params.video.codec == "H263p" || 
 				params.video.codec == "H264") {
-				video = new FLVElement(
+				video = new FLVElement(this,
 					params.url,
 					params.protocol);
 			}			
@@ -146,12 +150,12 @@
 			if (params.audio.codec == "Speex" ||
 				params.audio.codec == "Nellymoser"
 			) {				
-				audio = new FLVElement(params.url, params.protocol);
+				audio = new FLVElement(this, params.url, params.protocol);
 			} 
 			else if (
 				params.audio.codec == "MP3"
 			) {				
-				audio = new SoundElement(params.url, params.protocol);
+				audio = new SoundElement(this, params.url, params.protocol);
 			} 
 			
 			if (!audio)

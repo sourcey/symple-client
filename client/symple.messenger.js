@@ -47,7 +47,7 @@ Symple.Messenger = Class.extend({
         // Scroll to bottom unless position is fixed
         if (!this.fixedScrollPosition) {
             this.messages.scrollTop(this.messages[0].scrollHeight);
-            console.log('Symple Messenger: Update Scroll Position: ', this.messages[0].scrollHeight);
+            //console.log('Symple Messenger: Update Scroll: ', this.messages[0].scrollHeight);
         }
     },
     
@@ -214,7 +214,7 @@ Symple.Messenger = Class.extend({
                     prev = e;
             });
             console.log('Symple Messenger: Creating Date Section: ', dateStr, prev)
-
+ 
             if (!handled) {
                 prev ?
                     prev.after(section) :

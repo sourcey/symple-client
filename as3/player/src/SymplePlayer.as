@@ -40,12 +40,9 @@ package
 			
 			super();
 			
-			jsBridge.initialize();
-			
 			Logger.send(Logger.DEBUG, "Initializing");
-			
-			initStage(stage);
-			
+			jsBridge.initialize();				
+			initStage(stage);			
 			stage.addEventListener(Event.RESIZE, onResize); 
 						
 			//
@@ -53,6 +50,7 @@ package
 			//
 			//testTURNMediaProvider()
 			//testMJPEGSource();
+			//testFLVSource()
 		}
 		
 		protected function testMJPEGSource():void
@@ -91,7 +89,7 @@ package
 					{
 						address: "127.0.0.1:328",
 						protocol: "HTTP",
-						type: "relay",
+						//type: "relay",
 						uri: ""
 					}
 				]	
@@ -259,7 +257,6 @@ package
 			var r:Object = new Object();
 			r.success = true;
 			r.message = "Video stream initialized.";
-			r.data = "";
 			try {
 				player.play();	
 			} 
@@ -272,7 +269,7 @@ package
 			return r;
 		} 		
 		
-		private function stop(token:String):Object 
+		private function stop():Object 
 		{		
 			player.video.destroy();
 			var r:Object = new Object();
@@ -317,11 +314,12 @@ package
 						player.video.parser.addEventListener(MediaEvent.METADATA, onMetadata);
 					break;
 				
-				case Player.STATE_FAILED:	
+				case Player.STATE_ERROR:	
 					break;
 			}
 			
-			jsBridge.call("onPlayerState", event.data);
+			jsBridge.call("onPlayerState", event.data, 
+				event.data == Player.STATE_ERROR ? player.session.error : null);
 		}
 		
 		protected function onLogMessage(event:BasicEvent):void 

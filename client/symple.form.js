@@ -319,7 +319,7 @@ Symple.Form.Builder.prototype = {
 
         var html = '<form id="' + o.id + '" name="' + o.id + '" class="symple-form ' + className + '">';
         if (o.label)
-            html += '<h2 class="title">' + o.label + '</h2>';
+            html += '<h2 class="symple-form-title">' + o.label + '</h2>';
         html += '<div class="symple-form-content">';
         if (o.hint)
             html += '<div class="hint">' + o.hint + '</div>';
@@ -511,7 +511,8 @@ Symple.Form.Builder.prototype = {
 
     buildBooleanField: function(o) {
         var html = this.startFieldHTML(o);
-        html += '<input type="checkbox" id="' + o.id + '" name="' + o.id + '" />';
+        var checked = o.values && (o.values[0] === '1' || o.values[0] === 'on' || o.values[0] === 'true')
+        html += '<input type="checkbox" id="' + o.id + '" name="' + o.id + '" ' + (checked ? 'checked' : '') + ' />';
         html += this.endFieldHTML(o);
         return html;
     },

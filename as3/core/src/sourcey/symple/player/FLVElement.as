@@ -5,9 +5,11 @@ package sourcey.symple.player
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.display.IBitmapDrawable;
+	import flash.events.AsyncErrorEvent;
 	import flash.events.IOErrorEvent;
 	import flash.events.NetStatusEvent;
 	import flash.events.ProgressEvent;
+	import flash.events.SecurityErrorEvent;
 	import flash.geom.Matrix;
 	import flash.media.SoundTransform;
 	import flash.media.Video;
@@ -36,50 +38,37 @@ package sourcey.symple.player
 		public var scaleToFit:Boolean = true;
 		public var alignToCenter:Boolean = true;
 		
+		public var session:MediaSession;
 		public var url:String;
 		//public var host:String;
 		//public var port:int;
 		//public var token:String;
 		public var protocol:String;
 		public var _paused:Boolean = false;
+		public var _stopped:Boolean = false;
 		
 		private var _video:Video;		
 		private var _nc:NetConnection;
 		private var _ns:NetStream;
 		
-		public function FLVElement(url:String = "", protocol:String = "Raw")
+		public function FLVElement(session:MediaSession, url:String = "", protocol:String = "Raw")
 		{
 			Logger.send(Logger.DEBUG, "[FLVElement] Creating");
 			
 			super();
 			
+			this.session = session;
 			this.url = url;
 			this.protocol = protocol;
-
-			_video = new Video();
-			addChild(_video);
 			
 			_nc = new NetConnection();
+			_nc.addEventListener(NetStatusEvent.NET_STATUS, onConnectionStatus);
+			_nc.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onConnectionSecurityError);
+			_nc.addEventListener(IOErrorEvent.IO_ERROR, onConnectionIoError);
+			_nc.addEventListener(AsyncErrorEvent.ASYNC_ERROR, onConnectionAsyncError);
+			//var a:AsyncErrorEvent
+			//flash.events.AsyncErrorEvent.ASYNC_ERROR
 			_nc.connect(null);
-			
-			_ns = new NetStream(_nc);
-			_ns.addEventListener(NetStatusEvent.NET_STATUS, onStreamStatus);
-			_ns.client = this;		
-			
-			_video.attachNetStream(_ns);
-		}
-		
-		public function onMetaData(info:Object):void 
-		{ 
-			for (var propName:String in info) {
-				Logger.send(Logger.DEBUG, "[FLVElement] Metadata: " + propName + " = " + info[propName]);
-
-				// resize only if not explicitly set
-				if (!_video.width || !_video.height) {
-					_video.width = info['width'];
-					_video.height = info['height'];					
-				}
-			}
 		}
 		
 		public function play():void 
@@ -89,6 +78,7 @@ package sourcey.symple.player
 			if (protocol != "Raw")
 				throw Error("This component only handles raw media streams.");
 			
+			_stopped = false;
 			_ns.play(this.url);
 		}
 				
@@ -96,6 +86,7 @@ package sourcey.symple.player
 		{
 			Logger.send(Logger.DEBUG, "[FLVElement] Stopping: " + this.url);
 			
+			_stopped = true;
 			_ns.close();
 		}
 		
@@ -122,6 +113,7 @@ package sourcey.symple.player
 		public function destroy():void 
 		{
 			Logger.send(Logger.DEBUG, "[FLVElement] Destroying");
+			_stopped = true;
 			if (_ns)
 				_ns.close();		
 			if (_nc)
@@ -150,15 +142,86 @@ package sourcey.symple.player
 			super.invalidate();
 		}
 		
+		protected function connectStream():void 
+		{						
+			_video = new Video();
+			addChild(_video);
+			
+			_ns = new NetStream(_nc);
+			_ns.addEventListener(NetStatusEvent.NET_STATUS, onStreamStatus);
+			_ns.client = this;		
+			
+			_video.attachNetStream(_ns);			
+		}
+		
+		protected function onConnectionAsyncError(event:AsyncErrorEvent):void 
+		{
+			Logger.send(Logger.DEBUG, "[FLVElement] Connection IO Error");			
+			session.setError("Peer closed the connection");
+		}
+		
+		protected function onConnectionIoError(event:IOErrorEvent):void 
+		{
+			Logger.send(Logger.DEBUG, "[FLVElement] Connection IO Error");			
+			session.setError("Peer closed the connection");
+		}
+		
+		protected function onConnectionStatus(event:NetStatusEvent):void 
+		{
+			Logger.send(Logger.DEBUG, "[FLVElement] Connection Status: " + event.info.code);
+			switch (event.info.code) {
+				case "NetConnection.Connect.Success":
+					connectStream();
+					break;
+				case "NetConnection.Connect.Failed":
+					session.setError("Connection failed");
+					break;
+				
+				// This callback is unreliable
+				case "NetConnection.Connect.Closed":
+					session.setError("Connection closed by remote peer");
+					break;
+			}
+		}
+		
+		protected function onConnectionSecurityError(event:NetStatusEvent):void
+		{
+			Logger.send(Logger.DEBUG, "[FLVElement] Connection Security Error: " + event.info.code);
+			session.setError("Security error");
+		}
+		
+		public function onMetaData(info:Object):void 
+		{ 
+			for (var propName:String in info) {
+				Logger.send(Logger.DEBUG, "[FLVElement] Metadata: " + propName + " = " + info[propName]);
+				
+				// resize only if not explicitly set
+				if (!_video.width || !_video.height) {
+					_video.width = info['width'];
+					_video.height = info['height'];					
+				}
+			}
+		}
+		
 		public function onStreamStatus(event:NetStatusEvent):void
 		{
-			//Logger.send(Logger.DEBUG, "[FLVElement] Net Status Handler: " + event.info.code);
+			Logger.send(Logger.DEBUG, "[FLVElement] Net Status Handler: " + event.info.code);
 			
 			if (event.info.code == "NetStream.FileStructureInvalid") {
 				Logger.send(Logger.DEBUG, "The MP4's file structure is invalid.");
 			}
 			else if (event.info.code == "NetStream.NoSupportedTrackFound") {
 				Logger.send(Logger.DEBUG, "The MP4 doesn't contain any supported tracks");
+			}
+			
+			// HACK: NetConnection.Connect.Closed is unreliable, so
+			// we can use the NetStream.Play.Stop event to determine
+			// if the connection was closed without user interaction.
+			// If this is the case we explicitly close the netstream 
+			// to trigger NetConnection.Connect.Closed
+			else if (event.info.code == "NetStream.Play.Stop") {
+				if (!_stopped)
+					_nc.close();				
 			}
 		}
 		

@@ -1,20 +1,20 @@
 package sourcey.symple.player
 {
-	//import com.anionu.bridge.ui.FPSCounter;
-	//import components.FPSCounter;
-	//import com.anionu.EnvironmentVars;
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.display.Loader;
 	import flash.display.Stage;
+	import flash.events.DataEvent;
+	import flash.events.Event;
 	import flash.geom.Matrix;
 	import flash.net.FileReference;
-	import flash.text.Font;
-	import flash.text.TextField;
-	import flash.text.TextFieldAutoSize;
-	import flash.text.TextFormat;
+	//import flash.text.Font;
+	//import flash.text.TextField;
+	//import flash.text.TextFieldAutoSize;
+	//import flash.text.TextFormat;
 	import flash.utils.ByteArray;
 	
+	import sourcey.net.StatefulSocket;
 	import sourcey.symple.player.parsers.MJPEGParser;
 	import sourcey.symple.player.parsers.Parser;
 	import sourcey.symple.player.parsers.RawMJPEGParser;
@@ -23,15 +23,9 @@ package sourcey.symple.player
 	import sourcey.util.FPSCounter;
 	import sourcey.util.Logger;
 	
-	//import mx.core.UIComponent;
-	//import mx.graphics.ImageSnapshot;
-	//import mx.graphics.codec.JPEGEncoder;
-	
-	//import spark.components.Group;
-	//import spark.components.Image;
-	
 	public class MJPEGElement extends BufferedLoader implements IVideoElement
 	{
+		public var session:MediaSession;
 		public var url:String;
 		public var protocol:String;
 		public var counter:FPSCounter;		
@@ -40,8 +34,9 @@ package sourcey.symple.player
 		private var _connection:MediaConnection;
 		private var _parser:Parser;
 		
-		public function MJPEGElement(url:String = "", protocol:String = "HTTP") //, port:int = 0, token:String = ""
+		public function MJPEGElement(session:MediaSession, url:String = "", protocol:String = "HTTP") //, port:int = 0, token:String = ""
 		{	
+			this.session = session;
 			this.url = url;
 			this.protocol = protocol;
 			this.counter = new FPSCounter;
@@ -66,6 +61,14 @@ package sourcey.symple.player
 			//_parser.addEventListener(MediaEvent.METADATA, onMetadata);
 						
 			_connection = new MediaConnection(url, _parser);
+			_connection.addEventListener(StatefulSocket.STATE_CHANGED, onSocketStateChange);
+		}
+		
+		protected function onSocketStateChange(event:DataEvent):void
+		{
+			if (event.data == StatefulSocket.STATE_DISCONNECTED) {
+				session.setError(_connection.error)
+			}
 		}
 		
 		override protected function addChildren():void
