@@ -1,10 +1,115 @@
-var Symple = {}
+var Symple = {
+
+    // Return an array of nested objects matching
+    // the given key/value strings.
+    filterObject: function(obj, key, value) { // (Object[, String, String])
+        var r = []
+        for (var k in obj) {
+            if (obj.hasOwnProperty(k)) {
+                var v = obj[k];
+                if ((!key || k == key) &&
+                    (!value || v == value)) {
+                    r.push(obj)
+                }
+                else if (typeof v === 'object') {
+                    var a = Symple.filterObject(v, key, value);
+                    if (a) r = r.concat(a);
+                }
+            }
+        }
+        return r;
+    },
+        
+    // Delete nested objects with properties
+    // that match the given key/value strings.
+    deleteNested: function(obj, key, value) { // (Object[, String, String])
+        for (var k in obj) {
+            var v = obj[k];
+            if ((!key || k == key) &&
+                (!value || v == value)) {
+                delete obj[k];
+            }
+            else if (typeof v === 'object')
+                 Symple.deleteNested(v, key);
+        }
+    },
+    
+    // Count nested object properties which
+    // match the given key/value strings.
+    countNested: function(obj, key, value, count) {
+        if (count === undefined) count = 0;
+        for (var k in obj) {
+            if (obj.hasOwnProperty(k)) {
+                var v = obj[k];
+                if ((!key || k == key) &&
+                    (!value || v == value)) {
+                    count++;
+                }
+                else if (typeof(v) === 'object') {
+                //else if (v instanceof Object) {
+                    count = Symple.countNested(v, key, value, count);
+                }
+            }
+        }
+        return count;
+    },
+    
+    // Traverse an objects nested properties
+    traverse: function(obj, fn) { // (Object, Function)
+        for (var k in obj) {
+            if (obj.hasOwnProperty(k)) {
+                var v = obj[k];
+                fn(k, v);
+                if (typeof v === 'object')
+                    Symple.traverse(v, fn);
+            }
+        }
+    },
+    
+    // Generate a random string
+    randomString: function(n) {
+        return Math.random().toString(36).substring(n || 7);
+    },
+    
+    // Recursively merge object properties of r into l
+    merge: function(l, r) { // (Object, Object)
+        for (var p in r) {
+            try {
+                // Property in destination object set; update its value.
+                //if (typeof r[p] == "object") {
+                if (r[p].constructor == Object) {
+                    l[p] = merge(l[p], r[p]);
+                } else {
+                    l[p] = r[p];
+                }
+            } catch(e) {
+                // Property in destination object not set; 
+                // create it and set its value.
+                l[p] = r[p];
+            }
+        }
+        return l;
+    },
+    
+    // Match the object properties of l with r
+    match: function(l, r) { // (Object, Object)
+        var res = true;
+        for (var prop in l) {
+            if (!l.hasOwnProperty(prop) ||
+                !r.hasOwnProperty(prop) ||
+                r[prop] != l[prop]) {
+                res = false;
+                break;
+            }
+        }
+        return res
+    },
+}
+
 
 // -----------------------------------------------------------------------------
-//
 // Symple Client
 //
-// -----------------------------------------------------------------------------
 Symple.Client = Dispatcher.extend({
     init: function(peer, options) {
         console.log('Symple Client: Creating: ', peer, options);
@@ -129,7 +234,7 @@ Symple.Client = Dispatcher.extend({
         if (typeof(m.type) != 'string')
             throw 'Cannot send message with no type';
         if (!m.id)
-            m.id = Sourcey.randomString(8);
+            m.id = Symple.randomString(8);
         //if (!m.from)
         //    m.from = {}
         //m.from = self.ourID;
@@ -151,7 +256,7 @@ Symple.Client = Dispatcher.extend({
             throw 'Cannot send message while offline';
         if (p.data) {
             //console.log('Symple Client: Sending Presence: ', p.data, this.peer);
-            p.data = Sourcey.merge(this.peer, p.data);
+            p.data = Symple.merge(this.peer, p.data);
         }
         else
             p.data = this.peer;
@@ -253,7 +358,7 @@ Symple.Client = Dispatcher.extend({
             for (var i = 0; i < this.listeners[event].length; i++) {
                 if (typeof this.listeners[event][i] == 'object' &&
                     this.listeners[event][i].filters != 'undefined' &&
-                    Sourcey.match(this.listeners[event][i].filters, data[0])) {
+                    Symple.match(this.listeners[event][i].filters, data[0])) {
                     this.listeners[event][i].fn.apply(this, data);
                     if (this.listeners[event][i].after != 'undefined')
                         this.listeners[event][i].after.apply(this, data);                    

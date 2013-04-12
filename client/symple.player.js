@@ -324,7 +324,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         this._super(player);
         this.initialized = false;
         this.playOnInit = false;
-        this.id = "symple-player-" + Sourcey.randomString(6)
+        this.id = "symple-player-" + Symple.randomString(6)
     },
 
     setup: function(/*fn*/) {
@@ -332,21 +332,31 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         this.initialized = false;
         //this.initFn = fn;
         this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
+        
+        // TODO: Implement JFlashBridge locally
         JFlashBridge.bind(this.id, this);
         
         // swfobject.embedSWF(swfUrl, id, width, height, version, expressInstallSwfurl, flashvars, params, attributes, callbackFn)
         swfobject.embedSWF(this.player.options.htmlRoot + '/symple.player.swf', this.id,
             this.player.options.screenWidth, this.player.options.screenHeight, '10.0.0',
             this.player.options.htmlRoot + '/playerProductInstall.swf', {
-                debug: true,
+                //debug: true,
             }, {
                 quality: 'high',
                 wmode: 'transparent',
                 allowScriptAccess: 'sameDomain',
                 allowFullScreen: 'true'
             }, {
-                name: this.id //'playerSwf'
-            });        
+                name: this.id
+            });              
+            
+        
+        // Flash swallows click events, so catch mousedown 
+        // events and trigger click on screen element.        
+        var self = this;
+        this.player.screen.mousedown(function() {
+            self.player.screen.trigger('click')
+        });      
     },
 
     // TODO: Move to Symple.Player
@@ -392,7 +402,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     swf: function() {
-        return getSWF(this.id);
+        return JFlashBridge.getSWF(this.id);
     },
 
     isJSReady: function() {
@@ -425,7 +435,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onMetadata: function(data) {
-        console.log("Symple Flash Player: Metadata: ", data);
+        //console.log("Symple Flash Player: Metadata: ", data);
         if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {

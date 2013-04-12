@@ -9,8 +9,10 @@ package
 	import flash.utils.Dictionary;
 	
 	import sourcey.events.BasicEvent;
+	import sourcey.net.StatefulSocket;
 	import sourcey.symple.player.FLVElement;
 	import sourcey.symple.player.IVideoElement;
+	import sourcey.symple.player.MediaConnection;
 	import sourcey.symple.player.MediaEvent;
 	import sourcey.symple.player.MediaSession;
 	import sourcey.symple.player.Player;
@@ -49,12 +51,16 @@ package
 			// Tests
 			//
 			//testTURNMediaProvider()
+			//var c:MediaConnection
+			//var s:MediaConnection = new MediaConnection("http://localhost:80")
+			//s.play();
 			//testMJPEGSource();
 			//testFLVSource()
 		}
 		
 		protected function testMJPEGSource():void
-		{				
+		{	
+			//var a:Security
 			player.open({
 				token: "",
 				format: "MJPEG",
@@ -65,6 +71,7 @@ package
 				candidates: [
 					{
 						address: "127.0.0.1:328",
+						//address: "127.0.0.1:80",
 						protocol: "HTTP",
 						uri: "" //mjpeg
 					}

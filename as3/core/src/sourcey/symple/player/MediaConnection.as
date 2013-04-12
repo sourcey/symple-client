@@ -62,8 +62,7 @@
 		override protected function onConnect(event:Event):void 
 		{			
 			Logger.send(Logger.DEBUG, "[MediaConnection] Connected: " + _url.protocol);
-			if (_url.protocol == "HTTP" || 
-				_url.protocol == "http")
+			if (_url.protocol.toLowerCase() == "http")
 				sendInitHeader();
 			super.onConnect(event);				
         }

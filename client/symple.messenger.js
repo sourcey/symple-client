@@ -72,7 +72,7 @@ Symple.Messenger = Class.extend({
                     to: self.options.recipient,
                     from: self.client.peer,
                     body: text,
-                    temp_id: Sourcey.randomString(8) // Enables us to track sent messages
+                    temp_id: Symple.randomString(8) // Enables us to track sent messages
                 });
 
                 self.addMessage(message, true);

@@ -1,4 +1,4 @@
-//
+// -----------------------------------------------------------------------------
 // Symple Form Message
 //
 Symple.Form = function(json) {
@@ -9,121 +9,110 @@ Symple.Form = function(json) {
 
 Symple.Form.prototype = {
     getField: function(id) {
-        return Sourcey.findNestedWithProperty(this, 'id', id);
+        var r = Symple.filterObject(this, 'id', id);
+        return r.length ? r[0] : null;
     },
 
     hasElementType: function(type) {
-        return Sourcey.findNestedWithProperty(this, 'type', type) != null;
+        var r = Symple.filterObject(this, 'type', type);
+        return !!r.length;
     },
 
     hasMultiplePages: function() {
-        return Sourcey.countNestedWithProperty(this, 'type', 'page') > 1
+        return Symple.countNested(this, 'type', 'page') > 1
     },
-
-    /*
-    // Updates
-    update: function(json) {
-        if (json.id != this.id)
-            throw 'Invalid form data'
-
-        var self = this;
-        this.fromJSON(json);
-        this.getHTMLInputs().each(function() {
-            self.updateElementFromField(this);
-        });
-        //Sourcey.findNestedWithProperty(this, 'id', id);
-    },
-
-    // Converts the inner XML object to form HTML
-    toHTML: function(pageMenu, builder) {
-        if (!builder)
-            builder = new Symple.Form.Builder(this);
-        //console.log(builder)
-        //console.log('toHTML: ', this)
-        var html = '';
-        html += builder.startFormHTML(this);
-        if (pageMenu)
-            html += builder.buildPageMenu(this, 0);
-        html += builder.buildElements(this, 0);
-        html += builder.endFormHTML(this);
-        return html;
-    },
-    */
 
     fromJSON: function(json) {
-        json = Sourcey.merge(this, json);
-        for (var key in json)
-            this[key] = json[key];
+        $.extend(this, json)
+        //json = Symple.merge(this, json);
+        //for (var key in json)
+        //    this[key] = json[key];
     }
 };
 
 
+// -----------------------------------------------------------------------------
+// Symple Form Builder
 //
-// Form Builder
-//
-Symple.Form.Builder = function(form, element, options) {
+Symple.FormBuilder = function(form, element, options) {
     this.form = form;
-    this.element = $(element); // ? $(element) : $('<form></form>');
+    this.element = $(element);
     this.options = options || {};
 }
 
-Symple.Form.Builder.prototype = {
+Symple.FormBuilder.prototype = {
 
-    // Builds the form.
+    // Builds the form
     build: function() {
-        //if (this.element)
-        //this.element = .replaceWith(this.buildForm(this.form))
-        //else
-        //this.element = $(this.buildForm(this.form));
         this.element.html(this.buildForm(this.form));
-        this.postBuild();
+        this.afterBuild();
         return this.element;
     },
 
-    // Updates fields values and errors on response.
+    // Updates fields values and errors on server response.
     // formData may be the complete form or a partial subset
     // as long as the original structure is maintained.
-    // If the rebuild flag is set then the form will be rebuilt.
+    // If the partial flag is set then the form will not be rebuilt.
     // Note that only Fields can be updated and inserted using
     // this method, not Page or Section elements.
     update: function(formData) {
-        if (formData.rebuild == true) {
-            this.form = new Symple.Form(formData);
-            console.log('Form Builder: Rebuilding Form: ', this.form.id);
-            //var html = this.buildElements(this.form, 0);
-            //this.element.html(this.buildForm(this.form));
-            this.build();
-        }
-        else {
-            console.log('Form Builder: Updating Form: ', this.form.id, this.form);
-            // TODO: Update internal form data with formData
-            //if (this.form)
-            //    this.form.fromJSON(formData);
-            console.log('Form Builder: Updating Form AFTER: ', this.form.id, this.form);
-            this.updateElements(formData, 0);
-            this.postBuild();
-        }
+        if (!formData || !formData.elements)
+            throw 'Invalid form data'
+        
+        if (formData.partial !== true) {             
+            if (this.form.elements) {
+                    
+                // Traverse local form data and match elements with updated
+                // form data to determine if there are any deleted elements.
+                var self = this;
+                Symple.traverse(this.form.elements, function(k, v) {
+                    if (typeof k === 'string' && k === 'id') {
+                        if (!Symple.countNested(formData.elements, 'id', v)) {
+                            self.deleteField(v);
+                        }
+                    }                       
+                })
+            
+                // Local elements will be rebuilt
+                delete this.form.elements;
+            }
+        }             
+        
+        // Update internal form data with formData
+        this.form.fromJSON(formData);
+        this.updateElements(formData, 0);
+        this.afterBuild();
     },
 
     // Prepares the form to be sent. This includes updating
     // internal form values, clearing errors, notes, and
-    // setting the action to "submit". Uses JQuery
+    // setting the action to "submit".
     prepareSubmit: function() {
         var self = this;
         this.form.action = 'submit';
-        Sourcey.deleteNestedKeys(this.form, 'error');
+        Symple.deleteNested(this.form, 'error');
         this.getHTMLInputs().each(function() {
             self.updateFieldFromHTML(this);
         });
     },
 
+    deleteField: function(id) {
+        console.log('Form Builder: Deleting field:', id);
+        var el = this.getHTMLElement(id);    
+        if (!el.length) {
+            console.log('Form Builder: Invalid field:', id);
+            return null;
+        }    
+        el.remove();
+    },
+    
     // Updates field JSON from HTML.
     updateFieldFromHTML: function(el) {
         el = $(el);
         var id = el.attr('id');
         var field = this.form.getField(id);
         if (!id || !field) { // || el.attr('name') == 'submit'
-            console.log('Form Builder: Invalid field: ', id);
+            console.log('Form Builder: Invalid field:', id);
             return null;
         }
         switch (el.get(0).nodeName) {
@@ -141,11 +130,11 @@ Symple.Form.Builder.prototype = {
                 break;
             default: return null;
         }
-        //console.log('Form Builder: Updating Field: ', id, field.values)
+        //console.log('Form Builder: Updating Field:', id, field.values)
         return field;
     },
 
-    postBuild: function() {
+    afterBuild: function() {
         var self = this;
 
         this.element.find('.error', '.hint').each(function() {
@@ -154,9 +143,9 @@ Symple.Form.Builder.prototype = {
         });
 
         this.element.find('form').unbind().submit(function() {
-            //console.log('Form Builder: Prepare Submit: ', self.form);
+            //console.log('Form Builder: Prepare Submit:', self.form);
             self.prepareSubmit();
-            //console.log('Form Builder: After Prepare Submit: ', self.form);
+            //console.log('Form Builder: After Prepare Submit:', self.form);
             return self.options.onSubmit(self.form, self, self.element);
         });
 
@@ -177,7 +166,7 @@ Symple.Form.Builder.prototype = {
 
     // Builds the entire form
     buildForm: function(form) {
-        //console.log('Form Builder: Building: ', form)
+        //console.log('Form Builder: Building:', form)
         if (!form || !form.id)
             throw 'Invalid form data'
 
@@ -414,7 +403,7 @@ Symple.Form.Builder.prototype = {
     
     // Updates page or section HTML from JSON.
     updateSectionHTML: function(o) {
-        console.log('Form Builder: Updating Element HTML: ', o)
+        console.log('Form Builder: Updating Element HTML:', o)
 
         // Just update errors
         if (o.error == 'undefined')
@@ -543,7 +532,7 @@ Symple.Form.Builder.prototype = {
 
     // Updates field HTML from JSON.
     updateFieldHTML: function(field) {
-        console.log('Form Builder: Updating Field HTML: ', field)
+        console.log('Form Builder: Updating Field HTML:', field)
 
         var el = this.element.find('[name="' + field.id + '"]');
         if (el.length) {
@@ -565,7 +554,7 @@ Symple.Form.Builder.prototype = {
 
             var fel = el.parents('.field:first');
             if (field.error) {
-              console.log('Form Builder: Updating Field HTML: Error Field: ', fel.html())
+              console.log('Form Builder: Updating Field HTML: Error Field:', fel.html())
                 fel.find('.error').text(field.error).show();
             } else
                 fel.find('.error').hide();
@@ -620,7 +609,7 @@ Symple.Form.Builder.prototype = {
 
     function createForm(form, el, options) {
         options = $.extend({}, $.sympleForm.options, options);
-        var builder = new Symple.Form.Builder(form, el, options);
+        var builder = new Symple.FormBuilder(form, el, options);
         builder.build();
         el.data('builder', builder);
         return el;
