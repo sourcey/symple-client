@@ -1,26 +1,24 @@
 // ----------------------------------------------------------------------------
-//
 //  Symple Messenger
 //  
-// ----------------------------------------------------------------------------
 Symple.Messenger = Class.extend({
     init: function(client, options) {
         var self = this;
         this.options = $.extend({
-            recipient: null,                   // recipient peer object (will send to group scope if unset)
-            element: '#messenger',              // root element
+            recipient: null,                      // recipient peer object (will send to group scope if unset)
+            element: '#messenger',                // root element
             viewSelector: '.message-view',
             sendSelector: '.message-compose button',
             textSelector: '.message-compose textarea',
             //doSendMessage: self.sendMessage,    // send message impl (send via symple by default)
             onAddMessage: function(message, el) {}, // message added callback
             template: '\
-            <div class="message-view">\
-            </div>\
-            <div class="message-compose">\
-                <textarea></textarea>\
-                <button>Send</button>\
-            </div>'
+          <div class="message-view">\
+          </div>\
+          <div class="message-compose">\
+              <textarea></textarea>\
+              <button>Send</button>\
+          </div>'
         }, options);
 
         console.log('Symple Messenger: Creating: ', this.options);
@@ -153,7 +151,7 @@ Symple.Messenger = Class.extend({
     // Utilities & Helpers
     //
     formatTime: function(date) {        
-        function pad(n){return n<10 ? '0'+n : n}
+        function pad(n) { return n < 10 ? ('0' + n) : n }
         return pad(date.getHours()).toString() + ':' +
             pad(date.getMinutes()).toString() + ':' +
             pad(date.getSeconds()).toString() + ' ' +
@@ -163,7 +161,7 @@ Symple.Messenger = Class.extend({
 
     messageToHTML: function(message) {
         var time = message.time ? message.time : this.messageTime(message);
-        var html = '<div class="message" data-message-id="' + (message.id || '-1') + '" data-temp-id="' + message.temp_id + '">';
+        var html = '<div class="message" data-message-id="' + (message.id || -1) + '" data-temp-id="' + message.temp_id + '">';
         if (message.from &&
             typeof(message.from) == 'object' &&
             typeof(message.from.name) == 'string')
@@ -175,7 +173,11 @@ Symple.Messenger = Class.extend({
     },
 
     messageTime: function(message) {
-        return typeof(message.sent_at) == 'undefined' ? new Date() : new Date(Date.parse(message.sent_at))
+        // Older browsers can't parse ISO format time
+        // return typeof(message.sent_at) == 'undefined' ? new Date() : new Date(message.sent_at)
+        
+        // Requires Date.parseISO from Sourcey.js
+        return typeof(message.sent_at) == 'undefined' ? new Date() : Date.parseISO(message.sent_at)
     },
 
     isScrollBottom: function(elem) {
@@ -185,7 +187,6 @@ Symple.Messenger = Class.extend({
     getOrCreateDateSection: function(message) {
         var time = message.time ? message.time : this.messageTime(message);
         var dateStr = time.toDateString();
-        //var date = new Date(dateStr);
         var section = this.messages.find('.section[data-date="' + dateStr + '"]');
         if (!section.length) {
             section = $(

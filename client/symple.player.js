@@ -1,71 +1,70 @@
 // ----------------------------------------------------------------------------
-//
 //  Symple Player
 //
-// ----------------------------------------------------------------------------
-Symple.Player = function(options) {
-    this.options = $.extend({
-        htmlRoot:       '/assetpipe/symple/client',
-        element:        '.symple-player:first',
-        engine:         'MJPEG',      // engine class name
-        screenWidth:    '100%',       // player screen css width (percentage or pixel value)
-        screenHeight:   '100%',       // player screen css height (percentage or pixel value)
+//  Online video streaming for everyone
+//  Requires JQuery
+//
+Symple.Player = Symple.Class.extend({
+    init: function(options) {
+        // TODO: Use our own options extend
+        this.options = $.extend({
+            htmlRoot:       '/assetpipe/symple/client',
+            element:        '.symple-player:first',
+            engine:         'MJPEG',      // engine class name
+            screenWidth:    '100%',       // player screen css width (percentage or pixel value)
+            screenHeight:   '100%',       // player screen css height (percentage or pixel value)
+            showStatus:     false,
+            assertSupport:  false,        // throws an exception if no browser support for given engine
 
-        // Streaming Parameters
-        //params: {
-        //    format:      'MJPEG',
-        //    protocol:    'HTTP'
-        //},
+            // Callbacks
+            onCommand:       function(player, cmd) { },
+            onStateChange:   function(player, state) { },
+            
+            // Markup
+            template: '\
+            <div class="symple-player"> \
+                <div class="symple-player-message"></div> \
+                <div class="symple-player-status"></div> \
+                <div class="symple-player-screen"></div> \
+                <div class="symple-player-controls"> \
+                    <a class="play-btn" rel="play" href="#">Play</a> \
+                    <a class="stop-btn" rel="stop" href="#">Stop</a> \
+                    <a class="fullscreen-btn" rel="fullscreen" href="#">Fullscreen</a> \
+                </div> \
+            </div>'
 
-        // Callbacks
-        onCommand:       function(player, cmd) { },
-        onStateChange:   function(player, state) { },
+        }, options);
+
+        this.element = $(this.options.element);
+        if (!this.element.hasClass('symple-player')) {
+            this.element.html(this.options.template);
+            this.element = this.element.children('.symple-player:first');
+        }
+        if (!this.element.length)
+            throw 'Player element not found';
         
-        // Markup
-        template: '\
-        <div class="symple-player"> \
-            <div class="symple-player-message"></div> \
-            <div class="symple-player-status"></div> \
-            <div class="symple-player-screen"></div> \
-            <div class="symple-player-controls"> \
-                <a class="play-btn" rel="play" href="#">Play</a> \
-                <a class="stop-btn" rel="stop" href="#">Stop</a> \
-            </div> \
-        </div>'
+        this.screen = this.element.find('.symple-player-screen');
+        if (!this.screen.length)
+            throw 'Player screen element not found';
 
-    }, options);
+        if (typeof Symple.Player.Engine[this.options.engine] == 'undefined')
+            throw 'Streaming engine not available';   
+        this.engine = new Symple.Player.Engine[this.options.engine](this);
+        if (!this.engine.supported())
+            throw 'Streaming engine not supported';      
+        this.engine.setup();
 
-    this.element = $(this.options.element);
-    if (!this.element.hasClass('symple-player')) {
-        this.element.html(this.options.template);
-        this.element = this.element.children('.symple-player:first');
-    }
-    if (!this.element.length)
-        throw 'Player element not found';
-    
-    this.screen = this.element.find('.symple-player-screen');
-    if (!this.screen.length)
-        throw 'Player screen element not found';
+        this.bindEvents();
+        this.playing = false;
 
-    if (typeof Symple.Player.Engine[this.options.engine] == 'undefined')
-        throw 'Streaming engine not available';   
-    this.engine = new Symple.Player.Engine[this.options.engine](this);
-    if (!this.engine.supported())
-        throw 'Streaming engine not supported';      
-    this.engine.setup();
-
-    this.bindEvents();
-    this.playing = false;
-    //this.setState('stopped');
-
-    var self = this;
-    $(window).resize(function() {
-        self.refresh();
-    });
-}
-
-
-Symple.Player.prototype = {
+        /*
+        //this.setState('stopped');
+        var self = this;
+        $(window).resize(function() {
+            self.refresh();
+        });
+        */
+    },
 
     //
     // Player Controls
@@ -99,6 +98,7 @@ Symple.Player.prototype = {
     destroy: function() {
         if (this.engine)
             this.engine.destroy();
+        this.element.remove();
     },
 
     setState: function(state, message) {
@@ -115,7 +115,7 @@ Symple.Player.prototype = {
             this.displayMessage(null);
         this.element.removeClass('state-stopped state-loading state-playing state-paused state-error');
         this.element.addClass('state-' + state);
-        this.refresh();
+        //this.refresh();
         this.options.onStateChange(this, state);
     },
 
@@ -143,6 +143,34 @@ Symple.Player.prototype = {
     },
 
 
+    bindEvents: function() {
+        var self = this;
+        this.element.find('.symple-player-controls a').unbind().bind('click tap', function() {
+            self.sendCommand(this.rel, $(this));
+            return false;
+        })
+    },
+
+    sendCommand: function(cmd, e) {
+        if (!this.options.onCommand ||
+            !this.options.onCommand(this, cmd, e)) {
+
+            // If there is no command callback function or the callback returns
+            // false then we process these default behaviours.
+            switch(cmd) {
+              case 'play':
+                  this.play();
+                  break;
+              case 'stop':
+                  this.stop();
+                  break;
+              case 'fullscreen':
+                  this.toggleFullScreen();
+                  break;
+            }
+        }
+    },
+
     getButton: function(cmd) {
       return this.element.find('.symple-player-controls [rel="' + cmd + '"]');
     },
@@ -160,13 +188,45 @@ Symple.Player.prototype = {
         var height = width * 0.75;
         return [width, height];
     },
+    
+    // TODO: Toggle actual player element
+    toggleFullScreen: function() {  
+    	if (Symple.runVendorMethod(document, "FullScreen") || Symple.runVendorMethod(document, "IsFullScreen")) {
+          Symple.runVendorMethod(document, "CancelFullScreen");
+      }
+      else {
+          Symple.runVendorMethod(this.element[0], "RequestFullScreen");
+      }
 
+        /*
+        if (!document.fullscreenElement &&    // alternative standard method
+            !document.mozFullScreenElement && !document.webkitFullscreenElement) {  // current working methods
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+                document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+            }
+        } 
+        else {
+            if (document.cancelFullScreen) {
+                document.cancelFullScreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitCancelFullScreen) {
+                document.webkitCancelFullScreen();
+            }
+        }
+        */
+    }
+
+    /*
     refresh: function() {
         if (this.engine)
             this.engine.refresh();
     },
     
-    /*
     rescaleVideo: function(srcW, srcH, maxW, maxH) {
         console.log('Symple Player: Rescale Video: ', srcW, srcH, maxW, maxH);
 
@@ -211,84 +271,43 @@ Symple.Player.prototype = {
         this.screen.css(css);
 
         //var e = this.element.find('#player-screen');
-            //console.log('refresh: scaled:', size)
-            console.log('refresh: screenWidth:', this.options.screenWidth)
-            console.log('refresh: width:', this.screen.width())
-            console.log('refresh: screenHeight:', this.options.screenHeight)
-            console.log('refresh: height:', this.screen.height())
-            console.log('refresh: css:', css)
+          //console.log('refresh: scaled:', size)
+          console.log('refresh: screenWidth:', this.options.screenWidth)
+          console.log('refresh: width:', this.screen.width())
+          console.log('refresh: screenHeight:', this.options.screenHeight)
+          console.log('refresh: height:', this.screen.height())
+          console.log('refresh: css:', css)
     },
     */
-
-    bindEvents: function() {
-        var self = this;
-        this.element.find('.symple-player-controls a').unbind().bind('click tap', function() {
-            self.sendCommand(this.rel, $(this));
-            return false;
-        })
-
-        /*
-        // Support JQuery Mobile button markup
-        this.element.find('.symple-player-controls .ui-btn-text').click(function() {
-            var cmd = $(this).parents('.ui-btn:first').find('a').attr('rel');
-            self[cmd]();
-            self.options.onCommand(self, cmd);
-            return false;
-        })
-        */
-    },
-
-    sendCommand: function(cmd, e) {
-        if (!this.options.onCommand ||
-            !this.options.onCommand(this, cmd, e)) {
-
-            // If there is no command callback function or the callback returns
-            // false then we process these default behaviours.
-            switch(cmd) {
-              case 'play':
-                  this.play();
-                  break;
-              case 'stop':
-                  this.stop();
-                  break;
-            }
-        }
-    }
-}
+})
 
 
 // -----------------------------------------------------------------------------
-//
 // Player Engine Interface
 //
-// -----------------------------------------------------------------------------
-Symple.Player.Engine = Class.extend({
+Symple.Player.Engine = Symple.Class.extend({
     init: function(player) {
         this.player = player;
     },
 
     //
-    // Methods
-    //
+    /// Methods
     supported: function() { return true; },
     setup: function() {},
     destroy: function() {},
     play: function(params) {},
     stop: function() {},
     refresh: function() {},
-    //resize: function(w, h) {},
 
     //
-    // Helpers
-    //
+    /// Helpers
     setState: function(state, message) {
         this.player.setState(state, message);
     },
     
     setError: function(error) {
+        console.log('Symple Player Engine: Error:', error);
         this.setState('error', error);
-        //if (error)
-        //    this.player.displayMessage('error', error)
     },
 
     updateFPS: function() {
@@ -313,409 +332,9 @@ Symple.Player.Engine = Class.extend({
 });
 
 
-// -----------------------------------------------------------------------------
-//
-// Flash Engine
-//
-// -----------------------------------------------------------------------------
-Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
-    init: function(player) {
-        console.log("Symple Flash Player: Init");
-        this._super(player);
-        this.initialized = false;
-        this.playOnInit = false;
-        this.id = "symple-player-" + Symple.randomString(6)
-    },
 
-    setup: function(/*fn*/) {
-        console.log("Symple Flash Player: Create");
-        this.initialized = false;
-        //this.initFn = fn;
-        this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
-        
-        // TODO: Implement JFlashBridge locally
-        JFlashBridge.bind(this.id, this);
-        
-        // swfobject.embedSWF(swfUrl, id, width, height, version, expressInstallSwfurl, flashvars, params, attributes, callbackFn)
-        swfobject.embedSWF(this.player.options.htmlRoot + '/symple.player.swf', this.id,
-            this.player.options.screenWidth, this.player.options.screenHeight, '10.0.0',
-            this.player.options.htmlRoot + '/playerProductInstall.swf', {
-                //debug: true,
-            }, {
-                quality: 'high',
-                wmode: 'transparent',
-                allowScriptAccess: 'sameDomain',
-                allowFullScreen: 'true'
-            }, {
-                name: this.id
-            });              
-            
-        
-        // Flash swallows click events, so catch mousedown 
-        // events and trigger click on screen element.        
-        var self = this;
-        this.player.screen.mousedown(function() {
-            self.player.screen.trigger('click')
-        });      
-    },
-
-    // TODO: Move to Symple.Player
-    toggleFullScreen: function() {    
-        if (!document.fullscreenElement &&    // alternative standard method
-            !document.mozFullScreenElement && !document.webkitFullscreenElement) {  // current working methods
-            if (document.documentElement.requestFullscreen) {
-              document.documentElement.requestFullscreen();
-            } else if (document.documentElement.mozRequestFullScreen) {
-              document.documentElement.mozRequestFullScreen();
-            } else if (document.documentElement.webkitRequestFullscreen) {
-              document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-            }
-        } 
-        else {
-            if (document.cancelFullScreen) {
-              document.cancelFullScreen();
-            } else if (document.mozCancelFullScreen) {
-              document.mozCancelFullScreen();
-            } else if (document.webkitCancelFullScreen) {
-              document.webkitCancelFullScreen();
-            }
-        }
-    },
-
-    play: function(params) {
-        console.log("Symple Flash Player: Play", params);
-        this.params = params; // if params
-        if (this.initialized) {
-            this.swf().open(params); //this.player.options.params
-            //this.setState('playing'); // TODO: Flash callback set state
-        }
-        else
-            this.playOnInit = true;
-    },
-
-    stop: function() {
-        console.log("Symple Flash Player: Stop");
-        if (this.initialized) {
-            this.swf().stop();
-            this.setState('stopped'); // No need to wait for callback
-        }
-    },
-
-    swf: function() {
-        return JFlashBridge.getSWF(this.id);
-    },
-
-    isJSReady: function() {
-        //console.log("Symple Flash Player: JavaScript Ready: " + $.isReady);
-        return $.isReady;
-    },
-
-    refresh: function() {
-        console.log("Symple Flash Player: Refresh");
-        try {
-          if (this.initialized)
-            this.swf().refresh();
-        } catch (e) {}
-    },
-        
-    onSWFLoaded: function() {
-        console.log("Symple Flash Player: Loaded");
-        this.initialized = true;
-        //if (this.initFn)
-        //    this.initFn(true);
-        if (this.playOnInit)
-            this.play(this.params);
-    },
-
-    onPlayerState: function(state, error) {
-        console.log("Symple Flash Player: State: ", state, error);
-        // None, Loading, Playing, Paused, Stopped, Error
-        if (state != 'None')
-            this.setState(state.lowercase(), error);
-    },
-
-    onMetadata: function(data) {
-        //console.log("Symple Flash Player: Metadata: ", data);
-        if (data && data.length) {
-            var status = '';
-            for (var i = 0; i < data.length; ++i) {
-                status += data[i][0];
-                status += ': ';
-                status += data[i][1];
-                status += '<br>';
-            }
-            this.player.displayStatus(status);
-        }
-    },
-
-    onLogMessage: function(type, text) {
-        console.log('Symple Flash Player: ' + type + ': ' + text);
-    }
-});
-
-
-// -----------------------------------------------------------------------------
-//
-// Native MJPEG Engine
-//
-// -----------------------------------------------------------------------------
-Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
-    init: function(player) {
-        this._super(player);
-        this.img = null;
-    },
-
-    supported: function() {  
-        // There must be a better way, 
-        // but this will do for now.
-        var ua = navigator.userAgent;
-        return !ua.match(/(Android|BlackBerry|MSIE|Opera)/);
-    },
-
-    play: function(params) {      
-        this.params = params;
-        console.log("Symple MJPEG Player: Play", params);
-        
-        if (this.img)
-          throw 'Streaming already initialized'
-        if (!this.player.options.url)
-          throw 'Invalid streaming URL'
-        
-        var self = this;
-        var init = true;
-        this.img = new Image();
-        //this.img.style.width = '100%';
-        this.img.style.height = '100%';
-        //this.img.width = this.player.options.screenWidth;
-        //this.img.height = this.player.options.screenHeight;
-        this.img.style.display = 'none';
-        this.img.onload = function() {
-            // NOTE: Using init flag since Firefox calls onload
-            // on each multipart image load. 
-            // Most browsers inclusing WebKit just call it once.
-            if (init) {
-                if (self.img)
-                    self.img.style.display = 'inline';
-                self.setState('playing');
-                init = false;
-            }
-            else
-                self.displayFPS();
-        }
-        this.img.onerror = function() {
-            self.setError('Failed to load stream')
-        }
-        this.img.src = this.player.options.url + "&rand=" + Math.random();
-        this.player.screen.prepend(this.img);        
-    },
-
-    stop: function() {
-        console.log("Symple MJPEG Player: Stop");
-        if (this.img) {
-            this.img.style.display = 'none';
-            this.img.src = "#"; // closes socket in ff, but not safari
-            this.img.onload = null;
-            this.img.onerror = null;
-            console.log("Symple MJPEG Player: Stop: ", this.img);
-            this.player.screen[0].removeChild(this.img);
-            this.img = null;
-        }
-        console.log("Symple MJPEG Player: Stop: OK");
-        this.setState('stopped');
-    }
-});
-
-
-// -----------------------------------------------------------------------------
-//
-// MXHR Base64 MJPEG Engine
-//
-// - Multipart data MUST be base64 encoded to use this engine.
-// - Provides smooth playback in browsers that don't support MJPEG natively.
-// - Chrome doesn't support multipart/x-mixed-replace over XMLHttpRequest,
-//   which is required for some older browsers to trigger readyState == 3.
-//   Server side for Chrome should just push data to the client (HTTP Streaming). 
-// - Safari WebKit, and Firefox (tested on 15.0.1) parses and removes chunk
-//   headers and boundaries for us.
-//
-// -----------------------------------------------------------------------------
-Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
-    init: function(player) {
-        this._super(player);
-        this.xhr = null;
-        this.img = null;
-        this.mime = null;
-        this.parsing = false;
-        this.parsed = 0;
-        this.boundary = 0;
-    },
-
-    play: function() {
-        if (this.img)
-          throw 'Streaming already initialized'
-        if (!this.player.options.url)
-          throw 'Invalid streaming URL'
-
-        // These versions of XHR are known to work with MXHR
-        try { this.xhr = new ActiveXObject('MSXML2.XMLHTTP.6.0'); } catch(nope) {
-            try { this.xhr = new ActiveXObject('MSXML3.XMLHTTP'); } catch(nuhuh) {
-                try { this.xhr = new XMLHttpRequest(); } catch(noway) {
-                    throw new Error('Could not find supported version of XMLHttpRequest.');
-                }
-            }
-        }
           
-        //console.log('Symple MJPEGBase64MXHR: Play: ', this.player.options.url)
-        
-        this.img = new Image();
-        //this.img.style.width = '100%';
-        this.img.style.height = '100%';
-        //this.img.width = this.player.options.screenWidth;
-        //this.img.height = this.player.options.screenHeight;
-        this.player.screen.prepend(this.img);
-
-        var self = this;
-        var init = true;
-        this.xhr.onreadystatechange = function() {
-            //console.log('Symple MJPEGBase64MXHR: Ready State Change: ', self.xhr.readyState)
-
-            // If a multipart/x-mixed-replace header is received then we will
-            // be parsing the multipart response ourselves. 
-            // Some browsers like Safari WebKit (not Chrome) handle this internally
-            // so we don't require any fancy parsing. 
-            // The same is also the case for HTTP Streaming.
-            if (self.xhr.readyState == 2) {             
-                var contentTypeHeader = self.xhr.getResponseHeader("Content-Type");
-                console.log('Symple MJPEGBase64MXHR: Content Type Header: ', contentTypeHeader)
-                if (contentTypeHeader &&
-                    contentTypeHeader.indexOf("multipart/") != -1) {
-                    // TODO: Handle boundaries enclosed in commas
-                    self.boundary = '--' + contentTypeHeader.split('=')[1];
-                    self.parsing = true;
-                }
-            }
-            else if (self.xhr.readyState == 3) {
-                self.processChunk();
-                if (init) {
-                    init = false;
-                    if (self.img.style)
-                        self.img.style.display = 'inline';
-                    self.setState('playing');
-                }
-            }
-            if (self.xhr.readyState == 4) {
-                self.onComplete(self.xhr.status);
-            }
-        };
-        this.xhr.open('GET', this.player.options.url, true);
-        this.xhr.send(null);
-    },
-
-    stop: function() {
-        if (this.xhr) {
-            this.xhr.abort();
-        }
-        if (this.img) {
-            this.player.screen[0].removeChild(this.img);
-            this.img.style.display = 'none';
-            this.img.src = "#"; // closes socket in ff, but not safari
-            this.img = null;
-        }
-        this.setState('stopped');
-    },
-        
-    processChunk: function() {
-        var length = this.xhr.responseText.length,
-            buffer = this.xhr.responseText.substring(this.parsed, length);
-
-        if (!buffer.length) 
-            return;
-            
-        // HTTP Streaming
-        if (!this.parsing) {
-            (!this.mime)
-              this.mime = this.xhr.getResponseHeader("Content-Type") ? 
-                  this.xhr.getResponseHeader("Content-Type") : 'image/jpeg';   
-            this.draw(buffer);
-            this.parsed += buffer.length;
-        }
-        
-        // Multipart
-        else {
-            var res = this.incrParse(buffer);
-            if (res[0] > 0) {
-                this.processPart(res[1]);
-                this.parsed += res[0];
-                if (length > this.parsed)
-                    this.processChunk();
-            }
-        }
-    },
-
-    processPart: function(part) { 
-        console.log('processPart: ', this.boundary)
-        part = part.replace(this.boundary + "\r\n", '');
-        var lines = part.split("\r\n");
-        var headers = {};
-        while(/^[-a-z0-9]+:/i.test(lines[0])) {
-            var header = lines.shift().split(':');
-            headers[header[0]] = header[1].trim();
-            if (!this.mime) {
-                if (header[0] == 'Content-Type')
-                    this.mime = header[1].trim();
-            }
-        }
-        var payload = lines.join("\r\n");
-        this.draw(payload);
-    },
-
-    incrParse: function(buffer) {
-        console.log('incrParse:', buffer.length)
-        if (buffer.length < 1) return [-1];
-        var start = buffer.indexOf(this.boundary);
-        if (start == -1) return [-1];
-        var end = buffer.indexOf(this.boundary, start + this.boundary.length);
-        // SUCCESS
-        if (start > -1 && end > -1) {
-            var part = buffer.substring(start, end);
-            // end != part.length in wrong response, ignore it
-            return [end, part];
-        }
-        // INCOMPLETE
-        return [-1];
-    },
-
-    draw: function(data) {
-        //console.log('Symple MJPEGBase64MXHR: Draw:', this.mime, data.length)
-        this.img.src = 'data:' + this.mime + ';base64,' + data;
-        this.displayFPS();
-    },
-
-    onComplete: function(status) {
-        console.log('Symple MJPEGBase64MXHR: Complete: ', status)
-        
-        if (this.player.playing) {
-            stop();
-            this.processChunk();
-            this.player.displayMessage('info', 'The stream has ended');
-        }
-        else if (status == 200)
-            this.setError('Not a multipart stream');
-        else
-            this.setError('Streaming failed');
-    }
-    /*,
-
-    resize: function(width, height) {
-        if (this.img) {
-            this.img.width = width;
-            this.img.height = height;
-        }
-    }
-    */
-});
-
-
+          
           
         
         //

@@ -116,8 +116,9 @@ Symple.FormBuilder.prototype = {
             return null;
         }
         switch (el.get(0).nodeName) {
-            case 'INPUT':
-                field.values = [ el.val() ];
+            case 'INPUT':            
+                //var val = el.attr('type') == 'checkbox'
+                field.values = [ field.type == 'boolean' ? el.prop('checked') : el.val() ];
                 break;
             case 'TEXTAREA':
                 field.values = [ el.text() ];

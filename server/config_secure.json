@@ -3,7 +3,7 @@
   "nodeId" : 1,
   
   /* The port to listen on */
-  "port" : 4000,   /* 443 */
+  "port" : 443,
   
   /* Allow anonymous connections */
   "anonymous" : false,  
@@ -11,14 +11,12 @@
   /* Redis configuration */
   "redis" : {
     "host" : "localhost",
-    /* "host" : "173.230.150.125", */
     "port" : 6379
-    /* "password" : "8461e2c92b2848975c058cb4fbba735f" */
   },
   
   /* SSL configuration */
   "ssl" : {
-    "enabled" : false,
+    "enabled" : true,
     "key" : "D:\\dev\\projects\\Sourcey\\shared\\ssl\\symple.key",
     "cert" : "D:\\dev\\projects\\Sourcey\\shared\\ssl\\symple.crt"
   }

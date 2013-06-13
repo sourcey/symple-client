@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Symple Player Tests</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />    
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.10.0.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
+    <script type="text/javascript" src="../symple.js"></script>
+    <script type="text/javascript" src="../symple.player.js"></script>
+    <script type="text/javascript" src="../symple.player.flash.js"></script>
+    <script type="text/javascript" src="../symple.player.http.js"></script>
+    <link rel="stylesheet" type="text/css" href="../symple.player.css">
+    <style>
+      body {
+          text-align: center;
+      }
+      .player {
+          width: 400px;
+          height: 320px;
+          margin: 20px auto;
+          box-shadow: 2px 2px 18px rgba(0,0,0,0.4)
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mjpeg-native">
+      <h1>Native MJPEG</h1>
+      <div class="player">      
+      </div>
+    </div>
+    <script>   
+      // Native MJPEG Player
+      var player = new Symple.Player({
+          element:        '#mjpeg-native .player',
+          engine:         'MJPEG',
+          screenWidth:    400,
+          screenHeight:   320,
+          url:            'http://localhost:328/streaming?format=mjpeg&width=400&height=320'
+      });
+      player.play();
+    </script>
+    
+    <div id="mjpeg-mxhr">
+      <h1>MXHR MJPEG</h1>
+      <div class="player">      
+      </div>
+    </div>
+    <script>      
+      // Native MJPEG Player
+      var player = new Symple.Player({
+          element:        '#mjpeg-mxhr .player',
+          engine:         'MJPEGBase64MXHR',
+          screenWidth:    400,
+          screenHeight:   320,
+          url:            'http://localhost:328/streaming?format=mjpeg-base64-mxhr&width=160&height=128'
+      });
+      player.play();
+    </script>
+    
+    <div id="mjpeg-flv">
+      <h1>Flash MJPEG</h1>
+      <div class="player">      
+      </div>
+    </div>
+    <script>      
+      // Native MJPEG Player
+      var player = new Symple.Player({
+          element:        '#mjpeg-flv .player',
+          engine:         'Flash',
+          screenWidth:    400,
+          screenHeight:   320,
+          //url:            'http://localhost:328/mjpeg'
+      });
+      player.play({
+        token: "",
+				format: "MJPEG",
+				protocol: "HTTP",
+				video: {
+					codec: "MJPEG"
+				},
+				candidates: [{
+						address: "127.0.0.1:328",
+						protocol: "HTTP",
+						uri: "/streaming?format=mjpeg&width=400&height=320"
+				}]	
+			});
+    </script>
+    
+    <div id="flash-flv">
+      <h1>Flash FLV</h1>
+      <div class="player">      
+      </div>
+    </div>   
+    <script>   
+      // Flash FLV Player
+      var player = new Symple.Player({
+          element:        '#flash-flv .player',
+          engine:         'Flash',
+          screenWidth:    400,
+          screenHeight:   320,
+          //url:            'http://localhost:328/flv'
+      });
+      player.play({
+        token: "",
+				format: "FLV",
+				protocol: "Raw",
+				video: {
+					codec: "FLV"
+				},
+				candidates: [{
+						address: "127.0.0.1:328",
+						protocol: "HTTP",
+						uri: "/streaming?format=flv&width=400&height=320"
+						//uri: "/flv"
+				}]	
+			});
+    </script>
+    
+    
+  </body>
+</html>
