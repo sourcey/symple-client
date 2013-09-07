@@ -31,6 +31,7 @@ Symple.Form.prototype = {
 };
 
 
+
 // -----------------------------------------------------------------------------
 // Symple Form Builder
 //
@@ -59,11 +60,13 @@ Symple.FormBuilder.prototype = {
         if (!formData || !formData.elements)
             throw 'Invalid form data'
         
+        console.log('Form Builder: Update: data:', formData);
+        console.log('Form Builder: Update: BEFORE:', this.form);
+        
         if (formData.partial !== true) {             
             if (this.form.elements) {
                     
-                // Traverse local form data and match elements with updated
-                // form data to determine if there are any deleted elements.
+                // Delete redundant or removed form fields.
                 var self = this;
                 Symple.traverse(this.form.elements, function(k, v) {
                     if (typeof k === 'string' && k === 'id') {
@@ -76,10 +79,16 @@ Symple.FormBuilder.prototype = {
                 // Local elements will be rebuilt
                 delete this.form.elements;
             }
-        }             
         
-        // Update internal form data with formData
-        this.form.fromJSON(formData);
+            // Update internal form data with formData
+            this.form.fromJSON(formData);
+        }
+        else {    
+            // Update from with partial elements
+            this.mergeFormElements(this.form, formData);
+        }
+        
+        console.log('Form Builder: Update: AFTER:', this.form);
         this.updateElements(formData, 0);
         this.afterBuild();
     },
@@ -112,7 +121,7 @@ Symple.FormBuilder.prototype = {
         var id = el.attr('id');
         var field = this.form.getField(id);
         if (!id || !field) { // || el.attr('name') == 'submit'
-            console.log('Form Builder: Invalid field:', id);
+            console.log('Form Builder: Invalid field:', id, this.form);
             return null;
         }
         switch (el.get(0).nodeName) {
@@ -565,7 +574,6 @@ Symple.FormBuilder.prototype = {
         return el;
     },
 
-
     fieldToHTML: function(o) {
         var html = '';
         try {
@@ -576,7 +584,31 @@ Symple.FormBuilder.prototype = {
             console.log('Form Builder: Unrecognised form field:', o.type, e);
         }
         return html;
-    }
+    },
+    
+    // Update internal form data from a partial.
+    mergeFormElements: function(destination, source) {
+        if (destination.elements && source.elements) {
+            for (var si = 0; si < source.elements.length; si++) {
+                // Recurse if there are sub elements
+                if (source.elements[si].elements) {
+                    for (var di = 0; di < destination.elements.length; di++) {
+                        if (destination.elements[di].id == source.elements[si].id) {
+                            arguments.callee(destination.elements[di], source.elements[si]);
+                        }
+                    }
+                }
+                // Update the current field
+                else {
+                    for (var di = 0; di < destination.elements.length; di++) {
+                        if (destination.elements[di].id == source.elements[si].id) {
+                            destination.elements[di] = source.elements[si];
+                        }
+                    }
+                }
+            }
+        }
+    }  
 };
 
 

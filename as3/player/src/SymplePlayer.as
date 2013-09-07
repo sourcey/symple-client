@@ -1,11 +1,14 @@
 package
 {
+	import flash.display.DisplayObject;
 	import flash.display.LoaderInfo;
 	import flash.events.Event;
 	import flash.media.Sound;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
+	import flash.system.Security;
 	import flash.text.Font;
+	import flash.text.engine.TextElement;
 	import flash.utils.Dictionary;
 	
 	import sourcey.events.BasicEvent;
@@ -46,117 +49,12 @@ package
 			jsBridge.initialize();				
 			initStage(stage);			
 			stage.addEventListener(Event.RESIZE, onResize); 
-						
-			//
-			// Tests
-			//
-			//testTURNMediaProvider()
-			//var c:MediaConnection
-			//var s:MediaConnection = new MediaConnection("http://localhost:80")
-			//s.play();
-			//testMJPEGSource();
-			//testFLVSource()
-		}
-		
-		protected function testMJPEGSource():void
-		{	
-			//var a:Security
-			player.open({
-				token: "",
-				format: "MJPEG",
-				protocol: "HTTP",
-				video: {
-					codec: "MJPEG"
-				},
-				candidates: [
-					{
-						address: "127.0.0.1:328",
-						//address: "127.0.0.1:80",
-						protocol: "HTTP",
-						uri: "" //mjpeg
-					}
-				]	
-			});				
-		}
-		
-		protected function testFLVSource():void
-		{		
-			player.open({
-				token: "",
-				protocol: "Raw",
-				video: {
-					codec: "FLV"
-				},
-				//audio: {
-				//	codec: "Speex"
-				//	codec: "Nellymoser"
-				//	codec: "MP3"
-				//},
-				candidates: [
-					{
-						address: "127.0.0.1:328",
-						protocol: "HTTP",
-						//type: "relay",
-						uri: ""
-					}
-				]	
-			});	
 			
-			/*
-			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
-			//var req:URLRequest = new URLRequest("http://127.0.0.1/enctest.mp3");
-			var s:Sound = new Sound();
-			s.load(req);
-			s.play();
-			mp3test.mp3
-			var audio:FLVElement = new FLVElement(
-				"http://127.0.0.1/vidtest.flv",
-				"Raw");
-			addChild(audio);
-			audio.play();
-			
-			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
-			var s:Sound = new Sound();
-			s.load(req);
-			s.play();
-			*/
-		}
-		
-		protected function testTURNMediaProvider():void
-		{				
-			Logger.send(Logger.INFO, "Test TURN Media Provider");
-			
-			// Send a GET request to obtain the relayed address.
-			var request:URLRequest = new URLRequest();
-			request.url = "http://localhost:800";
-			request.method = "GET";			
-			var loader:URLLoader = new URLLoader();
-			loader.addEventListener(Event.COMPLETE, function loaderCompleteHandler(e:Event):void 
-			{
-				player.open({
-					token: "MJPEG-TURN",
-					format: "MJPEG",
-					protocol: "HTTP",
-					video: {
-						codec: "MJPEG"
-						//codec: "FLV"
-					},
-					//audio: {
-					//	codec: "Speex"
-					//	codec: "Nellymoser"
-					//	codec: "MP3"
-					//},
-					candidates: [
-						{
-							address: e.target.data, //"127.0.0.1:6781",
-							protocol: "turn", // "http"
-							type: "relay",
-							uri: ""
-						}
-					]	
-				});	
-			});
-			loader.load(request);
+			// http://localhost:3000/assetpipe/symple/as3/player/bin-debug
+			// http://localhost:3000/assetpipe/symple/client/tests
+			//testFLVSource();
+			//testMJPEGHTTPSource();
+			//testSpeexSource();
 		}
 		
 		override protected function addChildren():void
@@ -191,39 +89,6 @@ package
 		
 		private function onMetadata(event:MediaEvent):void 
 		{	
-			/*
-			var metadata:Array = event.data as Array;
-			var output:String = '';
-			for each(var data:String in metadata) {
-				if (data.indexOf('X-') == 0) {
-					output += data.substring(2,data.length).replace(/-/g, ' '); 
-					output += '\n';					
-				}
-			}
-			*/
-			
-			/*
-			Logger.send(Logger.DEBUG, "[onMetadata] this.width: " + this.width);
-			Logger.send(Logger.DEBUG, "[onMetadata] this.height: " + this.height);	
-			Logger.send(Logger.DEBUG, "[onMetadata] this.currentSource.width: " + this.currentSource.width);
-			Logger.send(Logger.DEBUG, "[onMetadata] this.currentSource.height: " + this.currentSource.height);	
-			Logger.send(Logger.DEBUG, "[onMetadata] this.session.width: " + (this.parent as Player).session.params.video.width);	
-			Logger.send(Logger.DEBUG, "[onMetadata] this.session.height: " + (this.parent as Player).session.params.video.height);	
-			Logger.send(Logger.DEBUG, "[onMetadata] this.parent.width: " + (this.parent as Player).width);	
-			Logger.send(Logger.DEBUG, "[onMetadata] this.parent.height: " + (this.parent as Player).height);	
-			Logger.send(Logger.DEBUG, "[onMetadata] this.parent.parent: " + this.parent.parent);
-			Logger.send(Logger.DEBUG, "[onMetadata] this.parent.parent.width: " + this.parent.parent.width);
-			Logger.send(Logger.DEBUG, "[onMetadata] this.parent.parent.height: " + this.parent.parent.height);	
-			Logger.send(Logger.DEBUG, "[onMetadata] stageWidth: " + stage.stageWidth);
-			Logger.send(Logger.DEBUG, "[onMetadata] stageHeight: " + stage.stageHeight);
-			//setChildIndex(this.text, numChildren - 1);
-			//this.text.text = output; event.data
-			var a:Dictionary = new Dictionary();
-			a["grrr"] = "aaa";
-			a["g rrr"] = "aaa";
-			a["g-rrr"] = "aaa";
-			*/
-			//Logger.send(Logger.INFO, "[onMetadata] output: " + event.data);
 			jsBridge.call("onMetadata", event.data);
 		}
 
@@ -278,11 +143,13 @@ package
 		
 		private function stop():Object 
 		{		
-			player.video.destroy();
+			Logger.send(Logger.DEBUG, "Stopping");
 			var r:Object = new Object();
 			r.success = true;
 			try {
-				player.stop();
+				// JS call to stop() actually close()s the player
+				// player.stop();
+				player.close();
 			} 
 			catch (e:Error) {
 				r.success = false;
@@ -295,14 +162,11 @@ package
 		
 		protected function onPlayerState(event:BasicEvent):void 
 		{	
-			Logger.send(Logger.DEBUG, "[Application] Player State " + event.data);
+			Logger.send(Logger.DEBUG, "[Application] Player state " + event.data);
 			
 			// Always ask for a refresh so we can scale the
 			// internal video proportionately to the stage.
 			invalidate();
-			
-			Logger.send(Logger.DEBUG, 
-				"[Player] Media Session State " + event.data);
 			
 			switch (event.data)
 			{
@@ -333,5 +197,181 @@ package
 		{
 			jsBridge.call("onLogMessage", event.type, event.data);
 		}
+		
+				
+		//
+		// Tests
+		//
+		
+
+		protected function testMJPEGHTTPSource():void
+		{	
+			// http://127.0.0.1:328/streaming?format=MJPEG&packetizer=multipart&width=400&height=300
+			player.open({
+				token: "",
+				format: "MJPEG",
+				protocol: "HTTP",
+				video: {
+					codec: "MJPEG"
+				},
+				candidates: [
+					{
+						address: "127.0.0.1:328",
+						protocol: "http",
+						uri: "/streaming?format=MJPEG&packetizer=multipart&width=400&height=300"
+					}
+				]	
+			});
+		}
+		
+		protected function testMJPEGRawSource():void
+		{	
+			// http://127.0.0.1:328/streaming?format=MJPEG&packetizer=none&width=400&height=300
+			player.open({
+				token: "",
+				format: "MJPEG",
+				protocol: "Raw",
+				video: {
+					codec: "MJPEG"
+				},
+				candidates: [
+					{
+						address: "127.0.0.1:328",
+						protocol: "http",
+						uri: "/streaming?format=MJPEG&packetizer=none&width=400&height=300"
+					}
+				]	
+			});			
+		}
+		
+		protected function testFLVSource():void
+		{	
+			// http://127.0.0.1:328/streaming?format=FLV&packetizer=none&width=400&height=300
+			player.open({
+				token: "",
+				format: "FLV", //FLV-Speex
+				protocol: "Raw", // always raw
+				video: {
+					codec: "FLV"
+				},
+				//audio: {
+				//	codec: "Speex"
+				//},
+				candidates: [{
+					//address: "127.0.0.1:8080",
+					//uri: "/big_buck_bunny.mp4" 
+					address: "127.0.0.1:328",
+					protocol: "http",
+					uri: "/streaming.flv?format=FLV&width=400&height=300" //FLV-Speex
+				}]	
+			});	
+		}
+		
+		protected function testMP3Source():void
+		{
+			var req:URLRequest = new URLRequest("http://127.0.0.1:328/streaming.mp3?format=MP3");
+			var s:Sound = new Sound();
+			s.load(req);
+			s.play();			
+		}
+		
+		protected function testSpeexSource():void
+		{
+			player.open({
+				token: "",
+				format: "Speex",
+				protocol: "Raw",
+				audio: {
+					codec: "Speex"
+				},
+				candidates: [
+					{
+						address: "127.0.0.1:328",
+						protocol: "http",
+						uri: "/streaming.spx?format=Speex"
+					}
+				]	
+			});					
+		}
+		
+		/*
+		//testTURNMediaProvider()
+		//var c:MediaConnection
+		//var s:MediaConnection = new MediaConnection("http://192.168.1.2:328/crossdomain.xml")
+		//s.play();
+		
+		protected function testFLVSource():void
+		{		
+			player.open({
+				token: "",
+				protocol: "Raw",
+				video: {
+					codec: "FLV"
+				},
+				//audio: {
+				//	codec: "Speex"
+				//	codec: "Nellymoser"
+				//	codec: "MP3"
+				//},
+				candidates: [
+					{
+						address: "127.0.0.1:328",
+						protocol: "HTTP",
+						//type: "relay",
+						uri: ""
+					}
+				]	
+			});	
+			
+			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
+			//var req:URLRequest = new URLRequest("http://127.0.0.1/enctest.mp3");
+			var s:Sound = new Sound();
+			s.load(req);
+			s.play();
+			mp3test.mp3
+			var audio:FLVElement = new FLVElement(
+				"http://127.0.0.1/vidtest.flv",
+				"Raw");
+			addChild(audio);
+			audio.play();
+		}
+		
+		protected function testTURNMediaProvider():void
+		{				
+			Logger.send(Logger.INFO, "Test TURN Media Provider");
+			
+			// Send a GET request to obtain the relayed address.
+			var request:URLRequest = new URLRequest();
+			request.url = "http://127.0.0.1:800";
+			request.method = "GET";			
+			var loader:URLLoader = new URLLoader();
+			loader.addEventListener(Event.COMPLETE, function loaderCompleteHandler(e:Event):void 
+			{
+				player.open({
+					token: "MJPEG-TURN",
+					format: "MJPEG",
+					protocol: "HTTP",
+					video: {
+						codec: "MJPEG"
+						//codec: "FLV"
+					},
+					//audio: {
+					//	codec: "Speex"
+					//	codec: "Nellymoser"
+					//	codec: "MP3"
+					//},
+					candidates: [
+						{
+							address: e.target.data, //"127.0.0.1:6781",
+							protocol: "turn", // "http"
+							type: "relay",
+							uri: ""
+						}
+					]	
+				});	
+			});
+			loader.load(request);
+		}
+		*/
 	}
 }

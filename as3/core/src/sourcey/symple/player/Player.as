@@ -86,9 +86,10 @@ package sourcey.symple.player
 			if (session.state != Session.STATE_ACTIVE)
 				throw new Error("Failed to stop invalid stream.");
 			
-			// TODO: Implement me
-			//if (video)
-			//	video.stop()
+			if (video)
+				video.stop()
+			if (audio)
+				audio.stop()
 		}
 		
 		protected function showMessage(type:String, text:String):void 

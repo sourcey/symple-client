@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 //  Symple Messenger
 //  
-Symple.Messenger = Class.extend({
+Symple.Messenger = Symple.Class.extend({
     init: function(client, options) {
         var self = this;
         this.options = $.extend({
@@ -173,11 +173,7 @@ Symple.Messenger = Class.extend({
     },
 
     messageTime: function(message) {
-        // Older browsers can't parse ISO format time
-        // return typeof(message.sent_at) == 'undefined' ? new Date() : new Date(message.sent_at)
-        
-        // Requires Date.parseISO from Sourcey.js
-        return typeof(message.sent_at) == 'undefined' ? new Date() : Date.parseISO(message.sent_at)
+        return typeof(message.sent_at) == 'undefined' ? new Date() : Symple.parseISODate(message.sent_at)
     },
 
     isScrollBottom: function(elem) {

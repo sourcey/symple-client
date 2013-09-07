@@ -11,10 +11,12 @@ form.symple-form {
 form.symple-form h3 {
 }
 form.symple-form fieldset {
-    padding: 10px; 
+    /*
+    padding: 10px;     
     background: #EEF3FA;
     border-bottom: 1px solid #ddd;
     border-right: 1px solid #ddd;
+    */
 }
 form.symple-form .hint {
     color: #666;
@@ -29,7 +31,7 @@ form.symple-form .hint:hover:after {
 }
 form.symple-form .hint,
 form.symple-form .error {
-    padding: 5px 0 15px 10px !important;
+    padding: 5px 10px 15px 10px !important;
     text-align: left;
 }
 form.symple-form .field .hint,

@@ -32,7 +32,7 @@ var server = (config.ssl.enabled ?
 var io = sio.listen(server);
 
 //
-// Configure Socket.IO
+// Socket.IO Configuration
 io.configure(function () {
 
   // Initialize the redis store
@@ -75,46 +75,9 @@ function respond(ack, status, message, data) {
   }
 }
 
-//
-// Socket.IO Manager Extensions
-//
-
-/*
-function packetSender(packet) {
-  var res = packet.match(/\"from\"[ :]+[ {]+[^}]*\"id\"[ :]+\"(.*?)\"/);
-  return res ? io.sockets.sockets[res[1]] : null;
-}
-
-onDispatchOriginal = sio.Manager.prototype.onDispatch;
-sio.Manager.prototype.onDispatch = function(room, packet, volatile, exceptions) {
-
-  // Authorise outgoing messages via the onDispatch method so unprotected
-  // data can not be published directly from Redis.
-  var sender = packetSender(packet);
-  if (sender) {
-    if (!exceptions)
-      exceptions = [sender.id]; // dont send to self
-    exceptions = exceptions.concat(sender.unauthorizedIDs());
-    //console.log("Sending a message excluding: ", exceptions, ': ', sender.unauthorizedIDs());
-    onDispatchOriginal.call(this, room, packet, volatile, exceptions)
-  }
-}
-
-onClientDispatchOriginal = sio.Manager.prototype.onClientDispatch;
-sio.Manager.prototype.onClientDispatch = function (id, packet) {
-    
-  // Ensure the recipient has sufficient permission to recieve the message
-  var sender = packetSender(packet);
-  var recipient = io.sockets.sockets[id];
-  if (sender && recipient && recipient.access >= sender) {
-      onClientDispatchOriginal.call(this, id, packet);
-  }
-}
-*/
-
 
 //
-// Socket.IO Socket Extensions
+// Socket.IO Socket extensions
 //
 
 sio.Socket.prototype.authorize = function(req, fn) {  
@@ -330,7 +293,7 @@ sio.Socket.prototype.broadcastMessage = function(message) {
 
 
 //
-// Socket.IO Server
+// Socket.IO connection handler
 //
 
 io.sockets.on('connection', function(client) {    
@@ -348,53 +311,50 @@ io.sockets.on('connection', function(client) {
 
     try {
 
-    //
-    // Authorization
-    client.authorize(req, function(status, message) {
-      //console.log('Announce Result: ', status, message);
-      clearInterval(interval);
-      //status = 400;
-      if (status == 200)
-        respond(ack, status, message, client.toPeer());
-      else {
-        respond(ack, status, message);
-        client.disconnect();
-        return;
-      }
-
       //
-      // Message
-      client.on('message', function(m, ack) {
-        //console.log(client.id + ' Received Message <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n', m);
-        if (m) {
-          if (m.type == 'presence')
-            this.toPresence(m);
-          client.broadcastMessage(m);
-          respond(ack, 200, 'Message Received');
+      // Authorization
+      client.authorize(req, function(status, message) {
+        console.log('#################### Announce Result: ', status, message);
+        clearInterval(interval);
+        if (status == 200)
+          respond(ack, status, message, client.toPeer());
+        else {
+          respond(ack, status, message);
+          client.disconnect();
+          return;
         }
-      });
 
-      //
-      // Peers
-      client.on('peers', function(ack) {
-        //console.log(client.id + ' Received Roster <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
-        respond(ack, 200, '', this.peers(false));
-      });
-
-      //
-      // Timer
-      interval = setInterval(function () {
-        // Touch the client session event 10
-        // minutes to prevent it from expiring.
-        client.touchSession(function(err, res) {
-          console.log(client.id + 'Touching session: ', !!res);
+        //
+        // Message
+        client.on('message', function(m, ack) {
+          if (m) {
+            if (m.type == 'presence')
+              this.toPresence(m);
+            client.broadcastMessage(m);
+            respond(ack, 200, 'Message Received');
+          }
         });
-      }, 10 * 60000);
 
-    });
+        //
+        // Peers
+        client.on('peers', function(ack) {
+          respond(ack, 200, '', this.peers(false));
+        });
+
+        //
+        // Timer
+        interval = setInterval(function () {
+          // Touch the client session event 10
+          // minutes to prevent it from expiring.
+          client.touchSession(function(err, res) {
+            console.log(client.id + 'Touching session: ', !!res);
+          });
+        }, 10 * 60000);
+
+      });
     }
     catch (e) {
-        console.log('Client Error: ', e);
+        console.log('Client error: ', e);
         client.disconnect();
     }
   }); 
@@ -403,7 +363,6 @@ io.sockets.on('connection', function(client) {
   // Disconnection
   client.on('disconnect', function() {
     console.log(client.id + ' is disconnecting');
-    //client.name + ' (' + client.user + ') disconected.'
     clearInterval(interval);
     if (client.online) {
       client.online = false;
@@ -418,548 +377,39 @@ io.sockets.on('connection', function(client) {
 
 
 
-//, io = sio.listen(app);
-//app.listen(config.port);
-//require('express').createServer();  
-
-
-  /*
-    //console.log(this);
-    //this.namespace.except(this.unauthorizedIDs()).clients('group-' + this.group).json.send(message);
-    //this.namespace.sockets.broadcast.to('group-' + this.group).except(this.unauthorizedIDs()).json.send(message);
-    //var clients = io.sockets.clients(this.group);
-
-    //io.sockets.socket(message.to.node).except(this.unauthorizedIDs()).json.send(message);
-
-  // broadcast to group scope
-  if (message.to.group) {
-    this.broadcast.to(message.group).except(this.unauthorizedIDs()).json.send(message);
-  }
-
-      client.join('user-' + client.user);       // join user channel
-      client.join('group-' + client.group);     // join group channel
-
-  }
-  // broadcast to group scope
-  //var scope = message.to ? message.to.split(':') : [];
-
-  // Broadcast to group scope
-  if (scope.length == 0 || 
-    (scope.length == 1 && scope[0] == this.group)) {
-    var clients = io.sockets.clients(this.group); 
-    for (i = 0; i < clients.length; i++) {
-      if (clients[i].access >= this.access &&
-        clients[i].id != this.id &&
-        clients[i] != this) {
-        console.log('Sending Message to: ' + clients[i].id);
-        console.log(message);
-        clients[i].json.send(message); 
-      }
-    }
-  }
-  
-  // Broadcast to user scope
-  else if (scope.length == 2) { // && scope[1] == this.id
-    var clients = io.sockets.clients(this.group); 
-    for (i = 0; i < clients.length; i++) {
-      if (clients[i].access >= this.access &&
-        clients[i].user == scope[1] &&
-        clients[i] != this) {
-        console.log('Sending Message to: ' + clients[i].id);
-        console.log(message);
-        clients[i].json.send(message); 
-      }
-    }
-  }  
-  
-  // Send directed message
-  else if (scope.length == 3)  { 
-    console.log('Sending Message to: ' + scope[2]);
-    console.log(message);
-    io.sockets.socket(scope[2]).json.send(message);
-  }
-  */
-   
-  
-        /*
-    console.log('BROADCAST: ', this.broadcast.to(this.group));
-  this.broadcast.to(this.group).json.send(message);
-  //this.broadcast.to        
-  */
-      
-      /*
-      //
-      // Storage
-      //
-      client.on('store:group:set', function(key, data, ack) {
-        //value, expiry, scoped
-       // if (typeof params !== 'object') {
-        //  return;
-          
-        //if (!params.data)
-        
-        //  io.store.cmd
-        //client.set('name', req.body.name, function(error, result) {
-       //     if (error) res.send('Error: ' + error);
-       //     else res.send('Saved');
-        //});        
-      });
-      
-      client.on('get', function(key, ack) {
-        // return an array of items for key
-      });
-      */   
-
-
-
-/*
-sio.Manager.prototype.generateId = function () {
-  return "aaaaaaaaaaaaaaaaaaaaaaaaaaa"; //Math.abs(Math.random() * Math.random() * Date.now() | 0).toString()
-    //+ Math.abs(Math.random() * Math.random() * Date.now() | 0).toString();
-};
-
-sio.Socket.prototype.ddd = function () {
-  return "!!!!!!!!!!!!!!!!aaaaaaaaaaaaaaaaaaaaaaaaaaa"; //Math.abs(Math.random() * Math.random() * Date.now() | 0).toString()
-    //+ Math.abs(Math.random() * Math.random() * Date.now() | 0).toString();
-};// || session.user['user'] != req.user //|| 
-      //!session.user || !session['access_level'] || 
-      //!session['group_id'] || !session['session_id']
-      
-  //client.key = req.group + ":" + req.user + ":" + req.token
-  //client.key = "*:" + req.user + ":" + req.token
-  //io.store.cmd.get(client.key, function(err, session) { //, 'session''*:' +  
-app.get('/', function(req, res) {
-  //console.log(req)
-  res.sendfile(__dirname + '/client.html');
-});
-*/
-
-/*
-  io.set('authorization', function (data, accept) {  
-      //console.log('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\');
-     console.log(data);
-      //console.log(data.query.token);
-      //console.log(data.headers.query.token);
-      
-    //client.token = req.token;    
-    io.store.cmd.get(data.query.token, function(err, session) {
-      data.session = JSON.parse(session);        
-      console.log('Authentication: Session: ' + data.session);     
-      if (err) {            
-        console.log('Authentication Error: ' + err);
-        return accept("Authentication Error", false);
-      }
-      else { 
-        console.log('Authentication Success: ' + session);
-        return accept(null, true);
-      } 
-    });      
-  });
-  */
-  
-  //io.set('authorization', function (data, accept) {  
-  //    console.log(data.headers.cookie);
-  //    if (data.headers.cookie) {
-  //        //var sessionID = "81e8b60ee3ce1fbe85fd274197ae06f1d8246c687eab9fa0d0260e626831ccac"
-  //        var sessionID = data.headers.cookie.replace(/.*session_id\=([^;]+).*/, '$1');
-  //        //if (sessionID) {
-  //            console.log('Authorizing: ' +  sessionID);  
-  //            console.log(data);
-  //            io.store.cmd.get('session:' + sessionID, function(err, obj) {
-  //              obj = JSON.parse(obj);
-  //                  
-  //                 // !obj['client_id'] || 
-  //                if (!obj || !obj['username'] || !obj['access_level'] || 
-  //                    !obj['group_id'] || !obj['session_id'] || err) {            
-  //                    console.log('Authentication Error: ' + err);
-  //                    return accept("Error", false);
-  //                }
-  //                else {
-  //                    console.log('Authentication Success: ' + obj);
-  //                    data.session = obj;
-  //                    return accept(null, true);
-  //                }                
-  //            });
-  //        //}
-  //    } else {
-  //      accept("No cookie", false);
-  //    }
-  //});
-  
-  
-
-/**
- * Transmits a packet.
- *
- * @api private
-var parser = require('socket.io/lib/parser');
-sio.Socket.prototype.packet = function (packet) {
-  if (this.flags.broadcast) {
-    this.log.debug('Broadcasting packet!!!!!!!!!!');
-    this.namespace.in(this.flags.room).except(this.id).packet(packet);
-  } else {
-    this.log.debug('Transmits packet!!!!!!!!!!');
-    packet.endpoint = this.flags.endpoint;
-    packet = parser.encodePacket(packet);
-
-    this.dispatch(packet, this.flags.volatile);
-  }
-
-  this.setFlags();
-
-  return this;
-};
- */
- 
- 
-  /*
-      
-      
-  timeout = window.setInterval(..., y);
-  setInterval(function () {
-        client.send('Waited two seconds!');
-    }, 2000);
-    */
-              
-
-      /* //'message', client, 
-        console.log(m); //'); // 
-        
-        console.log(client.id + ' Received Message 0'); //');
-        console.log(client.id + ' Received Message 1'); //');
-        console.log(client.id + ' Received Message 2'); //')
-        
-        
-      //
-      // Presence
-      //
-      client.on('presence', function(p, ack) {
-        console.log(client.id + ' Received Presence <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'); // \n', p);
-        
-        client.toPresence(p);
-        console.log(client.id + ' Received Presence <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 1111111111'); // \n', p);
-        client.broadcast('presence', p);
-        
-        respond(ack, 200, "Presence Received");
-      }); 
-
-      //
-      // Command
-      //
-      client.on('command', function(c, ack) {
-        console.log(client.id + ' Received Command <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'); // \n', p);
-        
-        client.broadcast('command', c);
-         
-        respond(ack, 200, "Command Received");
-      });
-      */
-        
-        //console.log(client);        
-        // Add some manditory fields
-        //if (p['data'] === undefined)
-        //  p['data'] = {};
-        //p['data'] = client.toPresence();        
-        // TODO: Check valid presence
-        // Set the presence data on our redis session
-        //client.updateSession('presence', JSON.stringify(p['user']));
-        
-
-/*
-// build a map of all keys and their types
-client.keys("*", function (err, all_keys) {
-    var key_types = {};
-    
-    all_keys.forEach(function (key, pos) { // use second arg of forEach to get pos
-        client.type(key, function (err, type) {
-            key_types[key] = type;
-            if (pos === all_keys.length - 1) { // callbacks all run in order
-                print_results(key_types);
-            }
-        });
-    });
-});
-sio.Socket.prototype.updateSession = function(key, value, fn) {
-  if (!fn)
-    fn = function(){}
-  this.session[key] = value;
-  io.store.cmd.set(this.token, this.session, fn);
-};
-*/
- 
-        
-    
-    /*
-    //var id = message.to;
-    //id = id.substring(id.indexOf(":") + 1 , id.length);
-        //res.push(clients[i]);
-    var clients = this.authorizedClients(); 
-    for (i = 0; i < clients.length; i++) {
-      if (this.id == clients[i].id)
-        continue;
-      console.log('Sending Message to: ' + clients[i].id);
-      console.log(message);
-    }
-    */
-    
-        //
-        // Other events are bound within authorized scope
-        //  
-/*
-//function authorize(client, req, fn) {  
-  //client.redisKey = req.user + ':sessions:' + req.token;req.user + ":" + 
-  //client.redisKey = req.token;
-*/
-      
-        // Await presence... 
-    
-        //console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ authorize: ');
-        //console.log(client);
-    
-        //client.broadcast.to(client.group).json.send(client.name + ' (' + client.user + ') has connected.');        
-        // TODO: Set timer to touch session periodically while connected
-        //setInterval(function () {
-        //  socket.volatile.send("it's: " + new Date);
-        //}, 500);
-        
-    
-      
-  
-    /*
-    */
-    
-    
-        
-        /*
-        if (ack) {
-          console.log(client.id + ' Responding Authorize: ' + JSON.stringify(req));
-          console.log(client.id + ' Responding Authorize: ------------');
-          
-    //console.log(isfunc(ack));
-   // console.log(isfunc(req));
-    //console.log(isfunc(authorize));
-    //console.log(ack);
-          ack({ res: "Welcome " + client.name });
-          }
-          */
-  
-  //client.broadcast.volatile.json.send({'foo':'bar'});
-  //client.volatile.broadcast.emit('ping', 'pong');
-  //client.json.broadcast.send([{foo:'bar'}, {'ping': 12}]);
-    
-      /*
-        if (ack) {
-          console.log(client.id + ' Responding Authorize: ' + JSON.stringify(req));
-          console.log(client.id + ' Responding Authorize: ------------');
-       // console.log(isfunc(ack));
-        //console.log(isfunc(req));
-        //console.log(isfunc(authorize));
-        //console.log(ack);
-          ack({ res: err }); //err);
-          }
-          id: clients[i].id,
-          name: clients[i].name,
-          user: clients[i].user,
-          type: clients[i].type,
-          address: clients[i].handshake.address.address
-          
-      var event = 'presence'
-      
-      buffer.push(p);
-      if (buffer.length > 15) {
-          buffer.shift();
-      }
-  
-      //var out = {
-      //}
-    */
-
-      
-      /*
-      // Check valid format
-      // Broadcast messages to clients with sufficient permissions
-      if (!message.to || message.to == client.group)  {
-        var clients = client.authorizedClients(client); 
-        for (i = 0; i < clients.length; i++) {
-            clients[i].send(message);
-        }
-      }
-      
-      // Send directed message
-      else {
-        io.sockets.socket(message.to).send(message);
-        //client.broadcast.to(client.group).json.send(message);  
-        //clients[i].send(message);
-      }
-      */
-
-
-/*
 //
+// Socket.IO Manager extensions
 //
-//
-Message = module.exports = function(hash) {
-  for (var key in hash) this[key] = hash[key];
-};
 
-Message.fromJSON = function(json) {
-  return (new this(JSON.parse(json)))
-};
-
-Message.prototype.toJSON = function() {
-  var object = {};
-  for (var key in this) {
-    if (typeof this[key] != "function")
-      object[key] = this[key];
-  }
-  return (JSON.stringify(object));
-};
-
-Message.valid = function() {
-  return this['to'] != undefined
-    &&  this['type'] != undefined;
-};
-//var buffer = [];
-*/
-    //io.sockets.socket(message.to).send(message);
-    //client.broadcast.to(client.group).json.send(message);  
-    //clients[i].send(message);
-
-                /*
-                console.log(obj['username']);
-                console.log(obj['group_id']);
-                console.log(obj['session_id']);
-                console.log(obj);
-                console.log('Authorizing: --------------------- '); 
-                */
 /*
-              //accept(null, true);
-      //callback(null, true);
-      // TODO: Currently if the session exists it is good
-      // enough for authentication.      
-      //return accept(null, true);    
-      //sid = "79df0fe289d33d755e0301fd46c9976b163bcd390803eb799e6383fe113deb22";    
-          //var groupID = "4" //data.headers.cookie.replace(/.*_anionu_group\=([^;]+)., '$1'); && groupID
-          
-          
-                  //console.log('Authentication ################################################');
-                  //console.log(obj);
-                  //console.log('Authentication ++++++++++++++++++++++++++++++++++++++++++++++++');
-                  
-                  //obj.replace(/._anionu_group\=([^;]+)./, '$1'); 
-                  //group_id?; FI"?4?;
-                     
-    // check if there's a cookie header
-    if (data.headers.cookie) {
-        // if there is, parse the cookie
-        data.cookie = parseCookie(data.headers.cookie);
-        // note that you will need to use the same key to grad the
-        // session id, as you specified in the Express setup.
-        data.sessionID = data.cookie['express.sid'];
-    } else {
-       // if there isn't, turn down the connection with a message
-       // and leave the function.
-       return accept('No cookie transmitted.', false);
-    }
-    // accept the incoming connection
-    accept(null, true);
-    */
-      
-      //if (data.sid) {
-      
-   //     io.store.cmd.get('session:' + sessionID, function(err, obj) {
-   //         .disconnect() 
-              //        var sessionID = data.headers.cookie.replace(/.*session_id\=([^;]+).*/, '$1');
-    //        //if (sessionID) {
-    //            console.log('Authorizing: ' +  sessionID);  
-    //            console.log(data);
-    //            io.store.cmd.get('session:' + sessionID, function(err, obj) {
-    //              obj = JSON.parse(obj);
-    //                  
-    //                 // !obj['client_id'] || 
-    //                if (!obj || !obj['username'] || !obj['access_level'] || 
-    //                    !obj['group_id'] || !obj['session_id'] || err) {            
-    //                    console.log('Authentication Error: ' + err);
-    //                    return accept("Error", false);
-    //                }
-    //                else {
-    //                    console.log('Authentication Success: ' + obj);
-    //                    data.session = obj;
-    //                    return accept(null, true);
-    //                }                
-    //            });
-    //        //}
-    //  }  
-        
+function packetSender(packet) {
+  var res = packet.match(/\"from\"[ :]+[ {]+[^}]*\"id\"[ :]+\"(.*?)\"/);
+  return res ? io.sockets.sockets[res[1]] : null;
+}
 
-    //client.user = client.handshake.session['username'];
-    //client.group = client.handshake.session['group_id'];
-    //client.access = client.handshake.session['access_level'];
-    //client.userID = client.id;
-    //client.userName = "unset"; // the name specified for this node
-    
-    //console.log('A socket with session ID ' + client.id + ' connected!');  
-          
-          /*
-          var msg = message; //{ message: [client.sessionId, message] };
-          buffer.push(msg);
-          if (buffer.length > 15)
-              buffer.shift();
-          //io.sockets.socket(sess_id).send('my message')
-          client.broadcast.to(group).json.send(msg);   
-          */     
-          //var clients = io.sockets.clients();// all users from room `room`
-          //console.log(io.sockets.in(group));
-          //console.log(clients);
-          //console.log(clients1);
-                /*
-                console.log('CLIENT ---------------------------------------');
-                console.log(clients1[i].handshake);
-                console.log(clients1[i].username);
-                console.log(clients1[i].group);
-                */
-   
-    //var cookie = client.handshake.session['session_id'];
-    //var io.sockets.socket(sess_id).send('my message')
-        
-    //if (ack) 
-     //   ack({ msg: "Hello " + data.name, group: group, sid: client.handshake.sid });
-            
-    //client.group = data.group;, data: data
-    //var cookie = ""; //"31fec9d24829b2163c1d3b37695f48b68c38940bc01e78f7620c2f772e24b6e5";
-    //var session = "";
-     // console.log(client.handshake.headers); 
-    // handshake still available
-    // console.log(client.handshake.foo == true); // writes `true`
-    // console.log(client.handshake.address.address); // writes 127.0.0.1
+onDispatchOriginal = sio.Manager.prototype.onDispatch;
+sio.Manager.prototype.onDispatch = function(room, packet, volatile, exceptions) {
 
-  /*
-    //var name = "";
-    //var groupID = client.handshake.groupID;
-    //var sessionID = client.handshake.sessionID;
+  // Authorise outgoing messages via the onDispatch method so unprotected
+  // data can not be published directly from Redis.
+  var sender = packetSender(packet);
+  if (sender) {
+    if (!exceptions)
+      exceptions = [sender.id]; // dont send to self
+    exceptions = exceptions.concat(sender.unauthorizedIDs());
+    //console.log("Sending a message excluding: ", exceptions, ': ', sender.unauthorizedIDs());
+    onDispatchOriginal.call(this, room, packet, volatile, exceptions)
+  }
+}
+
+onClientDispatchOriginal = sio.Manager.prototype.onClientDispatch;
+sio.Manager.prototype.onClientDispatch = function (id, packet) {
     
-    client.on("announce", function(data, ack) { 
-        
-        username = data.username;
-        name = data.name;
-        group = data.group;
-        
-        console.log(username + ' connected to ' + group);
-        
-        if (ack) 
-            ack({ msg: "Hello " + data.name, group: group, sid: client.handshake.sid });
-            
-        client.join(group);
-        client.broadcast.to(group).json.send({ msg: data.name + " has connected.", data: data });    
-    });
-    
-    client.on("xmpp", function(data, ack){
-        console.log('Received XMPP: ' + data);
-        console.log('XMPP Callback: ' + ack);
-        
-        client.broadcast.to(group).json.send(msg);        
-        
-        //if (ack)
-        //    ack({ msg: "Goddit" });
-    });
-    */
+  // Ensure the recipient has sufficient permission to recieve the message
+  var sender = packetSender(packet);
+  var recipient = io.sockets.sockets[id];
+  if (sender && recipient && recipient.access >= sender) {
+      onClientDispatchOriginal.call(this, id, packet);
+  }
+}
+*/

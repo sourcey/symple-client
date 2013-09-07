@@ -5,6 +5,7 @@ var JFlashBridge = {
     items: {},
 
     bind: function(id, klass) {
+        console.log('JFlashBridge: Bind: ', id, klass);
         this.items[id] = klass;
     },
 
@@ -14,21 +15,16 @@ var JFlashBridge = {
 
     call: function() {
         //console.log('JFlashBridge: Call: ', arguments);
-        try {
-            var klass = this.items[arguments[0]];
-            if (klass) {
-                var method = klass[arguments[1]];
-                if (method)
-                    method.apply(klass, Array.prototype.slice.call(arguments, 2));
-                else
-                    console.log('JFlashBridge: No method: ', arguments[1]);
-            }
+        var klass = this.items[arguments[0]];
+        if (klass) {
+            var method = klass[arguments[1]];
+            if (method)
+                method.apply(klass, Array.prototype.slice.call(arguments, 2));
             else
-                console.log('JFlashBridge: No binding: ', arguments);
+                console.log('JFlashBridge: No method: ', arguments[1]);
         }
-        catch (e) {
-            console.log('JFlashBridge Error: ', e);
-        }
+        else
+            console.log('JFlashBridge: No binding: ', arguments);
     },
 
     getSWF: function(movieName) {
@@ -42,27 +38,40 @@ var JFlashBridge = {
 // -----------------------------------------------------------------------------
 // Flash Engine
 //
+Symple.Media.registerEngine({
+    id: 'Flash',
+    name: 'Flash Player',
+    // FLV-Speex is also an option, but currently omitted because of 
+    // different flash player versions with inconsistent playback.
+    formats: 'MJPEG, FLV, Speex', 
+    preference: 40,
+    support: (function() {
+        return true;
+    })()
+});
+
 Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     init: function(player) {
-        console.log("Symple Flash Player: Init");
+        console.log("SympleFlashEngine: Init");
         this._super(player);
         this.initialized = false;
-        this.playOnInit = false;
-        this.id = "symple-player-" + Symple.randomString(6)
+        this.streamOnInit = false;
+        this.id = "symple-player-" + Symple.randomString(6);
     },
 
-    setup: function(/*fn*/) {
-        console.log("Symple Flash Player: Create");
+    setup: function() {
+        console.log("SympleFlashEngine: Create");
         this.initialized = false;
-        //this.initFn = fn;
         this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
         
-        // TODO: Implement JFlashBridge locally
         JFlashBridge.bind(this.id, this);
         
-        // swfobject.embedSWF(swfUrl, id, width, height, version, expressInstallSwfurl, flashvars, params, attributes, callbackFn)
-        swfobject.embedSWF(this.player.options.htmlRoot + '/symple.player.swf', this.id,
-            this.player.options.screenWidth, this.player.options.screenHeight, '10.0.0',
+        //console.log("SympleFlashEngine: SWF:", this.id, this.player.options.htmlRoot + '/symple.player.swf');
+        swfobject.embedSWF(
+            this.player.options.swf ? 
+                this.player.options.swf : 
+                this.player.options.htmlRoot + '/symple.player.swf', 
+            this.id, '100%', '100%', '10.0.0',
             this.player.options.htmlRoot + '/playerProductInstall.swf', {
                 //debug: true,
             }, {
@@ -83,19 +92,23 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         });      
     },
 
-    play: function(params) {
-        console.log("Symple Flash Player: Play", params);
+    play: function(params) {        
         this.params = params; // if params
+        //this._super(params); // fix flash open() params
+        console.log("SympleFlashEngine: Play", params);
         if (this.initialized) {
+            console.log("SympleFlashEngine: Opening", params);
             this.swf().open(params); //this.player.options.params
             //this.setState('playing'); // TODO: Flash callback set state
         }
-        else
-            this.playOnInit = true;
+        else {            
+            console.log("SympleFlashEngine: Waiting for SWF");
+            this.streamOnInit = true;
+        }
     },
 
     stop: function() {
-        console.log("Symple Flash Player: Stop");
+        console.log("SympleFlashEngine: Stop");
         if (this.initialized) {
             this.swf().stop();
             this.setState('stopped'); // No need to wait for callback
@@ -107,12 +120,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     isJSReady: function() {
-        //console.log("Symple Flash Player: JavaScript Ready: " + $.isReady);
+        console.log("SympleFlashEngine: JavaScript Ready: " + $.isReady);
         return $.isReady;
     },
 
     refresh: function() {
-        console.log("Symple Flash Player: Refresh");
+        console.log("SympleFlashEngine: Refresh");
         try {
           if (this.initialized)
             this.swf().refresh();
@@ -120,23 +133,23 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
         
     onSWFLoaded: function() {
-        console.log("Symple Flash Player: Loaded");
+        console.log("SympleFlashEngine: Loaded");
         this.initialized = true;
         //if (this.initFn)
         //    this.initFn(true);
-        if (this.playOnInit)
+        if (this.streamOnInit)
             this.play(this.params);
     },
 
     onPlayerState: function(state, error) {
-        console.log("Symple Flash Player: State: ", state, error);
+        console.log("SympleFlashEngine: State: ", state.toLowerCase(), error, this.player.state);
         // None, Loading, Playing, Paused, Stopped, Error
         if (state != 'None')
-            this.setState(state.lowercase(), error);
+            this.setState(state.toLowerCase(), error);
     },
 
     onMetadata: function(data) {
-        //console.log("Symple Flash Player: Metadata: ", data);
+        //console.log("SympleFlashEngine: Metadata: ", data);
         if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {
@@ -150,6 +163,6 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onLogMessage: function(type, text) {
-        console.log('Symple Flash Player: ' + type + ': ' + text);
+        console.log('SympleFlashEngine: ' + type + ': ' + text);
     }
 });

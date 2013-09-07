@@ -1,3 +1,7 @@
+// -----------------------------------------------------------------------------
+// HTML5 video streaming server
+//  - Uses WebSockets, C++, Node.js and HTML5 JavaScript
+//
 var Symple = {
 
     // Return an array of nested objects matching
@@ -91,7 +95,7 @@ var Symple = {
         return l;
     },
     
-    // Run a vendor prefix method from W3C standard method.
+    // Run a vendor prefixed method from W3C standard method.
     runVendorMethod: function(obj, method) {      
         var p = 0, m, t, pfx = ["webkit", "moz", "ms", "o", ""];
         while (p < pfx.length && !obj[m]) {
@@ -107,6 +111,62 @@ var Symple = {
             }
             p++;
         }
+    },
+    
+    //
+    // Date parseing for ISO 8601
+    // Based on https://github.com/csnover/js-iso8601
+    //
+    // Parses dates like:
+    // 2001-02-03T04:05:06.007+06:30
+    // 2001-02-03T04:05:06.007Z
+    // 2001-02-03T04:05:06Z
+    //
+    parseISODate: function (date) { // (String)
+        
+        // ISO8601 dates were introduced with ECMAScript v5, 
+        // try to parse it natively first...
+        var timestamp = Date.parse(date)
+        if (isNaN(timestamp)) {
+            var struct,
+                minutesOffset = 0,
+                numericKeys = [ 1, 4, 5, 6, 7, 10, 11 ];
+
+            // ES5 §15.9.4.2 states that the string should attempt to be parsed as a Date
+            // Time String Format string before falling back to any implementation-specific
+            // date parsing, so that's what we do, even if native implementations could be faster
+            //
+            //              1 YYYY                2 MM       3 DD           4 HH    5 mm       6 ss        7 msec        8 Z 9 ±    10 tzHH    11 tzmm
+            if ((struct = /^(\d{4}|[+\-]\d{6})(?:-(\d{2})(?:-(\d{2}))?)?(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{3}))?)?(?:(Z)|([+\-])(\d{2})(?::(\d{2}))?)?)?$/.exec(date))) {
+                // Avoid NaN timestamps caused by "undefined" values being passed to Date.UTC
+                for (var i = 0, k; (k = numericKeys[i]); ++i)
+                    struct[k] = +struct[k] || 0;
+
+                // Allow undefined days and months
+                struct[2] = (+struct[2] || 1) - 1;
+                struct[3] = +struct[3] || 1;
+
+                if (struct[8] !== 'Z' && struct[9] !== undefined) {
+                    minutesOffset = struct[10] * 60 + struct[11];
+                    if (struct[9] === '+')
+                        minutesOffset = 0 - minutesOffset;
+                }
+
+                timestamp = Date.UTC(struct[1], struct[2], struct[3], struct[4], struct[5] + minutesOffset, struct[6], struct[7]);
+            }
+        }
+
+        return new Date(timestamp);
+    },
+    
+    isMobileDevice: function() {
+        return 'ontouchstart' in document.documentElement;
+    },    
+    
+    // Returns the current iOS version, or false if not iOS
+    iOSVersion: function(l, r) {
+        return parseFloat(('' + (/CPU.*OS ([0-9_]{1,5})|(CPU like).*AppleWebKit.*Mobile/i.exec(navigator.userAgent) || [0,''])[1])
+            .replace('undefined', '3_2').replace('_', '.').replace('_', '')) || false;
     },
     
     // Match the object properties of l with r
@@ -129,72 +189,113 @@ var Symple = {
 // OOP Base Class
 // Simple JavaScript Inheritance By John Resig
 //    
-(function(Symple){
-  var initializing = false, fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
- 
-  // The base Class implementation (does nothing)
-  Symple.Class = function(){};
- 
-  // Create a new Class that inherits from this class
-  Symple.Class.extend = function(prop) {
-    var _super = this.prototype;
+(function(Symple) {
+    var initializing = false, 
+        fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
    
-    // Instantiate a base class (but only create the instance,
-    // don't run the init constructor)
-    initializing = true;
-    var prototype = new this();
-    initializing = false;
+    // The base Class implementation (does nothing)
+    Symple.Class = function(){};
    
-    // Copy the properties over onto the new prototype
-    for (var name in prop) {
-      // Check if we're overwriting an existing function
-      prototype[name] = typeof prop[name] == "function" &&
-        typeof _super[name] == "function" && fnTest.test(prop[name]) ?
-        (function(name, fn){
-          return function() {
-            var tmp = this._super;
-           
-            // Add a new ._super() method that is the same method
-            // but on the super-class
-            this._super = _super[name];
-           
-            // The method only need to be bound temporarily, so we
-            // remove it when we're done executing
-            var ret = fn.apply(this, arguments);        
-            this._super = tmp;
-           
-            return ret;
-          };
-        })(name, prop[name]) :
-        prop[name];
-    }
-   
-    // The dummy class constructor
-    function Class() {
-      // All construction is actually done in the init method
-      if ( !initializing && this.init )
-        this.init.apply(this, arguments);
-    }
-   
-    // Populate our constructed prototype object
-    Class.prototype = prototype;
-   
-    // Enforce the constructor to be what we expect
-    Class.prototype.constructor = Class;
- 
-    // And make this class extendable
-    Class.extend = arguments.callee;
-   
-    return Class;
-  };
+    // Create a new Class that inherits from this class
+    Symple.Class.extend = function(prop) {
+        var _super = this.prototype;
+       
+        // Instantiate a base class (but only create the instance,
+        // don't run the init constructor)
+        initializing = true;
+        var prototype = new this();
+        initializing = false;
+       
+        // Copy the properties over onto the new prototype
+        for (var name in prop) {
+            // Check if we're overwriting an existing function
+            prototype[name] = typeof prop[name] == "function" &&
+                typeof _super[name] == "function" && fnTest.test(prop[name]) ?
+                (function(name, fn){
+                    return function() {
+                        var tmp = this._super;
+                       
+                        // Add a new ._super() method that is the same method
+                        // but on the super-class
+                        this._super = _super[name];
+                       
+                        // The method only need to be bound temporarily, so we
+                        // remove it when we're done executing
+                        var ret = fn.apply(this, arguments);        
+                        this._super = tmp;
+                       
+                        return ret;
+                    };
+                })(name, prop[name]) :
+                prop[name];
+        }
+       
+        // The dummy class constructor
+        function Class() {
+          // All construction is actually done in the init method
+          if (!initializing && this.init)
+            this.init.apply(this, arguments);
+        }
+       
+        // Populate our constructed prototype object
+        Class.prototype = prototype;
+       
+        // Enforce the constructor to be what we expect
+        Class.prototype.constructor = Class;
+     
+        // And make this class extendable
+        Class.extend = arguments.callee;
+       
+        return Class;
+    };
 })(Symple);
+
+
+// -----------------------------------------------------------------------------
+// Dispatcher
+//
+Symple.Dispatcher = Symple.Class.extend({
+    init: function() {      
+        this.listeners = {};
+    },
+    
+    on: function(event, fn) {
+        if (typeof this.listeners[event] == 'undefined')
+            this.listeners[event] = [];
+        if (typeof fn != 'undefined' && fn.constructor == Function)
+            this.listeners[event].push(fn);
+    },
+
+    clear: function(event, fn) {
+        if (typeof this.listeners[event] != 'undefined') {
+            for (var i = 0; i < this.listeners[event].length; i++) {
+                if (this.listeners[event][i] == fn) {
+                    this.listeners[event].splice(i, 1);
+                }
+            }
+        }
+    },
+
+    dispatch: function() {
+        //console.log('Dispatching: ', arguments);
+        var event = arguments[0];
+        var args = Array.prototype.slice.call(arguments, 1);
+        if (typeof this.listeners[event] != 'undefined') {
+            for (var i = 0; i < this.listeners[event].length; i++) {
+                //console.log('Dispatching: Function: ', this.listeners[event][i]);
+                if (this.listeners[event][i].constructor == Function)
+                    this.listeners[event][i].apply(this, args);
+            }
+        }
+    }
+});
 
 
 // -----------------------------------------------------------------------------
 // Manager
 //
 Symple.Manager = Symple.Class.extend({
-    init: function() {    
+    init: function(options) {    
         this.options = options || {};
         this.key = this.options.key || 'id';
         this.store = [];
@@ -246,45 +347,5 @@ Symple.Manager = Symple.Class.extend({
 
     size: function() {
         return this.store.length;
-    }
-});
-
-
-// -----------------------------------------------------------------------------
-// Dispatcher
-//
-Symple.Dispatcher = Symple.Class.extend({
-    init: function() {      
-        this.listeners = {};
-    },
-    
-    on: function(event, fn) {
-        if (typeof this.listeners[event] == 'undefined')
-            this.listeners[event] = [];
-        if (typeof fn != 'undefined' && fn.constructor == Function)
-            this.listeners[event].push(fn);
-    },
-
-    clear: function(event, fn) {
-        if (typeof this.listeners[event] != 'undefined') {
-            for (var i = 0; i < this.listeners[event].length; i++) {
-                if (this.listeners[event][i] == fn) {
-                    this.listeners[event].splice(i, 1);
-                }
-            }
-        }
-    },
-
-    dispatch: function() {
-        //console.log('Dispatching: ', arguments);
-        var event = arguments[0];
-        var args = Array.prototype.slice.call(arguments, 1);
-        if (typeof this.listeners[event] != 'undefined') {
-            for (var i = 0; i < this.listeners[event].length; i++) {
-                //console.log('Dispatching: Function: ', this.listeners[event][i]);
-                if (this.listeners[event][i].constructor == Function)
-                    this.listeners[event][i].apply(this, args);
-            }
-        }
     }
 });

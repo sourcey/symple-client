@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // Symple Client
 //
-Symple.Client = Symple.Class.extend({
+Symple.Client = Symple.Dispatcher.extend({
     init: function(peer, options) {
         console.log('Symple Client: Creating: ', peer, options);
         this.peer = peer;
@@ -14,8 +14,6 @@ Symple.Client = Symple.Class.extend({
         this.roster = new Symple.Roster(this);
         this.socket = null;
     },
-    
-    includes: Mesh.Mixin.Dispatcher,
 
     // Connects and authenticates on the server.
     // If the server is down the 'error' event will fire.
@@ -260,7 +258,7 @@ Symple.Client = Symple.Class.extend({
 // -----------------------------------------------------------------------------
 // Symple Roster
 //
-Symple.Roster = Manager.extend({
+Symple.Roster = Symple.Manager.extend({
     init: function(client) {
         console.log('Symple Roster: Creating');
         this._super();
