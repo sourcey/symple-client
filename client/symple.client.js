@@ -195,7 +195,7 @@ Symple.Client = Symple.Dispatcher.extend({
 
     // Sets the client to an error state and and dispatches an error event
     setError: function(error, message) {
-        console.log('Symple Client: Client Error: ', error, message);
+        console.log('Symple Client: Client error: ', error, message);
         //if (this.error == error)
         //    return;
         //this.error = error;
@@ -216,13 +216,13 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     clear: function(event, fn) {
-        console.log('Symple Client: Clearing Callback: ', event);
+        console.log('Symple Client: Clearing callback: ', event);
         if (typeof this.listeners[event] != 'undefined') {
             for (var i = 0; i < this.listeners[event].length; i++) {
-                if (this.listeners[event][i] == fn ||
+                if (this.listeners[event][i].fn === fn &&
                     String(this.listeners[event][i].fn) == String(fn)) {
                     this.listeners[event].splice(i, 1);
-                    console.log('Symple Client: Clearing Callback: OK: ', event);
+                    console.log('Symple Client: Clearing callback: OK: ', event);
                 }
             }
         }
@@ -231,8 +231,9 @@ Symple.Client = Symple.Dispatcher.extend({
     doDispatch: function() {
         // Modified dispatch function response callbacks first.
         // If a match is found event propagation will be terminated.
-        if (!this.dispatchResponse.apply(this, arguments))
+        if (!this.dispatchResponse.apply(this, arguments)) {
             this.dispatch.apply(this, arguments);
+        }
     },
 
     dispatchResponse: function() {
@@ -244,8 +245,9 @@ Symple.Client = Symple.Dispatcher.extend({
                     this.listeners[event][i].filters != 'undefined' &&
                     Symple.match(this.listeners[event][i].filters, data[0])) {
                     this.listeners[event][i].fn.apply(this, data);
-                    if (this.listeners[event][i].after != 'undefined')
-                        this.listeners[event][i].after.apply(this, data);                    
+                    if (this.listeners[event][i].after != 'undefined') {
+                        this.listeners[event][i].after.apply(this, data);   
+                    }                 
                     return true;
                 }
             }

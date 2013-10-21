@@ -142,10 +142,13 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onPlayerState: function(state, error) {
-        console.log("SympleFlashEngine: State: ", state.toLowerCase(), error, this.player.state);
         // None, Loading, Playing, Paused, Stopped, Error
-        if (state != 'None')
-            this.setState(state.toLowerCase(), error);
+        state = state.toLowerCase();
+        if (state == 'error' && (!error || error.length == 0))
+            error = "Streaming connection to host was lost"
+        console.log("SympleFlashEngine: On state: ", state, error, this.player.state);
+        if (state != 'none')
+            this.setState(state, error);
     },
 
     onMetadata: function(data) {

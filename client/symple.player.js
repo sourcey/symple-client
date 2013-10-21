@@ -256,7 +256,7 @@ Symple.Player = Symple.Class.extend({
         console.log('Symple Player: Display Message:', type, message)
         if (message) {
             console.log('Symple Player: Display Message:', message)
-            this.message.html('<p class="' + type + '">' + message + '</p>').show();
+            this.message.html('<p class="' + type + '-message">' + message + '</p>').show();
         }
         else {
             console.log('Symple Player: Hiding Message')

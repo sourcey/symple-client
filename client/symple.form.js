@@ -561,13 +561,18 @@ Symple.FormBuilder.prototype = {
                     break;
                 default: return null;
             }
-
+            
             var fel = el.parents('.field:first');
             if (field.error) {
-              console.log('Form Builder: Updating Field HTML: Error Field:', fel.html())
                 fel.find('.error').text(field.error).show();
             } else
                 fel.find('.error').hide();
+            /*
+              console.log('Form Builder: Updating Field HTML: Error Field:', fel.html())
+            // afterBuild will show/hide errors
+            var fel = el.parents('.field:first');
+            fel.find('.error').text(field.error ? field.error : '');
+                */
             fel.find('.loading').remove(); // for live fields, not built in yet
         }
 
@@ -602,6 +607,7 @@ Symple.FormBuilder.prototype = {
                 else {
                     for (var di = 0; di < destination.elements.length; di++) {
                         if (destination.elements[di].id == source.elements[si].id) {
+                            console.log('Form Builder: mergeFormElements:', destination.elements[di], source.elements[si]);
                             destination.elements[di] = source.elements[si];
                         }
                     }
