@@ -13,12 +13,14 @@
 	{
 		public var _url:URL;
 		public var _parser:Parser;
+		public var _request:String;
 		public var _paused:Boolean = false;
 			
 		public function MediaConnection(url:String, parser:Parser = null)
 		{			
 			_url = new URL(url);
 			_parser = parser;
+			_request = "GET " + _url.pathAndQuery + " HTTP/1.1\r\n\r\n";
 			
 			super(); //_url.host, _url.port
 		}
@@ -54,17 +56,17 @@
 		
        	public function sendInitHeader():void 
 		{
-    		var request:String = "GET " + _url.pathAndQuery + " HTTP/1.1\r\n\r\n"
-			Logger.send(Logger.DEBUG, "[MediaConnection] Sending Request: " + request);
-			super.sendUTF(request);
+    		//var request:String = "GET " + _url.pathAndQuery + " HTTP/1.1\r\n\r\n"
+			Logger.send(Logger.DEBUG, "[MediaConnection] Sending request: " + _request);
+			super.sendUTF(_request);
         }
 		
 		override protected function onConnect(event:Event):void 
 		{			
 			Logger.send(Logger.DEBUG, "[MediaConnection] Connected: " + _url.protocol);
-			if (_url.protocol.toLowerCase() == "http")
-				sendInitHeader();
-			super.onConnect(event);				
+			super.onConnect(event);	
+			if (_request.length && _url.protocol.toLowerCase() == "http")
+				sendInitHeader();			
         }
 			
 		override protected function onData(data:IDataInput):void 

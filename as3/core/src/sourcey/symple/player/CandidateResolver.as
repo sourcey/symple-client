@@ -28,6 +28,7 @@ package sourcey.symple.player
 			
 			candidate.url = (candidate.protocol + '://' + candidate.address + candidate.uri);
 			candidate.connection = new MediaConnection(candidate.url);
+			candidate.connection._request = ""; // Send no data!
 			candidate.connection.addEventListener(StatefulSocket.STATE_CHANGED, onConnectionState);
 			candidate.connection.play();
 			candidate.time = new Date().getTime();
@@ -69,7 +70,7 @@ package sourcey.symple.player
 		
 		protected function onConnectionState(event:DataEvent):void 
 		{		
-			Logger.send(Logger.DEBUG, "[CandidateResolver] Connection state changed to '" + event.data + "'");
+			Logger.send(Logger.DEBUG, "[CandidateResolver] Connection state changed: " + event.data);
 			var connection:MediaConnection = event.currentTarget as MediaConnection;
 			if (connection.state == StatefulSocket.STATE_CONNECTING)
 				return;
@@ -93,7 +94,7 @@ package sourcey.symple.player
 				Logger.send(Logger.DEBUG, "[CandidateResolver] Error: Bad candidate state");
 			
 			if (gatheringComplete) {
-				Logger.send(Logger.DEBUG, "[CandidateResolver] Gathering Complete");
+				Logger.send(Logger.DEBUG, "[CandidateResolver] Gathering complete");
 				dispatchEvent(new CandidateEvent(CandidateEvent.GATHERING_COMPLETE, bestCandidate));	
 			}
 		}		

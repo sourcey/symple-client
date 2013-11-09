@@ -79,7 +79,7 @@ package
 		
 		private function onResize(event:Event):void 
 		{
-			Logger.send(Logger.DEBUG, "Stage Resized");
+			Logger.send(Logger.DEBUG, "Stage resized");
 			
 			invalidate();
 			//Logger.send(Logger.DEBUG, "Resizing: " + stage.stageWidth + "x" + stage.stageHeight);
@@ -102,7 +102,7 @@ package
 			catch (e:Error) {		
 				r.success = false;
 				r.message = e.toString();
-				Logger.send(Logger.DEBUG, "Load Failed: " + e.toString());
+				Logger.send(Logger.DEBUG, "Load failed: " + e.toString());
 			}
 			
 			return r;
@@ -118,7 +118,7 @@ package
 			catch (e:Error) {		
 				r.success = false;
 				r.message = e.toString();
-				Logger.send(Logger.DEBUG, "Load Failed: " + e.toString());
+				Logger.send(Logger.DEBUG, "Load failed: " + e.toString());
 			}
 			
 			return r;			

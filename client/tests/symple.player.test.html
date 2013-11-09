@@ -88,8 +88,7 @@
         <h1>Test Notes</h1>
         <p>A quick test to instantiate a Symple player for each streaming engine using a range of media formats, and also to test the Symple C++ MediaServer. The MediaServer sample is part of the Symple C++ module distribured with <a href="http://sourcey/projects/libsourcey">LibSourcey</a>.</p>
       </div>
-    
-      <!--
+      
       <div id="relayed-engine">
         <h1>Relayed MJPEG Engine</h1>
         <p class="player-engine">Player Engine: <span>None</span></p>
@@ -102,30 +101,54 @@
           var params = $.extend({}, Symple.DEFAULTS);
           params.packetizer = 'multipart'; // for native MJPEG stream
           params.address.uri = '/relay'
-          $.get(Symple.Media.buildURL(params), function(data) {
-              $('#relayed-engine .relayed-address span').text(data)
+          $.get(Symple.Media.buildURL(params), function(relayedAddr) {
+              $('#relayed-engine .relayed-address span').text(relayedAddr)
               
               // Relayed MJPEG Player
+              //var player = new Symple.Player({
+              //    element:        '#relayed-engine .video-player',
+              //    
+              //    // Just specify a format, the optimal streaming engine  
+              //    // will be selected based on preference and compatability.
+              //    format:         'MJPEG',
+              //    onStateChange:  function(player, state) {
+              //        $('#relayed-engine .player-engine span').text(Symple.Media.engines[player.options.engine].name)
+              //        $('#relayed-engine .player-state span').text(state)
+              //    }
+              //});
+              //
+              //relayedAddr = data.split(':');
+              //params.address.host = relayedAddr[0];
+              //params.address.port = relayedAddr[1];
+              //params.address.uri = '/streaming'
+              //player.play(params);                
+              
+              // Flash FLV Player
               var player = new Symple.Player({
                   element:        '#relayed-engine .video-player',
-                  
-                  // Just specify a format, the optimal streaming engine  
-                  // will be selected based on preference and compatability.
-                  format:         'MJPEG',
+                  engine:         'Flash',
                   onStateChange:  function(player, state) {
                       $('#relayed-engine .player-engine span').text(Symple.Media.engines[player.options.engine].name)
                       $('#relayed-engine .player-state span').text(state)
                   }
               });
-              
-              var relayedAddr = data.split(':');
-              params.address.host = relayedAddr[0];
-              params.address.port = relayedAddr[1];
-              params.address.uri = '/streaming'
-              player.play(params);  
+              player.play({
+                token: "",
+                format: "MJPEG",
+                protocol: "HTTP",
+                video: {
+                    codec: "MJPEG"
+                },
+                candidates: [{
+                    protocol: "HTTP",
+                    address: relayedAddr,
+                    uri: "/streaming"
+                }]	
+              });
           })
       </script>
       
+      <!--
       <div id="all-engines">
         <h1>All Available Engines</h1>
       </div>
@@ -134,7 +157,7 @@
               $('#all-engines').append('<p>' + JSON.stringify(Symple.Media.engines[item]) + '</p>')
           }
       </script>
-          
+    
       <div id="flash-speex">
         <h1>Speex Audio Player</h1>
         <div class="audio-player">      
@@ -164,6 +187,7 @@
         });
         $('#flash-speex h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
       </script>
+          
       
       <div id="preffered-engine">
         <h1>Preffered MJPEG Engine</h1>
