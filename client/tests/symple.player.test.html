@@ -12,14 +12,14 @@
     <script type="text/javascript" src="../symple.player.flash.js"></script>
     <script type="text/javascript" src="../symple.player.mjpeg.js"></script>
     <script>
-      Symple.SERVICE = '127.0.0.1:328' // 'localhost' 
+      Symple.SERVICE = 'localhost:328' // '58.7.41.244' 
       Symple.DEFAULTS = {
           format: 'MJPEG',
-          width: 400,
-          height: 300,
+          width: 320,
+          height: 240,
           address: {
               scheme: 'http',
-              host: '127.0.0.1',
+              host: '127.0.0.1', //127.0.0.1',
               port: 328,
               uri: '/streaming'
           }
@@ -88,7 +88,43 @@
         <h1>Test Notes</h1>
         <p>A quick test to instantiate a Symple player for each streaming engine using a range of media formats, and also to test the Symple C++ MediaServer. The MediaServer sample is part of the Symple C++ module distribured with <a href="http://sourcey/projects/libsourcey">LibSourcey</a>.</p>
       </div>
+            
+      <div id="flash-mjpeg">
+        <h1>Flash MJPEG</h1>
+        <div class="video-player">      
+        </div>
+      </div>
+      <script>    
+        // Flash MJPEG Player
+        var player = new Symple.Player({
+            element:        '#flash-mjpeg .video-player',
+            engine:         'Flash',
+            //screenWidth:    400,
+            //screenHeight:   300,
+            //url:            'http://' + Symple.SERVICE + '/mjpeg'
+        });
+        player.play({
+          token: "test",
+          format: "MJPEG",
+          protocol: "HTTP",
+          video: {
+              codec: "MJPEG"
+          }//,
+          //candidates: [{
+          //    protocol: "HTTP",
+          //    address: Symple.SERVICE,
+          //    uri: "/streaming?format=MJPEG&packetizer=multipart&width=400&height=300"
+          //}]	
+        });
+        player.engine.onRemoteCandidate({
+            protocol: "HTTP",
+            address: Symple.SERVICE,
+            uri: "/streaming?format=MJPEG&packetizer=multipart&width=400&height=300"
+        })
+        $('#flash-mjpeg h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
+      </script>
       
+      <!--
       <div id="relayed-engine">
         <h1>Relayed MJPEG Engine</h1>
         <p class="player-engine">Player Engine: <span>None</span></p>
@@ -98,57 +134,76 @@
         </div>
       </div>
       <script>  
-          var params = $.extend({}, Symple.DEFAULTS);
-          params.packetizer = 'multipart'; // for native MJPEG stream
-          params.address.uri = '/relay'
-          $.get(Symple.Media.buildURL(params), function(relayedAddr) {
-              $('#relayed-engine .relayed-address span').text(relayedAddr)
-              
-              // Relayed MJPEG Player
-              //var player = new Symple.Player({
-              //    element:        '#relayed-engine .video-player',
-              //    
-              //    // Just specify a format, the optimal streaming engine  
-              //    // will be selected based on preference and compatability.
-              //    format:         'MJPEG',
-              //    onStateChange:  function(player, state) {
-              //        $('#relayed-engine .player-engine span').text(Symple.Media.engines[player.options.engine].name)
-              //        $('#relayed-engine .player-state span').text(state)
-              //    }
-              //});
-              //
-              //relayedAddr = data.split(':');
-              //params.address.host = relayedAddr[0];
-              //params.address.port = relayedAddr[1];
-              //params.address.uri = '/streaming'
-              //player.play(params);                
-              
-              // Flash FLV Player
-              var player = new Symple.Player({
-                  element:        '#relayed-engine .video-player',
-                  engine:         'Flash',
-                  onStateChange:  function(player, state) {
-                      $('#relayed-engine .player-engine span').text(Symple.Media.engines[player.options.engine].name)
-                      $('#relayed-engine .player-state span').text(state)
-                  }
-              });
-              player.play({
-                token: "",
-                format: "MJPEG",
-                protocol: "HTTP",
-                video: {
-                    codec: "MJPEG"
-                },
-                candidates: [{
+          $(document).ready(function() {
+              var params = $.extend({}, Symple.DEFAULTS);
+              params.packetizer = 'multipart'; // for native MJPEG stream
+              params.address.uri = '/relay'
+              $.get(Symple.Media.buildURL(params), function(relayedAddr) {
+                  $('#relayed-engine .relayed-address span').text(relayedAddr)
+                  
+                  // Relayed MJPEG Player
+                  var player = new Symple.Player({
+                      element:        '#relayed-engine .video-player',
+                      
+                      // Just specify a format, the optimal streaming engine  
+                      // will be selected based on preference and compatability.
+                      format:         'MJPEG',
+                      onStateChange:  function(player, state) {
+                          $('#relayed-engine .player-engine span').text(Symple.Media.engines[player.options.engine].name)
+                          $('#relayed-engine .player-state span').text(state)
+                      }
+                  });
+                  
+                  relayedAddr = relayedAddr.split(':');
+                  params.address.host = relayedAddr[0];
+                  params.address.port = relayedAddr[1];
+                  params.address.uri = '/streaming'
+                  console.log('Playing Relayed Session:', params)
+                  player.play(params);                
+                  
+                  /*
+                  // Flash FLV Player
+                  var player = new Symple.Player({
+                      element:        '#relayed-engine .video-player',
+                      engine:         'Flash',
+                      onStateChange:  function(player, state) {
+                          $('#relayed-engine .player-engine span').text(Symple.Media.engines[player.options.engine].name)
+                          $('#relayed-engine .player-state span').text(state)
+                      }
+                  });
+                  player.play({
+                    token: "",
+                    format: "MJPEG",
                     protocol: "HTTP",
-                    address: relayedAddr,
-                    uri: "/streaming"
-                }]	
-              });
+                    video: {
+                        codec: "MJPEG"
+                    },
+                    candidates: [{
+                        protocol: "HTTP",
+                        address: relayedAddr,
+                        uri: "/streaming"
+                    }]	
+                  });
+                  */
+              })
           })
       </script>
+          
+      <div id="mjpeg-native">
+        <h1>MJPEG Native</h1>
+        <div class="video-player">      
+        </div>
+      </div>
+      <script>        
+        // Native MJPEG Player
+        var player = new Symple.Player({
+            element:        '#mjpeg-native .video-player',
+            engine:         'MJPEG'
+        });
+        player.play($.extend({}, Symple.DEFAULTS)); 
+        $('#mjpeg-native h1').after('<p>' + JSON.stringify(Symple.Media.engines['MJPEG']) + '</p>')
+      </script>
       
-      <!--
       <div id="all-engines">
         <h1>All Available Engines</h1>
       </div>
@@ -187,8 +242,7 @@
         });
         $('#flash-speex h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
       </script>
-          
-      
+                
       <div id="preffered-engine">
         <h1>Preffered MJPEG Engine</h1>
         <p class="player-engine">Player Engine: <span>None</span></p>
@@ -210,21 +264,6 @@
               }
           });
           player.play($.extend({}, Symple.DEFAULTS));  
-      </script>
-          
-      <div id="mjpeg-native">
-        <h1>MJPEG Native</h1>
-        <div class="video-player">      
-        </div>
-      </div>
-      <script>        
-        // Native MJPEG Player
-        var player = new Symple.Player({
-            element:        '#mjpeg-native .video-player',
-            engine:         'MJPEG'
-        });
-        player.play($.extend({}, Symple.DEFAULTS)); 
-        $('#mjpeg-native h1').after('<p>' + JSON.stringify(Symple.Media.engines['MJPEG']) + '</p>')
       </script>
        
       <div id="mjpeg-mxhr">
@@ -272,36 +311,6 @@
         opts.address.uri = '/snapshot'
         player.play(opts); 
         $('#mjpeg-pseudo h1').after('<p>' + JSON.stringify(Symple.Media.engines['PseudoMJPEG']) + '</p>')
-      </script>
-      
-      <div id="mjpeg-flv">
-        <h1>Flash MJPEG</h1>
-        <div class="video-player">      
-        </div>
-      </div>
-      <script>    
-        // Flash MJPEG Player
-        var player = new Symple.Player({
-            element:        '#mjpeg-flv .video-player',
-            engine:         'Flash',
-            //screenWidth:    400,
-            //screenHeight:   300,
-            //url:            'http://' + Symple.SERVICE + '/mjpeg'
-        });
-        player.play({
-          token: "",
-          format: "MJPEG",
-          protocol: "HTTP",
-          video: {
-              codec: "MJPEG"
-          },
-          candidates: [{
-              protocol: "HTTP",
-              address: Symple.SERVICE,
-              uri: "/streaming?format=MJPEG&packetizer=multipart&width=400&height=300"
-          }]	
-        });
-        $('#mjpeg-flv h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
       </script>
       
       <div id="flash-flv">

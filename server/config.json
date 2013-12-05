@@ -3,7 +3,7 @@
   "nodeId" : 1,
   
   /* The port to listen on */
-  "port" : 443,   /* 4000 */
+  "port" : 443,   /* 443, 4000 */
   
   /* Allow anonymous connections */
   "anonymous" : true,  

@@ -2,18 +2,23 @@ Symple.Media = {
     engines: {}, // Object containing references for candidate selection
     
     registerEngine: function(engine) {
+        console.log('Register media engine: ', engine)
         if (!engine.name || typeof engine.preference == 'undefined' || typeof engine.support == 'undefined') {
-            console.log('Invalid engine: ', engine)
+            console.log('Cannot register invalid engine: ', engine)
             return false;
         }   
         this.engines[engine.id] = engine;
         return true;
     },
     
+    hasEngine: function(id) {
+        return typeof this.engines[id] == 'object';
+    },
+    
     // Checks support for a given engine
     supportsEngine: function(id) {
         // Check support for engine
-        return !!(this.engines[name].support);
+        return !!(this.hasEngine(id) && this.engines[id].support);
     },
     
     // Checks support for a given format
@@ -168,34 +173,49 @@ Symple.Player = Symple.Class.extend({
             var engine = Symple.Media.preferredCompatibleEngine(this.options.format);
             if (engine)
                 this.options.engine = engine.id
-         }
-
-        // Initialize the engine and confirm support.
-        if (typeof Symple.Player.Engine[this.options.engine] == 'undefined')
-            throw 'Streaming engine not available: ' + this.options.engine;   
-        this.engine = new Symple.Player.Engine[this.options.engine](this);
-        if (!this.engine.support())
-            throw 'Streaming engine not supported';      
-        this.engine.setup();
+        }
 
         this.bindEvents();
         this.playing = false;
 
-        /*
         //this.setState('stopped');
-        var self = this;
-        $(window).resize(function() {
-            self.refresh();
-        });
-        */
+        //var self = this;
+        //$(window).resize(function() {
+        //    self.refresh();
+        //});
     },
 
+    setup: function() {
+        var id = this.options.engine;
+        
+        // Ensure the engine is configured
+        if (!id)
+            throw "Streaming engine not configured. Please set 'options.engine'";  
+        
+        // Ensure the engine exists
+        if (!Symple.Media.hasEngine(id))
+            throw "Streaming engine not available: " + id;                          
+        if (typeof Symple.Player.Engine[id] == 'undefined')
+            throw "Streaming engine not found: " + id;       
+            
+        // Ensure the engine is supported  
+        if (!Symple.Media.supportsEngine(id))     
+            throw "Streaming engine not supported: " + id;   
+                 
+        // Instantiate the engine          
+        this.engine = new Symple.Player.Engine[id](this);
+        this.engine.setup();      
+    },
+    
     //
     // Player Controls
     //
     play: function(params) {
         console.log('Symple Player: Play: ', params)
         try {    
+            if (!this.engine)
+                this.setup();
+        
             if (this.state != 'playing' //&&
                 // The player may be set to loading state by the
                 // outside application before play is called.
@@ -226,7 +246,7 @@ Symple.Player = Symple.Class.extend({
     },
 
     setState: function(state, message) {
-        console.log('Symple Player: Set State:', this.state, '=>', state, message)
+        console.log('Symple Player: Set state:', this.state, '=>', state, message)
         if (this.state == state)
             return;
         
@@ -240,7 +260,7 @@ Symple.Player = Symple.Class.extend({
         this.element.removeClass('state-stopped state-loading state-playing state-paused state-error');
         this.element.addClass('state-' + state);
         //this.refresh();
-        this.options.onStateChange(this, state);
+        this.options.onStateChange(this, state, message);
     },
 
     //
@@ -253,13 +273,11 @@ Symple.Player = Symple.Class.extend({
     // Display an overlayed player message
     // error, warning, info
     displayMessage: function(type, message) {
-        console.log('Symple Player: Display Message:', type, message)
+        console.log('Symple Player: Display message:', type, message)
         if (message) {
-            console.log('Symple Player: Display Message:', message)
             this.message.html('<p class="' + type + '-message">' + message + '</p>').show();
         }
         else {
-            console.log('Symple Player: Hiding Message')
             this.message.html('').hide();
         }
     },
@@ -336,6 +354,10 @@ Symple.Player.Engine = Symple.Class.extend({
     setError: function(error) {
         console.log('Symple Player Engine: Error:', error);
         this.setState('error', error);
+    },
+    
+    onRemoteCandidate: function(candidate) {
+        console.log('Symple Player Engine: Remote candidates not supported.');
     },
 
     updateFPS: function() {

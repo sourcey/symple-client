@@ -1,6 +1,7 @@
 package sourcey.symple.player.parsers
 {
-	import  sourcey.symple.player.MediaEvent;
+	import sourcey.symple.player.MediaEvent;
+	import sourcey.util.Logger;
 	
 	import flash.events.EventDispatcher;
 	import flash.events.IEventDispatcher;

@@ -72,7 +72,7 @@ var Symple = {
     
     // Generate a random string
     randomString: function(n) {
-        return Math.random().toString(36).substring(n || 7);
+        return Math.random().toString(36).slice(2) //Math.random().toString(36).substring(n || 7);
     },
     
     // Recursively merge object properties of r into l

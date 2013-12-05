@@ -4,6 +4,7 @@ package sourcey.ui
 	import flash.display.Loader;
 	import flash.display.LoaderInfo;
 	import flash.events.Event;
+	import flash.events.IOErrorEvent;
 	import flash.utils.ByteArray;
 	
 	import sourcey.util.Logger;
@@ -41,6 +42,7 @@ package sourcey.ui
 				var source:Loader = new Loader();
 				source.mouseChildren = false;
 				source.mouseEnabled = false;
+				source.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, onLoaderError);
 				source.contentLoaderInfo.addEventListener(Event.COMPLETE, onLoaderLoadComplete);
 				addChild(source);
 				sources[x] = source;
@@ -105,6 +107,11 @@ package sourcey.ui
 			updateLayout(loaderInfo.loader);
 			if (hasChanged)
 				stage.dispatchEvent(new Event(Event.RESIZE));
+		}
+		
+		protected function onLoaderError(event:IOErrorEvent):void
+		{
+			Logger.send(Logger.ERROR, "[BufferedLoader] Cannot load source image");
 		}
 		
 		protected function updateLayout(loader:Loader):void

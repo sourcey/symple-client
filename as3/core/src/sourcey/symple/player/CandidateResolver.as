@@ -1,20 +1,25 @@
 package sourcey.symple.player
 {	
-	import flash.events.DataEvent;
 	import flash.events.EventDispatcher;
+	import flash.events.DataEvent;
+	import flash.events.TimerEvent;
+	import flash.utils.Timer;
 	
 	import sourcey.net.StatefulSocket;
 	import sourcey.util.Logger;
 	import sourcey.util.Util;
 	
 	[Event(name="onCandidate", type="sourcey.symple.player.CandidateEvent")]	
+	[Event(name="onTimeout", type="sourcey.symple.player.CandidateEvent")]	
 	
-	// This class checks provided candidates are accessible
-	// from this network, and selected the best one.
-	// TODO: Proper latency checking to determine best candidate
+	// This class checks the network availability of provided
+	// streaming candidates, and selects the best one to use.
+	// TODO: Improve latency checking and best candidate selection
 	public class CandidateResolver extends EventDispatcher
 	{
 		public var candidates:Array = [];
+		public var resolverTimeout:int = 12; // 12 seconds to resolve candidate
+		public var resolverTimer:Timer;
 		
 		public function CandidateResolver()
 		{
@@ -34,6 +39,11 @@ package sourcey.symple.player
 			candidate.time = new Date().getTime();
 			candidates.push(candidate);
 			Logger.send(Logger.DEBUG, "[CandidateResolver] Resolving: " + candidate.url);
+					
+			// Keep restarting the resolving timeout until we have a successful candidate. 
+			// If the timeout expires then candidate resolving is considered to have failed. 
+			if (!bestCandidate)
+				resetResolvingTimeout();
 		}
 		
 		public function terminate():void
@@ -53,7 +63,7 @@ package sourcey.symple.player
 			var candidate:Object = null;
 			for each(var o:Object in candidates) {
 				if (!candidate || (candidate.success && 
-					o.time && o.time < candidate.time))
+					o.latency && o.latency < candidate.latency))
 					candidate = o;
 			}
 			return candidate;			
@@ -80,12 +90,16 @@ package sourcey.symple.player
 				connection.close();
 				var candidate:Object = getByConnection(connection);
 				if (candidate) {
-					candidate.time = (new Date().getTime()) - candidate.time;
+					candidate.latency = (new Date().getTime()) - candidate.time;
 					candidate.success = (event.data == StatefulSocket.STATE_CONNECTED);
 					candidate.connection.close();
 					delete candidate.connection;
-					Logger.send(Logger.DEBUG, "[CandidateResolver] Candidate result: " + candidate.success + ": " + candidate.time);
+					Logger.send(Logger.DEBUG, "[CandidateResolver] Candidate result: " + candidate.success + ": " + candidate.latency);
 					dispatchEvent(new CandidateEvent(CandidateEvent.CANDIDATE, candidate));
+					
+					// Cancel the timer on successful candiate
+					if (candidate.success)
+						cancelResolvingTimeout();
 				}
 				else
 					Logger.send(Logger.DEBUG, "[CandidateResolver] Error: Task not found");
@@ -93,11 +107,36 @@ package sourcey.symple.player
 			else
 				Logger.send(Logger.DEBUG, "[CandidateResolver] Error: Bad candidate state");
 			
-			if (gatheringComplete) {
-				Logger.send(Logger.DEBUG, "[CandidateResolver] Gathering complete");
-				dispatchEvent(new CandidateEvent(CandidateEvent.GATHERING_COMPLETE, bestCandidate));	
-			}
+			//if (gatheringComplete) {
+			//	Logger.send(Logger.DEBUG, "[CandidateResolver] Gathering complete");
+			//	dispatchEvent(new CandidateEvent(CandidateEvent.GATHERING_COMPLETE, bestCandidate));	
+			//}
+		}	
+				
+		public function resetResolvingTimeout():void
+		{			
+			cancelResolvingTimeout();
+			resolverTimer = new Timer(resolverTimeout * 1000, 1);
+			resolverTimer.addEventListener(TimerEvent.TIMER, onResolvingTimeout);
+			resolverTimer.start();
 		}		
+		
+		protected function cancelResolvingTimeout():void 
+		{
+			if (resolverTimer) {
+				resolverTimer.removeEventListener(TimerEvent.TIMER, onResolvingTimeout);	
+				resolverTimer.stop();
+				resolverTimer = null;
+			}				
+		}
+		
+		protected function onResolvingTimeout(event:TimerEvent):void 
+		{
+			Logger.send(Logger.ERROR, 
+				"[CandidateResolver] Timeout");	
+			
+			dispatchEvent(new CandidateEvent(CandidateEvent.TIMEOUT));	
+		}
 		
 		protected function getByConnection(connection:MediaConnection):Object 
 		{   
@@ -106,36 +145,6 @@ package sourcey.symple.player
 					return c;
 			}
 			return null;
-		}
+		}		
 	}
 }
-
-
-
-/*
-protected function onResult(event:DataEvent):void 
-{	
-
-}
-*/
-/*
-switch (event.data)
-{
-case StatefulSocket.STATE_CONNECTED:
-connection.addEventListener(StatefulSocket.STATE_CHANGED, onConnectionState);
-connection.close();
-break;
-
-case StatefulSocket.STATE_DISCONNECTED:
-connection.addEventListener(StatefulSocket.STATE_CHANGED, onConnectionState);
-connection.close();
-dispatchEvent(new DataEvent(STATE_CHANGED, false, false, _state));
-
-error = event.currentTarget.error;
-if (error && error.length)
-state = Session.STATE_FAILED;
-else
-state = Session.STATE_INACTIVE;
-break;
-}	
-*/

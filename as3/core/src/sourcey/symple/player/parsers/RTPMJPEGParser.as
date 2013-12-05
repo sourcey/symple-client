@@ -2,6 +2,7 @@ package sourcey.symple.player.parsers
 {	
 	import flash.utils.ByteArray;
 	
+	// ALPHA CODE: Do not use
 	public class RTPMJPEGParser extends Parser
 	{
 		private var buffer:ByteArray;

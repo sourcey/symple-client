@@ -25,7 +25,7 @@ var server = (config.ssl.enabled ?
   http.createServer())  
     .listen(config.port, function() {
       var addr = server.address();
-      console.log('Listening on ' + (config.ssl.enabled ? 'https' : 'http')  + '://' + addr.address + ':' + addr.port);
+      console.log('Symple server listening on ' + (config.ssl.enabled ? 'https' : 'http')  + '://' + addr.address + ':' + addr.port);
     });
 
 
@@ -75,6 +75,34 @@ function respond(ack, status, message, data) {
   }
 }
 
+// Parses a Symple endpoint address with the following 
+// format: user@group/id
+function parseAddress(str) {
+    var addr = {}, base,
+        arr = str.split("/")
+        
+    if (arr.length < 2) // no id
+        base = str;        
+    else { // has id
+        addr.id = arr[1];   
+        base = arr[0];   
+    }
+    
+    arr = base.split("@")
+    if (arr.length < 2) // group only
+        addr.group = base;         
+    else { // group and user
+        addr.user = arr[0];
+        addr.group  = arr[1];
+    }
+        
+    return addr;
+}
+
+function buildAddress(peer) {
+    return peer.user + "@" + peer.group + "/" + peer.id;
+}
+
 
 //
 // Socket.IO Socket extensions
@@ -92,13 +120,13 @@ sio.Socket.prototype.authorize = function(req, fn) {
     // Retreive the session from Redis
     client.token = req.token;                 // Remote session token
     client.getSession(function(err, session) {
-      console.log('Authenticating: Token: ', req.token, 'Session:', session);
+      //console.log('Authenticating: ', req.token, ':', session);
       if (err || typeof session !== 'object' || typeof session.user !== 'object') {
-        console.log('Authentication Error: ', req.token, ':', err);
-        return fn(401, 'Authentication Failed');
+        //console.log('Authentication error: ', req.token, ':', err);
+        return fn(401, 'Authentication failed');
       }
       else {
-        console.log('Authentication Success: ', req);        
+        //console.log('Authentication success: ', req);        
         client.session = session;             // Remote session object
         client.group = session.user.group;    // The client's parent group
         client.access = session.user.access;  // The client access level [1 - 10]
@@ -127,7 +155,7 @@ sio.Socket.prototype.authorize = function(req, fn) {
 
 
 sio.Socket.prototype.onAuthorize = function(req) {
-  console.log('On Authorize: ', req);
+  console.log(this.id, 'On authorize: ', req);
   this.online = true;
   this.name = req.name ?                // The client display name
       req.name : this.user;
@@ -141,11 +169,13 @@ sio.Socket.prototype.toPresence = function(p) {
   if (!p || typeof p !== 'object')
     p = {};
   p.type = 'presence';
-  p.data = this.toPeer(p.data);
-  if (!p.from || typeof p.from !== 'object') {
-    p.from = {};
-    p.from.name = this.name;
-  }
+  p.data = this.toPeer(p.data);  
+  if (!p.from)
+    p.from = this.toAddress();
+  //if (!p.from || typeof p.from !== 'object') {
+  //  p.from = {};
+  //  p.from.name = this.name;
+  //}
   return p;
 }
 
@@ -172,6 +202,11 @@ sio.Socket.prototype.toPeer = function(p) {
     p.name = this.name;
 
   return p;
+}
+
+
+sio.Socket.prototype.toAddress = function() {
+  return this.user + "@" + this.group + "/" + this.id;
 }
 
 
@@ -205,6 +240,144 @@ sio.Socket.prototype.touchSession = function(fn) {
   });
 }
 
+sio.Socket.prototype.getDestinationAddress = function(message) {
+  switch(typeof message.to) {
+    case 'object': 
+      return message.to;  
+    case 'string':
+      return parseAddress(message.to);     
+    case 'undefined': 
+      return { group: this.group };
+  }
+}
+
+
+sio.Socket.prototype.broadcastMessage = function(message) {
+  if (!message || typeof message !== 'object' || !message.from) {
+    console.error(this.id, 'Dropping invalid message from:', message);
+    return;
+  }
+
+  // Replace from address with server-side peer data for security.
+  //message.from.id = this.id;
+  //message.from.type = this.type;
+  //message.from.group = this.group;
+  //message.from.access = this.access;
+  //message.from.user = this.user;
+  //message.from.user_id = this.user_id;
+  
+  // Get an destination address object for routing  
+  var to = this.getDestinationAddress(message);
+  
+  // Make sure we have a valid destination address
+  if (typeof to !== 'object' || typeof to.group === 'undefined') {
+    console.error(this.id, 'Message has invalid destination address:', to, ':', message);
+    return;
+  }
+  
+  // If a session id was given we send a directed message to that session id.  
+  if (typeof to.id === 'string') {
+    this.namespace/*.except(this.unauthorizedIDs())*/.socket(to.id).json.send(message);
+  }
+  
+  // If a user was given (but no session id) we broadcast a message to user scope.
+  else if (to.user && typeof to.user === 'string') {
+    this.broadcast.to('user-' + to.user/*, this.unauthorizedIDs()*/).json.send(message);
+  }
+  
+  // If a group was given (but no session id or user) we broadcast to group scope.
+  else if (to.group && typeof to.group === 'string') {
+    this.broadcast.to('group-' + to.group/*, this.unauthorizedIDs()*/).json.send(message);
+  }
+  
+  else {
+    console.error(this.id, 'Cannot route invalid message:', message);
+  }
+}
+
+
+//
+// Socket.IO connection handler
+//
+
+io.sockets.on('connection', function(client) {    
+
+  // 5 seconds to Announce or get booted
+  var interval = setInterval(function () {
+      console.log(client.id, 'Failed to Announce'); 
+      client.disconnect();
+  }, 5000);
+
+  // Announce
+  client.on('announce', function(req, ack) {    
+    console.log(client.id, 'Announcing:', req);
+
+    try {
+
+      // Authorization
+      client.authorize(req, function(status, message) {
+        // console.log(client.id, 'Announce result:', status);
+        clearInterval(interval);
+        if (status == 200)
+          respond(ack, status, message, client.toPeer());
+        else {
+          respond(ack, status, message);
+          client.disconnect();
+          return;
+        }
+
+        // Message
+        client.on('message', function(m, ack) {
+          if (m) {
+            if (m.type == 'presence')
+              this.toPresence(m);
+            client.broadcastMessage(m);
+            respond(ack, 200, 'Message received');
+          }
+        });
+
+        // Peers
+        client.on('peers', function(ack) {
+          respond(ack, 200, '', this.peers(false));
+        });
+
+        // Timer
+        interval = setInterval(function () {
+          // Touch the client session event 10
+          // minutes to prevent it from expiring.
+          client.touchSession(function(err, res) {
+            console.log(client.id, 'Touching session:', !!res);
+          });
+        }, 10 * 60000);
+
+      });
+    }
+    catch (e) {
+        console.log('Client error: ', e);
+        client.disconnect();
+    }
+  }); 
+
+  //
+  // Disconnection
+  client.on('disconnect', function() {
+    console.log(client.id + ' is disconnecting');
+    clearInterval(interval);
+    if (client.online) {
+      client.online = false;
+      var p = client.toPresence();
+      console.log('disconnecting', p);
+      client.broadcastMessage(p);
+    }
+    client.leave('user-' + client.user);    // leave user channel
+    client.leave('group-' + client.group);  // leave group channel
+  });
+});
+
+
+//
+// Socket.IO Manager extensions
+//
 
 //sio.Socket.prototype.authorizedClients = function() {
 //  var res = [];
@@ -247,171 +420,33 @@ sio.Socket.prototype.touchSession = function(fn) {
 //  return res;
 //}
 
+//function packetSender(packet) {
+//  var res = packet.match(/\"from\"[ :]+[ {]+[^}]*\"id\"[ :]+\"(.*?)\"/);
+//  return res ? io.sockets.sockets[res[1]] : null;
+//}
 
-sio.Socket.prototype.broadcastMessage = function(message) {
-  if (!message || typeof message !== 'object' || !message.from || typeof message.from !== 'object') {
-    console.log('ERROR: Dropping invalid message from ', this.id, ':', message);
-    return;
-  }
-  
-  //console.log('broadcastMessage: ', this.id, ':', message);
-
-  // Always use server-side peer info for security.
-  message.from.id = this.id;
-  message.from.type = this.type;
-  message.from.group = this.group;
-  message.from.access = this.access;
-  message.from.user = this.user;
-  message.from.user_id = this.user_id;
-
-  // If no destination address was given we broadcast 
-  // the message to the current client's group scope.
-  if (!message.to || typeof message.to !== 'object') {
-    this.broadcast.to('group-' + this.group/*, this.unauthorizedIDs()*/).json.send(message);
-  }
-
-  // If a session id was given (but no user group)
-  // we send a directed message to that session id.
-  else if (message.to.id && typeof message.to.id === 'string') {
-    this.namespace/*.except(this.unauthorizedIDs())*/.socket(message.to.id).json.send(message);
-  }
-
-  // If a user was given (but no session id or group) 
-  // we broadcast a message to user scope.
-  else if (message.to.user && typeof message.to.user === 'string') {
-    this.broadcast.to('user-' + message.to.user/*, this.unauthorizedIDs()*/).json.send(message);
-  }
-
-  // If a group was given (but no session id or user) we
-  // broadcast a message to the given group scope.
-  else if (message.to.group && typeof message.to.group === 'string') {
-    this.broadcast.to('group-' + message.to.group/*, this.unauthorizedIDs()*/).json.send(message);
-  }
-
-  else {
-    console.log('ERROR: Failed to send message: ', message);
-  }
-}
-
-
+//onDispatchOriginal = sio.Manager.prototype.onDispatch;
+//sio.Manager.prototype.onDispatch = function(room, packet, volatile, exceptions) {
 //
-// Socket.IO connection handler
-//
+//  // Authorise outgoing messages via the onDispatch method so unprotected
+//  // data can not be published directly from Redis.
+//  var sender = packetSender(packet);
+//  if (sender) {
+//    if (!exceptions)
+//      exceptions = [sender.id]; // dont send to self
+//    exceptions = exceptions.concat(sender.unauthorizedIDs());
+//    //console.log("Sending a message excluding: ", exceptions, ': ', sender.unauthorizedIDs());
+//    onDispatchOriginal.call(this, room, packet, volatile, exceptions)
+//  }
+//}
 
-io.sockets.on('connection', function(client) {    
-
-  // 5 seconds to Announce or get booted
-  var interval = setInterval(function () {
-      console.log(client.id + ' Failed to Announce'); 
-      client.disconnect();
-  }, 5000);
-
-  //
-  // Announce
-  client.on('announce', function(req, ack) {    
-    console.log('Announcing: ', req);
-
-    try {
-
-      //
-      // Authorization
-      client.authorize(req, function(status, message) {
-        console.log('#################### Announce Result: ', status, message);
-        clearInterval(interval);
-        if (status == 200)
-          respond(ack, status, message, client.toPeer());
-        else {
-          respond(ack, status, message);
-          client.disconnect();
-          return;
-        }
-
-        //
-        // Message
-        client.on('message', function(m, ack) {
-          if (m) {
-            if (m.type == 'presence')
-              this.toPresence(m);
-            client.broadcastMessage(m);
-            respond(ack, 200, 'Message Received');
-          }
-        });
-
-        //
-        // Peers
-        client.on('peers', function(ack) {
-          respond(ack, 200, '', this.peers(false));
-        });
-
-        //
-        // Timer
-        interval = setInterval(function () {
-          // Touch the client session event 10
-          // minutes to prevent it from expiring.
-          client.touchSession(function(err, res) {
-            console.log(client.id + 'Touching session: ', !!res);
-          });
-        }, 10 * 60000);
-
-      });
-    }
-    catch (e) {
-        console.log('Client error: ', e);
-        client.disconnect();
-    }
-  }); 
-
-  //
-  // Disconnection
-  client.on('disconnect', function() {
-    console.log(client.id + ' is disconnecting');
-    clearInterval(interval);
-    if (client.online) {
-      client.online = false;
-      var p = client.toPresence();
-      console.log('disconnecting', p);
-      client.broadcastMessage(p);
-    }
-    client.leave('user-' + client.user);    // leave user channel
-    client.leave('group-' + client.group);  // leave group channel
-  });
-});
-
-
-
-//
-// Socket.IO Manager extensions
-//
-
-/*
-function packetSender(packet) {
-  var res = packet.match(/\"from\"[ :]+[ {]+[^}]*\"id\"[ :]+\"(.*?)\"/);
-  return res ? io.sockets.sockets[res[1]] : null;
-}
-
-onDispatchOriginal = sio.Manager.prototype.onDispatch;
-sio.Manager.prototype.onDispatch = function(room, packet, volatile, exceptions) {
-
-  // Authorise outgoing messages via the onDispatch method so unprotected
-  // data can not be published directly from Redis.
-  var sender = packetSender(packet);
-  if (sender) {
-    if (!exceptions)
-      exceptions = [sender.id]; // dont send to self
-    exceptions = exceptions.concat(sender.unauthorizedIDs());
-    //console.log("Sending a message excluding: ", exceptions, ': ', sender.unauthorizedIDs());
-    onDispatchOriginal.call(this, room, packet, volatile, exceptions)
-  }
-}
-
-onClientDispatchOriginal = sio.Manager.prototype.onClientDispatch;
-sio.Manager.prototype.onClientDispatch = function (id, packet) {
-    
-  // Ensure the recipient has sufficient permission to recieve the message
-  var sender = packetSender(packet);
-  var recipient = io.sockets.sockets[id];
-  if (sender && recipient && recipient.access >= sender) {
-      onClientDispatchOriginal.call(this, id, packet);
-  }
-}
-*/
+//onClientDispatchOriginal = sio.Manager.prototype.onClientDispatch;
+//sio.Manager.prototype.onClientDispatch = function (id, packet) {
+//    
+//  // Ensure the recipient has sufficient permission to recieve the message
+//  var sender = packetSender(packet);
+//  var recipient = io.sockets.sockets[id];
+//  if (sender && recipient && recipient.access >= sender) {
+//      onClientDispatchOriginal.call(this, id, packet);
+//  }
+//}

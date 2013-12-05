@@ -5,6 +5,7 @@ package sourcey.symple.player.parsers
 	import sourcey.symple.player.MediaEvent;
 	import sourcey.util.Logger;
 	
+	// This class provides parsing MJPEG streams with HTTP multipart encapsulation.
 	public class MJPEGParser extends Parser
 	{		
 		public static const STATE_NONE:int 		= 0;
@@ -20,12 +21,12 @@ package sourcey.symple.player.parsers
 		{
 			super();
 			
-			buffer = new ByteArray()
+			buffer = new ByteArray();
 		}
 		
 		public function onHeader(header:String):void 
 		{
-			//Logger.send(Logger.DEBUG, "[MJPEGParser] Header: " + header);
+			Logger.send(Logger.DEBUG, "[MJPEGParser] Header: " + header);
 			
 			// Skip non custom headers. 
 			// This might change later.
@@ -49,8 +50,7 @@ package sourcey.symple.player.parsers
 			if (state == value)
 				return;
 			
-			////Logger.send(Logger.DEBUG, 
-			//	"[MJPEGParser] Setting state from '" + state + "' to '" + value + "'");
+			// Logger.send(Logger.DEBUG, "[MJPEGParser] Setting state from '" + state + "' to '" + value + "'");
 
 			state = value;
 			onState(state);
@@ -58,8 +58,8 @@ package sourcey.symple.player.parsers
 		
 		public function onState(value:int):void 
 		{			
-			if (state == STATE_FRAME) {				
-				//Logger.send(Logger.DEBUG, "[MJPEGParser] Headers '" + headers);
+			if (state == STATE_FRAME && headers.length) {				
+				Logger.send(Logger.DEBUG, "[MJPEGParser] Headers: " + headers.length);
 				dispatchEvent(new MediaEvent(MediaEvent.METADATA, headers));	
 				headers = [];
 			}
@@ -67,7 +67,7 @@ package sourcey.symple.player.parsers
 		
 		override public function parse(input:ByteArray):void 
 		{		
-			//Logger.send(Logger.DEBUG, "[MJPEGParser] Parsing Data: " + input.length);				
+			//Logger.send(Logger.DEBUG, "[MJPEGParser] Parsing Data: " + state + ": " + buffer.length + ": " + input.length);				
 			var offset:int = input.position;
 			if (!input.length)
 				return;	
@@ -75,12 +75,7 @@ package sourcey.symple.player.parsers
 			var frameStart:int = 0;
 			var headerStart:int = 0;
 			//var boundaryPos:int = 0;
-			for (var x:int = offset; x < input.length - 1; x++) {				
-				
-				//public static const STATE_NONE:int 		= 0;
-				//public static const STATE_BOUNDARY:int 	= 1;
-				//public static const STATE_HEADERS:int 	= 2;
-				//public static const STATE_FRAME:int 	= 3;
+			for (var x:int = offset; x < input.length - 1; x++) {
 				switch (state) {
 					case STATE_NONE: 
 						// Look for boundary marker beginning with "--"
@@ -98,11 +93,9 @@ package sourcey.symple.player.parsers
 							input[x] == 13 && 
 							input[x + 1] == 10) {
 							x += 2;
-							/*
-							input.position = headerStart;					
-							onHeader(input.readUTFBytes(x - headerStart));
-							headerStart = (x += 2);
-							*/
+							//input.position = headerStart;					
+							//onHeader(input.readUTFBytes(x - headerStart));
+							//headerStart = (x += 2);
 							headerStart = x;
 							setState(STATE_HEADERS);
 							//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + x);	
@@ -118,7 +111,7 @@ package sourcey.symple.player.parsers
 							input.position = headerStart;							
 							onHeader(input.readUTFBytes(x - headerStart));
 							headerStart = (x += 2);
-							//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + headerStart);	
+							//Logger.send(Logger.DEBUG, "[MJPEGParser] Headers Start At: " + headerStart);	
 						}
 							
 						// Find the JPEG start code
@@ -140,6 +133,7 @@ package sourcey.symple.player.parsers
 							if (input.length >= x + 2) {
 								x += 2;
 								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: " + x);	
+								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At Char: " + input[x]);	
 								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Input Length: " + input.length);	
 								//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Reading From: " + frameStart);	
 								buffer.writeBytes(input, frameStart, x - frameStart);
@@ -151,14 +145,15 @@ package sourcey.symple.player.parsers
 									buffer[1] == 216 && 
 									buffer[buffer.length - 2] == 255 && 
 									buffer[buffer.length - 1] == 217) {		
-									//Logger.send(Logger.DEBUG, "[MJPEGParser] Valid JPEG: " + buffer.length);							
-									send(buffer);
+									Logger.send(Logger.DEBUG, "[MJPEGParser] Valid JPEG: " + buffer.length);		
+									send(buffer);			
 								}
 								else
 									onError("Bad packet");
 								
 								buffer.clear();
 								frameStart = -1;
+								//Logger.send(Logger.DEBUG, "[MJPEGParser] Resetting State: " + x);	
 								setState(STATE_NONE);
 								//started = false;
 							}
@@ -172,7 +167,7 @@ package sourcey.symple.player.parsers
 					input[x] == 45 &&
 					input[x + 1] == 45) {
 					headerStart = (x += 2);
-					//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary Start At: " + headerStart);								
+					Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary Start At: " + headerStart);								
 				}
 				
 				// Parse carriage returns until JPEG start code
@@ -183,15 +178,15 @@ package sourcey.symple.player.parsers
 					input.position = headerStart;					
 					onHeader(input.readUTFBytes(x - headerStart));
 					headerStart = (x += 2);
-					//Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + headerStart);	
+					Logger.send(Logger.DEBUG, "[MJPEGParser] Boundary End At: " + headerStart);	
 				}
 				
 				// Find the JPEG start code
 				else if (!started &&							
 					input[x] == 255 && 
 					input[x + 1] == 216) {
-					//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Start At: " + x);	
-					//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Data Remaining: " + (input.length - x));	
+					Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Start At: " + x);	
+					Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG Data Remaining: " + (input.length - x));	
 					frameStart = x;
 					started = true;
 				}
@@ -201,9 +196,9 @@ package sourcey.symple.player.parsers
 					input[x + 1] == 217) {
 					if (input.length >= x + 2) {
 						x += 2;
-						//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: " + x);	
-						//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Input Length: " + input.length);	
-						//Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Reading From: " + frameStart);	
+						Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: " + x);	
+						Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Input Length: " + input.length);	
+						Logger.send(Logger.DEBUG, "[MJPEGParser] JPEG End At: Reading From: " + frameStart);	
 						buffer.writeBytes(input, frameStart, x - frameStart);
 						
 						// If the buffer contains a valid image then
@@ -213,7 +208,7 @@ package sourcey.symple.player.parsers
 							buffer[1] == 216 && 
 							buffer[buffer.length - 2] == 255 && 
 							buffer[buffer.length - 1] == 217) {		
-							//Logger.send(Logger.DEBUG, "[MJPEGParser] Valid JPEG: " + buffer.length);							
+							Logger.send(Logger.DEBUG, "[MJPEGParser] Valid JPEG: " + buffer.length);							
 							send(buffer);
 							buffer.clear();
 							setState(STATE_NONE);
@@ -234,6 +229,7 @@ package sourcey.symple.player.parsers
 			if (state == STATE_FRAME && frameStart >= 0) {		
 				buffer.writeBytes(input, frameStart, input.length - frameStart);	
 				//Logger.send(Logger.DEBUG, "[MJPEGParser] Continuing JPEG: Appending: " + (input.length - frameStart));	
+				//Logger.send(Logger.DEBUG, "[MJPEGParser] Continuing JPEG: Total: " + buffer.length);	
 			}
 		}
 	}

@@ -47,16 +47,19 @@ package sourcey.symple.player
 			session.addEventListener(Session.STATE_CHANGED, onMediaSessionState);
 		}
 		
+		// Open the stream with the given parameters.
+		// If there is a single streaming endpoint it should be specified
+		// by session.params.url. Alernatively, if ICE style candidates are 
+		// used then addCandidate is used instead.
 		public function open(params:Object = null):Boolean
 		{
-			if (params) {
-				// TODO: Assert via session params setter
-				//Util.assertObjectProperties(params, [ "protocol", "video", "audio", "token", "candidates" ]);	
+			if (params)
 				session.params = params;
-			}
 			return session.initialize();
 		}
 		
+		// Close the player and terminate the session.
+		// This method should be called on destruction only.
 		public function close():void
 		{
 			if (video)
@@ -66,12 +69,16 @@ package sourcey.symple.player
 			return session.terminate();
 		}
 		
+		// Play a stream.
+		// The streaming endpoint must be specified via session.params.url
 		public function play():void
 		{
 			Logger.send(Logger.DEBUG, "[Player] Playing: " + session.token);
 			
 			if (session.state != Session.STATE_ACTIVE)
-				throw new Error("Failed to play invalid stream.");
+				throw new Error("Cannot play inactive stream.");
+			if (!session.params.url)
+				throw new Error("Cannot play a stream with no endpoint.");
 			
 			if (video)
 				video.play();
@@ -79,19 +86,60 @@ package sourcey.symple.player
 				audio.play();
 		}
 		
+		/*
+		// Stops a playing stream.
+		// CAUTION: Use with care as some engines may not be able to 
+		// play a stream again after stopping.
 		public function stop():void
 		{
 			Logger.send(Logger.DEBUG, "[Player] Stopping: " + session.token);
 			
 			if (session.state != Session.STATE_ACTIVE)
-				throw new Error("Failed to stop invalid stream.");
+				throw new Error("Cannot stop inactive stream.");
 			
 			if (video)
 				video.stop()
 			if (audio)
 				audio.stop()
 		}
+		*/
 		
+		// Pauses a playing stream.
+		public function pause():void
+		{
+			Logger.send(Logger.DEBUG, "[Player] Pausing: " + session.token);
+			
+			if (session.state != Session.STATE_ACTIVE)
+				throw new Error("Cannot pause inactive stream.");
+			
+			if (video)
+				video.pause()
+			if (audio)
+				audio.pause()
+		}
+		
+		// Resumes a paused stream.
+		public function resume():void
+		{
+			Logger.send(Logger.DEBUG, "[Player] Resuming: " + session.token);
+			
+			if (video && !video.paused || audio && !audio.paused)
+				throw new Error("Cannot resume a playing stream.");
+			
+			if (video)
+				video.resume()
+			if (audio)
+				audio.resume()
+		}
+		
+		// Adds an ICE style streaming candidate.
+		// If the candidate is avaliable then it will be used as the
+		// streaming endpoint.
+		public function addCandidate(candidate:Object):void
+		{
+			session.addCandidate(candidate);
+		}
+				
 		protected function showMessage(type:String, text:String):void 
 		{
 			// override me...

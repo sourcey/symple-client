@@ -96,9 +96,8 @@ package sourcey.net
 			
 			super.connect(host, port);
 			
-			// Since flash does not raise a security error for a 
-			// good 20 secs we will implement our own connection
-			// timer.			
+			// Since flash does not raise a security error for a good
+			// 20 secs we will implement our own connection timer.			
 			connectionTimer = new Timer(connectionTimeout * 1000, 0);
 			connectionTimer.addEventListener(TimerEvent.TIMER, onTimeout);
 			connectionTimer.start();

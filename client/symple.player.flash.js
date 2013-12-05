@@ -93,13 +93,19 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     play: function(params) {        
-        this.params = params; // if params
-        //this._super(params); // fix flash open() params
-        console.log("SympleFlashEngine: Play", params);
+        console.log("SympleFlashEngine: Play", params);        
+        this.params = params;
         if (this.initialized) {
             console.log("SympleFlashEngine: Opening", params);
-            this.swf().open(params); //this.player.options.params
-            //this.setState('playing'); // TODO: Flash callback set state
+            this.swf().open(params);
+            
+            // Push through any pending candiates
+            if (this.candidates) {
+                for (var i = 0; i < this.candidates.length; i++) {
+                    console.log("SympleFlashEngine: Add stored candidate", this.candidates[i]);
+                    this.swf().addCandidate(this.candidates[i]);
+                }
+            }
         }
         else {            
             console.log("SympleFlashEngine: Waiting for SWF");
@@ -110,7 +116,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     stop: function() {
         console.log("SympleFlashEngine: Stop");
         if (this.initialized) {
-            this.swf().stop();
+            this.swf().close();
             this.setState('stopped'); // No need to wait for callback
         }
     },
@@ -131,13 +137,29 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
             this.swf().refresh();
         } catch (e) {}
     },
+    
+    onRemoteCandidate: function(candidate) {
+        if (this.params.url)
+            throw "Cannot add candiate after explicit URL was provided."
+           
+        if (this.initialized) {
+            console.log("SympleFlashEngine: Adding remote candiate ", candidate);
+            this.swf().addCandiate(candidate);
+        }        
+        else {      
+            console.log("SympleFlashEngine: Storing remote candiate ", candidate);
+              
+            // Store candidates while waiting for flash to load
+            if (!this.candidates)
+                this.candidates = [];      
+            this.candidates.push(candidate);
+        }            
+    },
         
     onSWFLoaded: function() {
         console.log("SympleFlashEngine: Loaded");
         this.initialized = true;
-        //if (this.initFn)
-        //    this.initFn(true);
-        if (this.streamOnInit)
+        if (this.streamOnInit)     
             this.play(this.params);
     },
 
@@ -145,7 +167,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         // None, Loading, Playing, Paused, Stopped, Error
         state = state.toLowerCase();
         if (state == 'error' && (!error || error.length == 0))
-            error = "Streaming connection to host was lost"
+            error = "Streaming connection to host was lost."
         console.log("SympleFlashEngine: On state: ", state, error, this.player.state);
         if (state != 'none')
             this.setState(state, error);

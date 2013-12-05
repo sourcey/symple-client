@@ -339,8 +339,7 @@ Symple.Media.registerEngine({
     id: 'MJPEGBase64MXHR',
     name: 'MJPEG Base64 MXHR',
     formats: 'MJPEG',
-    //preference: 30,
-    //preference: 65, // 65,
+    preference: 30,
     support: (function() {
         return 'XMLHttpRequest' in window;
     })()

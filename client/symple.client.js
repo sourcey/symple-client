@@ -2,15 +2,15 @@
 // Symple Client
 //
 Symple.Client = Symple.Dispatcher.extend({
-    init: function(peer, options) {
-        console.log('Symple Client: Creating: ', peer, options);
-        this.peer = peer;
+    init: function(options) { //peer, 
+        console.log('Symple Client: Creating: ', options); //peer, 
         this.options = $.extend({
             url:     'http://localhost:4000',
             token:   undefined     // pre-arranged server session token
             //timeout: 0           // set for connection timeout
         }, options);
-        this._super(this.options);
+        this._super(); //this.options
+        this.peer = options.peer;
         this.roster = new Symple.Roster(this);
         this.socket = null;
     },
@@ -24,11 +24,11 @@ Symple.Client = Symple.Dispatcher.extend({
         this.socket.on('connect', function() {
             console.log('Symple Client: Connected');
             self.socket.emit('announce', {
-                token:  self.options.token,
-                group:  self.peer.group,
-                user:   self.peer.user,
-                name:   self.peer.name,
-                type:   self.peer.type
+                token:  self.options.token || "",
+                group:  self.peer.group    || "",
+                user:   self.peer.user     || "",
+                name:   self.peer.name     || "",
+                type:   self.peer.type     || ""
             }, function(res) {
                 console.log('Symple Client: Announce Response: ', res);
                 if (res.status != 200) {
@@ -41,36 +41,81 @@ Symple.Client = Symple.Dispatcher.extend({
                 self.doDispatch('announce', res);
                 self.socket.on('message', function(m) {
                     console.log('Symple Client: Receive: ', m);
-                    if (typeof(m) == 'object') {
-                        if (m.type == 'message') {
-                            self.doDispatch('message',
-                                new Symple.Message(m));
+                    if (typeof(m) == 'object') {     
+                        switch(m.type) {
+                            case 'message':
+                                m = new Symple.Message(m); 
+                                break;
+                            case 'command':
+                                m = new Symple.Command(m);
+                                break;
+                            case 'event':
+                                m = new Symple.Event(m);
+                                break;
+                            case 'presence':
+                                m = new Symple.Presence(m);
+                                if (m.data.online)
+                                    self.roster.update(m.data);
+                                else
+                                    self.roster.remove(m.data.id);
+                                if (m.probe)
+                                    self.sendPresence(new Symple.Presence({ to: m.from }));
+                                break;
+                            default:
+                                o = m;
+                                o.type = o.type || 'message';
+                                break;
                         }
-                        else if (m.type == 'command') {
-                            self.doDispatch('command',
-                                new Symple.Command(m));
+                    
+                        var rpeer = self.roster.get(m.from);
+                        if (!rpeer) {
+                            console.log('Symple Client: Dropping message from unknown peer: ', m);
+                            return;
+                        }
+                        m.from = rpeer;
+                        
+                        self.doDispatch(m.type, m);
+                        
+                        /*
+                        //var fromId = Symple.parseAddress(m.from);
+                        //if (typeof(m.from) == 'string')
+                        //    m.from = self.roster.get(raddr.id)                            
+                        if (m.type == 'message') {     
+                            o = new Symple.Message(m);                       
+                            // o = new Symple.Message(m);
+                            //self.doDispatch('message',
+                            //    new Symple.Message(m));
+                        }
+                        if (m.type == 'command') {
+                            o = new Symple.Command(m);
+                            //self.doDispatch('command',
+                            //    new Symple.Command(m));
                         }
                         else if (m.type == 'event') {
-                            self.doDispatch('event',
-                                new Symple.Event(m));
+                            o = new Symple.Event(m);
+                            //self.doDispatch('event',
+                            //    new Symple.Event(m));
                         }
                         else if (m.type == 'presence') {
+                            o = new Symple.Presence(m);
                             if (m.data.online)
                                 self.roster.update(m.data);
                             else
                                 self.roster.remove(m.data.id);
                             self.doDispatch('presence',
                                 new Symple.Presence(m));
-                            if (m.probe == true) {
+                            if (m.probe) {
                                 self.sendPresence(
-                                    new Symple.Presence({
-                                        to: m.from
-                                    }));
+                                    new Symple.Presence({ to: m.from }));
                             }
                         }
                         else {
-                            self.doDispatch(m.type, m);
+                            o = m; //new Symple.Message(m);
+                            o.type = o.type || 'message';
                         }
+                        
+                        self.doDispatch(m.type, m);
+                            */
                     }
                 });
             });
@@ -114,18 +159,20 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     send: function(m) {
+        //console.log('Symple Client: Sending: ', m);
+        if (!this.online()) throw 'Cannot send message while offline';
+        if (typeof(m) != 'object') throw 'Must send object';
+        if (typeof(m.type) != 'string') throw 'Cannot send message with no type';
+        if (!m.id)  m.id = Symple.randomString(8);
+        if (m.to && typeof(m.to) == 'object' && m.to.group)
+            m.to = Symple.buildAddress(m.to);
+        if (m.to && typeof(m.to) != 'string')
+        if (m.to && m.to.indexOf(this.peer.id) != -1)
+            throw 'The sender cannot match the recipient';
+        //if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
+        //    throw 'The sender must not match the recipient';
+        m.from = Symple.buildAddress(this.peer);
         console.log('Symple Client: Sending: ', m);
-        if (!this.online())
-            throw 'Cannot send message while offline';
-        if (typeof(m) != 'object')
-            throw 'Must send object';
-        if (typeof(m.type) != 'string')
-            throw 'Cannot send message with no type';
-        if (!m.id)
-            m.id = Symple.randomString(8);
-        m.from = this.peer;
-        if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
-            throw 'The sender must not match the recipient';
         this.socket.json.send(m);
     },
 
@@ -136,8 +183,7 @@ Symple.Client = Symple.Dispatcher.extend({
     sendPresence: function(p) {
         p = p || {};
         //console.log('Symple Client: Sending: sendPresence: ', p, this.peer); 
-        if (!this.online())
-            throw 'Cannot send message while offline';
+        if (!this.online()) throw 'Cannot send message while offline';
         if (p.data) {
             //console.log('Symple Client: Sending Presence: ', p.data, this.peer);
             p.data = Symple.merge(this.peer, p.data);
@@ -267,18 +313,29 @@ Symple.Roster = Symple.Manager.extend({
         this.client = client;
     },
     
+    // Add a peer object to the roster
     add: function(peer) {
         console.log('Symple Roster: Adding: ', peer);
+        if (!peer || !peer.id || !peer.user || !peer.group)
+            throw 'Cannot add invalid peer'
         this._super(peer);
         this.client.doDispatch('addPeer', peer);
     },
 
+    // Remove the peer matching an ID or address string: user@group/id
     remove: function(id) {
-        var peer = this._super(id)
+        id = Symple.parseIDFromAddress(id) || id;
+        var peer = this._super(id);
         console.log('Symple Roster: Removing: ', id, peer);
         if (peer)
             this.client.doDispatch('removePeer', peer);
         return peer;
+    },
+    
+    // Get the peer matching an ID or address string: user@group/id
+    get: function(id) {
+        id = Symple.parseIDFromAddress(id) || id;
+        return this._super(id);
     },
     
     update: function(data) {
@@ -290,8 +347,53 @@ Symple.Roster = Symple.Manager.extend({
                 peer[key] = data[key];
         else
             this.add(data);
-    }
+    },
+        
+    // Get the peer matching an address string: user@group/id
+    //getForAddr: function(addr) {        
+    //    var o = Symple.parseAddress(addr);
+    //    if (o && o.id)
+    //        return this.get(o.id);
+    //    return null;
+    //}
 });
+
+
+// -----------------------------------------------------------------------------
+// Helpers
+//
+Symple.parseIDFromAddress = function(str) {
+    var arr = str.split("/")
+    if (arr.length == 2)
+        return arr[1];
+    return null;
+};
+
+Symple.parseAddress = function(str) {
+    var addr = {}, base,
+        arr = str.split("/")
+        
+    if (arr.length < 2) // no id
+        base = str;        
+    else { // has id
+        addr.id = arr[1];   
+        base = arr[0];   
+    }
+    
+    arr = base.split("@")
+    if (arr.length < 2) // group only
+        addr.group = base;         
+    else { // group and user
+        addr.user = arr[0];
+        addr.group  = arr[1];
+    }
+        
+    return addr;
+}
+
+Symple.buildAddress = function(peer) {
+    return peer.user + "@" + peer.group + "/" + peer.id;
+}
 
 
 // -----------------------------------------------------------------------------

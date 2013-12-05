@@ -40,7 +40,10 @@ package
 			jsBridge.addMethod("open", open);
 			jsBridge.addMethod("close", close);
 			jsBridge.addMethod("play", play);
-			jsBridge.addMethod("stop", stop);
+			//jsBridge.addMethod("stop", stop);
+			jsBridge.addMethod("pause", pause);
+			jsBridge.addMethod("resume", resume);
+			jsBridge.addMethod("addCandidate", addCandidate);
 			jsBridge.addMethod("refresh", invalidate);
 			
 			super();
@@ -55,6 +58,8 @@ package
 			//testFLVSource();
 			//testMJPEGHTTPSource();
 			//testSpeexSource();
+			//testTURNMediaProvider();
+			//testTURNMediaProviderFLV();
 		}
 		
 		override protected function addChildren():void
@@ -85,8 +90,7 @@ package
 			//Logger.send(Logger.DEBUG, "Resizing: " + stage.stageWidth + "x" + stage.stageHeight);
 			//player.setSize(stage.stageWidth, stage.stageHeight);
 		}
-		
-		
+				
 		private function onMetadata(event:MediaEvent):void 
 		{	
 			jsBridge.call("onMetadata", event.data);
@@ -94,6 +98,8 @@ package
 
 		private function open(params:Object):Object
 		{
+			Logger.send(Logger.DEBUG, "[Application] Open");		
+			
 			var r:Object = new Object();
 			r.success = true;
 			try {
@@ -102,14 +108,15 @@ package
 			catch (e:Error) {		
 				r.success = false;
 				r.message = e.toString();
-				Logger.send(Logger.DEBUG, "Load failed: " + e.toString());
-			}
-			
+				Logger.send(Logger.ERROR, "Open failed: " + e.toString());
+			}			
 			return r;
 		}		
 		
 		private function close():Object
 		{
+			Logger.send(Logger.DEBUG, "[Application] Close");			
+			
 			var r:Object = new Object();
 			r.success = true;
 			try {
@@ -118,47 +125,94 @@ package
 			catch (e:Error) {		
 				r.success = false;
 				r.message = e.toString();
-				Logger.send(Logger.DEBUG, "Load failed: " + e.toString());
-			}
-			
+				Logger.send(Logger.DEBUG, "Close failed: " + e.toString());
+			}			
 			return r;			
 		}		
 		
-		public function play():Object
+		private function play():Object
 		{			
+			Logger.send(Logger.DEBUG, "[Application] Play");
+			
 			var r:Object = new Object();
 			r.success = true;
-			r.message = "Video stream initialized.";
 			try {
 				player.play();	
 			} 
 			catch (e:Error) {		
 				r.success = false;
 				r.message = e.toString();
-				Logger.send(Logger.DEBUG, "Video stream initialization failed: " + e.toString());
-			}
-			
+				Logger.send(Logger.DEBUG, "Play failed: " + e.toString());
+			}			
 			return r;
-		} 		
+		} 	
 		
+		/*
 		private function stop():Object 
 		{		
 			Logger.send(Logger.DEBUG, "Stopping");
 			var r:Object = new Object();
 			r.success = true;
 			try {
-				// JS call to stop() actually close()s the player
-				// player.stop();
-				player.close();
+				player.stop();
 			} 
 			catch (e:Error) {
 				r.success = false;
 				r.message = e.toString();
-				Logger.send(Logger.DEBUG, "Video stream initialization failed: " + e.toString());
-			}
-			
+				Logger.send(Logger.ERROR, "Stop failed: " + e.toString());
+			}			
 			return r;
 		} 
+		*/
+		
+		private function pause():Object 
+		{		
+			Logger.send(Logger.DEBUG, "Pausing");
+			var r:Object = new Object();
+			r.success = true;
+			try {
+				player.pause();
+			} 
+			catch (e:Error) {
+				r.success = false;
+				r.message = e.toString();
+				Logger.send(Logger.ERROR, "Pause failed: " + e.toString());
+			}			
+			return r;
+		}
+		
+		private function resume():Object 
+		{		
+			Logger.send(Logger.DEBUG, "Resuming");
+			var r:Object = new Object();
+			r.success = true;
+			try {
+				player.resume();
+			} 
+			catch (e:Error) {
+				r.success = false;
+				r.message = e.toString();
+				Logger.send(Logger.ERROR, "Resume failed: " + e.toString());
+			}			
+			return r;
+		} 
+		
+		private function addCandidate(candidate:Object):Object
+		{			
+			Logger.send(Logger.DEBUG, "[Application] Add candiate");
+			
+			var r:Object = new Object();
+			r.success = true;
+			try {
+				player.addCandidate(candidate);	
+			} 
+			catch (e:Error) {		
+				r.success = false;
+				r.message = e.toString();
+				Logger.send(Logger.ERROR, "Add candiate failed: " + e.toString());
+			}			
+			return r;
+		} 	
 		
 		protected function onPlayerState(event:BasicEvent):void 
 		{	
@@ -204,9 +258,10 @@ package
 		//
 		
 
+		/*
 		protected function testMJPEGHTTPSource():void
 		{	
-			// http://127.0.0.1:328/streaming?format=MJPEG&packetizer=multipart&width=400&height=300
+			// http://localhost:328/streaming?format=MJPEG&packetizer=multipart&width=400&height=300
 			player.open({
 				token: "",
 				format: "MJPEG",
@@ -226,7 +281,7 @@ package
 		
 		protected function testMJPEGRawSource():void
 		{	
-			// http://127.0.0.1:328/streaming?format=MJPEG&packetizer=none&width=400&height=300
+			// http://localhost:328/streaming?format=MJPEG&packetizer=none&width=400&height=300
 			player.open({
 				token: "",
 				format: "MJPEG",
@@ -246,7 +301,7 @@ package
 		
 		protected function testFLVSource():void
 		{	
-			// http://127.0.0.1:328/streaming?format=FLV&packetizer=none&width=400&height=300
+			// http://localhost:328/streaming?format=FLV&packetizer=none&width=400&height=300
 			player.open({
 				token: "",
 				format: "FLV", //FLV-Speex
@@ -269,7 +324,7 @@ package
 		
 		protected function testMP3Source():void
 		{
-			var req:URLRequest = new URLRequest("http://127.0.0.1:328/streaming.mp3?format=MP3");
+			var req:URLRequest = new URLRequest("http://localhost:328/streaming.mp3?format=MP3");
 			var s:Sound = new Sound();
 			s.load(req);
 			s.play();			
@@ -293,62 +348,59 @@ package
 				]	
 			});					
 		}
-		
-		/*
-		//testTURNMediaProvider()
-		//var c:MediaConnection
-		//var s:MediaConnection = new MediaConnection("http://192.168.1.2:328/crossdomain.xml")
-		//s.play();
-		
-		protected function testFLVSource():void
-		{		
-			player.open({
-				token: "",
-				protocol: "Raw",
-				video: {
-					codec: "FLV"
-				},
-				//audio: {
-				//	codec: "Speex"
-				//	codec: "Nellymoser"
-				//	codec: "MP3"
-				//},
-				candidates: [
-					{
-						address: "127.0.0.1:328",
-						protocol: "HTTP",
-						//type: "relay",
-						uri: ""
-					}
-				]	
-			});	
-			
-			var req:URLRequest = new URLRequest("http://127.0.0.1:328/spund.mp3");
-			//var req:URLRequest = new URLRequest("http://127.0.0.1/enctest.mp3");
-			var s:Sound = new Sound();
-			s.load(req);
-			s.play();
-			mp3test.mp3
-			var audio:FLVElement = new FLVElement(
-				"http://127.0.0.1/vidtest.flv",
-				"Raw");
-			addChild(audio);
-			audio.play();
-		}
-		
-		protected function testTURNMediaProvider():void
+				
+		protected function testTURNMediaProviderFLV():void
 		{				
 			Logger.send(Logger.INFO, "Test TURN Media Provider");
+			// http://localhost:328/relay?format=MJPEG&packetizer=none&width=400&height=300
 			
 			// Send a GET request to obtain the relayed address.
 			var request:URLRequest = new URLRequest();
-			request.url = "http://127.0.0.1:800";
+			request.url = "http://localhost:328/relay.flv?format=FLV&width=320&height=240";
 			request.method = "GET";			
 			var loader:URLLoader = new URLLoader();
 			loader.addEventListener(Event.COMPLETE, function loaderCompleteHandler(e:Event):void 
 			{
 				player.open({
-					token: "MJPEG-TURN",
+					token: "",
+					format: "FLV",
+					protocol: "Raw",
+					video: {
+						//codec: "MJPEG"
+						codec: "FLV"
+					},
+					//audio: {
+					//	codec: "Speex"
+					//	codec: "Nellymoser"
+					//	codec: "MP3"
+					//},
+					candidates: [
+						{
+							address: e.target.data, //"127.0.0.1:6781",
+							protocol: "turn", // "http"
+							type: "relay",
+							uri: ""
+						}
+					]	
+				});	
+			});
+			loader.load(request);
+		}
+		
+		protected function testTURNMediaProvider():void
+		{				
+			Logger.send(Logger.INFO, "Test TURN Media Provider");
+			// http://localhost:328/relay?format=MJPEG&packetizer=none&width=400&height=300
+			
+			// Send a GET request to obtain the relayed address.
+			var request:URLRequest = new URLRequest();
+			request.url = "http://localhost:328/relay?format=MJPEG&packetizer=multipart&width=320&height=240";
+			request.method = "GET";			
+			var loader:URLLoader = new URLLoader();
+			loader.addEventListener(Event.COMPLETE, function loaderCompleteHandler(e:Event):void 
+			{
+				player.open({
+					token: "",
 					format: "MJPEG",
 					protocol: "HTTP",
 					video: {
