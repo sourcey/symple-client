@@ -76,14 +76,18 @@ package sourcey.symple.player
 			Logger.send(Logger.DEBUG, "[Player] Playing: " + session.token);
 			
 			if (session.state != Session.STATE_ACTIVE)
-				throw new Error("Cannot play inactive stream.");
+				throw new Error("Cannot play with inactive session.");
 			if (!session.params.url)
 				throw new Error("Cannot play a stream with no endpoint.");
+			if (!video && !audio)
+				throw new Error("Cannot play a stream with no audio or video.");
 			
 			if (video)
 				video.play();
 			if (audio)
 				audio.play();
+			
+			state = STATE_PLAYING;
 		}
 		
 		/*
@@ -110,12 +114,16 @@ package sourcey.symple.player
 			Logger.send(Logger.DEBUG, "[Player] Pausing: " + session.token);
 			
 			if (session.state != Session.STATE_ACTIVE)
-				throw new Error("Cannot pause inactive stream.");
+				throw new Error("Cannot pause with inactive session.");
+			if (state != STATE_PLAYING)
+				throw new Error("Cannot pause when not playing.");
 			
 			if (video)
-				video.pause()
+				video.pause();
 			if (audio)
-				audio.pause()
+				audio.pause();
+			
+			state = STATE_PAUSED;
 		}
 		
 		// Resumes a paused stream.
@@ -125,11 +133,15 @@ package sourcey.symple.player
 			
 			if (video && !video.paused || audio && !audio.paused)
 				throw new Error("Cannot resume a playing stream.");
+			if (state != STATE_PAUSED)
+				throw new Error("Cannot pause when not paused.");
 			
 			if (video)
-				video.resume()
+				video.resume();
 			if (audio)
-				audio.resume()
+				audio.resume();
+			
+			state = STATE_PLAYING;
 		}
 		
 		// Adds an ICE style streaming candidate.
@@ -249,18 +261,18 @@ package sourcey.symple.player
 					try {
 						hideMessage();
 						
-						// TODO: Handle multiplexed streams?
-						if (session.params.audio != null) {
-							var audio:IVideoElement = session.createAudioElement();
-							setAudio(audio);								
-						}
 						if (session.params.video != null) {
 							var video:IVideoElement = session.createVideoElement();
-							setVideo(video);							
+							setVideo(video);	
+							Logger.send(Logger.DEBUG, "[Player] Using video");						
+						}
+						if (session.params.audio != null) {
+							var audio:IVideoElement = session.createAudioElement();
+							setAudio(audio);				
+							Logger.send(Logger.DEBUG, "[Player] Using audio");				
 						}
 						if (autoPlay)
 							play();
-						state = STATE_PLAYING;	
 					} 
 					catch (error:Error) {	
 						showMessage("error", error.toString());

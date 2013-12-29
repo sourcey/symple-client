@@ -96,8 +96,11 @@
 			// KLUDGE: Currently we just use the first candidate that resolves
 			// successfully. Ideally we would suport changing candidates mid-stream
 			// if a higher priority or lower latency candidate becomes available.			
-			if (state == STATE_ACTIVE)
+			if (state == STATE_ACTIVE) {
+				Logger.send(Logger.DEBUG, 
+					"[MediaSession] Dropping unused candidate");
 				return;	
+			}
 			
 			// TODO: User resolver.bestCandidate
 			
@@ -105,6 +108,8 @@
 			if (candidate && 
 				candidate.success && 
 				candidate.url) {
+				Logger.send(Logger.DEBUG, 
+					"[MediaSession] Using candidate: " + event.data.url);
 				params.url = candidate.url;
 				state = Session.STATE_ACTIVE;
 			}

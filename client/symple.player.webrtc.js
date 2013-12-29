@@ -25,9 +25,14 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         this._super(player);
         
         this.rtcConfig = player.options.rtcConfig || {
-          "iceServers": [
-            {"url": "stun:stun.l.google.com:19302"}
+          iceServers: [
+            { url: "stun:stun.l.google.com:19302" }
           ]
+        }
+        this.rtcOptions = player.options.rtcOptions || {
+            optional: [
+                {DtlsSrtpKeyAgreement: true} // FF <=> Chrome interop
+            ]
         }
         this.mediaConstraints = player.options.mediaConstraints || {}
         //this.mediaConstraints = player.options.mediaConstraints || {
@@ -40,7 +45,11 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     
     setup: function() {
         console.log("SympleWebRTC: Create");
-        this.video = $('<video width="100%" height="100%"></video>');
+        
+        // Note: Absolutely position video element so it scales to  
+        // the parent element size. Need to test in other browsers.        
+        //this.video = $('<video width="100%" height="100%" style="position:absolute;left:0;top:0;"></video>'); // Chrome
+        this.video = $('<video></video>'); // style="position:absolute;left:0;top:0;"  width="100%" height="100%"  style="max-width:100%;height:auto;"
         this.player.screen.prepend(this.video);    
     },
       
@@ -87,6 +96,16 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         this.setState('stopped');
     },
     
+    mute: function(flag) {
+        // Mute unless explicit false given
+        flag = flag === false ? false : true;
+        console.log("SympleWebRTC: Mute:", flag);
+        
+        if (this.video) {
+            this.video.prop('muted', flag); //mute
+        } 
+    },
+    
     //
     // Called when local SDP is ready to be sent to the peer.
     sendLocalSDP: new Function,
@@ -131,7 +150,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
             function() { // error
                 self.setError("Cannot create local SDP answer");
             },
-            this.mediaConstraints
+            null //this.mediaConstraints
         );
     },    
     
@@ -156,7 +175,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         console.log("SympleWebRTC: Creating peer connection: ", this.rtcConfig);
                 
         var self = this;
-        this.pc = new RTCPeerConnection(this.rtcConfig);
+        this.pc = new RTCPeerConnection(this.rtcConfig, this.rtcOptions);
         this.pc.onicecandidate = function(event) {
             if (event.candidate) {
                 console.log("SympleWebRTC: Local candidate gathered:", event.candidate);                
@@ -192,3 +211,17 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         console.log("SympleWebRTC: Created RTCPeerConnnection with config: " + JSON.stringify(this.rtcConfig));
     }
 });
+
+
+//
+// Helpers
+
+Symple.Media.iceCandidateType = function(candidateSDP) {
+  if (candidateSDP.indexOf("typ relay") != -1)
+    return "turn";
+  if (candidateSDP.indexOf("typ srflx") != -1)
+    return "stun";
+  if (candidateSDP.indexOf("typ host") != -1)
+    return "host";
+  return "unknown";
+}

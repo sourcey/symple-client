@@ -67,12 +67,22 @@ Symple.Client = Symple.Dispatcher.extend({
                                 break;
                         }
                     
-                        var rpeer = self.roster.get(m.from);
-                        if (!rpeer) {
-                            console.log('Symple Client: Dropping message from unknown peer: ', m);
+                        if (typeof(m.from) != 'string') {
+                            console.log('Symple Client: Invalid sender address: ', m);
                             return;
                         }
-                        m.from = rpeer;
+                            
+                        // Replace the from attribute with the full peer object.
+                        // This will only work for peer messages, not server messages.
+                        var rpeer = self.roster.get(m.from);
+                        if (rpeer)
+                            m.from = rpeer;
+                            
+                        //if (!rpeer) {
+                        //    console.log('Symple Client: Dropping message from unknown peer: ', m);
+                        //    return;
+                        //}
+                        //m.from = rpeer;
                         
                         self.doDispatch(m.type, m);
                         
@@ -115,7 +125,7 @@ Symple.Client = Symple.Dispatcher.extend({
                         }
                         
                         self.doDispatch(m.type, m);
-                            */
+                        */
                     }
                 });
             });

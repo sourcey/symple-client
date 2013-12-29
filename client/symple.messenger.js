@@ -78,7 +78,7 @@ Symple.Messenger = Symple.Class.extend({
                 textArea.val('');
             }
             else
-                alert('Cannot send an empty message.');
+                alert('Sending an empty message?');
             return false;
         });
     },
@@ -90,7 +90,7 @@ Symple.Messenger = Symple.Class.extend({
     },
 
     onMessage: function(message) {
-        console.log('Symple Messenger: On Message: ', message);
+        console.log('Symple Messenger: On message: ', message);
 
         if (!this.options.recipient ||
             this.options.recipient.user == message.from.user) {

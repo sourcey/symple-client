@@ -73,7 +73,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
                 this.player.options.htmlRoot + '/symple.player.swf', 
             this.id, '100%', '100%', '10.0.0',
             this.player.options.htmlRoot + '/playerProductInstall.swf', {
-                //debug: true,
+                //debug: true, // enable for debug output
             }, {
                 quality: 'high',
                 wmode: 'transparent',
@@ -139,7 +139,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
     
     onRemoteCandidate: function(candidate) {
-        if (this.params.url)
+        if (this.params && this.params.url)
             throw "Cannot add candiate after explicit URL was provided."
            
         if (this.initialized) {

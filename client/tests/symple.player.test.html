@@ -113,13 +113,13 @@
           //candidates: [{
           //    protocol: "HTTP",
           //    address: Symple.SERVICE,
-          //    uri: "/streaming?format=MJPEG&packetizer=multipart&width=400&height=300"
+          //    uri: "/streaming?format=MJPEG&framing=multipart&width=400&height=300"
           //}]	
         });
         player.engine.onRemoteCandidate({
             protocol: "HTTP",
             address: Symple.SERVICE,
-            uri: "/streaming?format=MJPEG&packetizer=multipart&width=400&height=300"
+            uri: "/streaming?format=MJPEG&framing=multipart&width=400&height=300"
         })
         $('#flash-mjpeg h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
       </script>
@@ -136,7 +136,7 @@
       <script>  
           $(document).ready(function() {
               var params = $.extend({}, Symple.DEFAULTS);
-              params.packetizer = 'multipart'; // for native MJPEG stream
+              params.framing = 'multipart'; // for native MJPEG stream
               params.address.uri = '/relay'
               $.get(Symple.Media.buildURL(params), function(relayedAddr) {
                   $('#relayed-engine .relayed-address span').text(relayedAddr)

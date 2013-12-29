@@ -143,7 +143,7 @@ sio.Socket.prototype.authorize = function(req, fn) {
     if (!req.user)
       return fn(400, 'Bad request');
       
-    client.access = 0;
+    client.access = -1;
     client.name = req.name;
     client.group = req.group;
     client.user = req.user;
@@ -155,7 +155,7 @@ sio.Socket.prototype.authorize = function(req, fn) {
 
 
 sio.Socket.prototype.onAuthorize = function(req) {
-  console.log(this.id, 'On authorize: ', req);
+  console.log(this.id, 'on authorize: ', req);
   this.online = true;
   this.name = req.name ?                // The client display name
       req.name : this.user;
@@ -254,7 +254,7 @@ sio.Socket.prototype.getDestinationAddress = function(message) {
 
 sio.Socket.prototype.broadcastMessage = function(message) {
   if (!message || typeof message !== 'object' || !message.from) {
-    console.error(this.id, 'Dropping invalid message from:', message);
+    console.error(this.id, 'dropping invalid message:', message);
     return;
   }
 
@@ -271,7 +271,7 @@ sio.Socket.prototype.broadcastMessage = function(message) {
   
   // Make sure we have a valid destination address
   if (typeof to !== 'object' || typeof to.group === 'undefined') {
-    console.error(this.id, 'Message has invalid destination address:', to, ':', message);
+    console.error(this.id, 'dropping invalid message without destination:', to, ':', message);
     return;
   }
   
@@ -291,7 +291,7 @@ sio.Socket.prototype.broadcastMessage = function(message) {
   }
   
   else {
-    console.error(this.id, 'Cannot route invalid message:', message);
+    console.error(this.id, 'cannot route invalid message:', message);
   }
 }
 
@@ -304,19 +304,19 @@ io.sockets.on('connection', function(client) {
 
   // 5 seconds to Announce or get booted
   var interval = setInterval(function () {
-      console.log(client.id, 'Failed to Announce'); 
+      console.log(client.id, 'failed to announce'); 
       client.disconnect();
   }, 5000);
 
   // Announce
   client.on('announce', function(req, ack) {    
-    console.log(client.id, 'Announcing:', req);
+    console.log(client.id, 'announcing:', req);
 
     try {
 
       // Authorization
       client.authorize(req, function(status, message) {
-        // console.log(client.id, 'Announce result:', status);
+        // console.log(client.id, 'announce result:', status);
         clearInterval(interval);
         if (status == 200)
           respond(ack, status, message, client.toPeer());
@@ -346,14 +346,14 @@ io.sockets.on('connection', function(client) {
           // Touch the client session event 10
           // minutes to prevent it from expiring.
           client.touchSession(function(err, res) {
-            console.log(client.id, 'Touching session:', !!res);
+            console.log(client.id, 'touching session:', !!res);
           });
         }, 10 * 60000);
 
       });
     }
     catch (e) {
-        console.log('Client error: ', e);
+        console.log(client.id, 'internal error: ', e);
         client.disconnect();
     }
   }); 
@@ -361,12 +361,12 @@ io.sockets.on('connection', function(client) {
   //
   // Disconnection
   client.on('disconnect', function() {
-    console.log(client.id + ' is disconnecting');
+    console.log(client.id, 'is disconnecting');
     clearInterval(interval);
     if (client.online) {
       client.online = false;
       var p = client.toPresence();
-      console.log('disconnecting', p);
+      //console.log('Disconnecting', p);
       client.broadcastMessage(p);
     }
     client.leave('user-' + client.user);    // leave user channel

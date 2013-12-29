@@ -37,7 +37,7 @@ Symple.Media = {
             engine = this.engines[item];
             if (engine.preference == 0) 
                 continue;
-            console.log('Symple Mediaengines: Supported: ', engine.name, engine.support)            
+            console.log('Symple Media: Supported: ', engine.name, engine.support)            
             if (engine.support == true)        
                 arr.push(engine)
         }
@@ -55,7 +55,7 @@ Symple.Media = {
     preferredCompatibleEngine: function(format) {    
         var arr = this.compatibleEngines(format), engine;  
         engine = arr.length ? arr[0] : null;
-        console.log('Symple Mediaengines: Preferred Engine: ', engine);
+        console.log('Symple Media: Preferred Engine: ', engine);
         return engine; 
     },
 
@@ -104,7 +104,50 @@ Symple.Media = {
             srcH = srcW / srcRatio;
         }
         return [srcW, srcH];
-    }
+    },
+        
+    // Basic checking for ICE style streaming candidates
+    // TODO: Latency checks and best candidate switching
+    checkCandidate: function(url, fn) {
+        console.log('Symple Media: Checking candidate: ', url);
+
+        var xhr;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else if (window.ActiveXObject) {
+            xhr = new ActiveXObject("Microsoft.XMLHTTP");
+        } else {
+            fn(url, false);
+            return;
+        }
+
+        xhr.onreadystatechange = function() {
+            //console.log('Symple Media: Candidate state', xhr.readyState, xhr.status);
+
+            if (xhr.readyState == 2) {
+                if (fn) {
+                    console.log('Symple Media: Candidate result: ', xhr.readyState, xhr.status);
+                    fn(url, xhr.status == 200);
+                    fn = null;
+
+                    // Safari on windows crashes when abort is called from inside
+                    // the onreadystatechange callback.
+                    setTimeout(function() {
+                        xhr.abort();
+                    }, 0);
+                }
+            }
+            else if (xhr.readyState == 4/* && xhr.status != 0*/) {
+                if (fn) {
+                    console.log('Symple Media: Candidate result: ', xhr.readyState, xhr.status);
+                    fn(url, /*xhr.status == 200*/true);
+                    fn = null;
+                }
+            }
+        };
+        xhr.open('GET', url, true);
+        xhr.send(null);
+    },
 };
 
 // ----------------------------------------------------------------------------
@@ -137,6 +180,7 @@ Symple.Player = Symple.Class.extend({
             <div class="symple-player">\
                 <div class="symple-player-message"></div>\
                 <div class="symple-player-status"></div>\
+                <div class="symple-player-loading"></div>\
                 <div class="symple-player-screen"></div>\
                 <div class="symple-player-controls">\
                     <a class="play-btn" rel="play" href="#">Play</a>\
@@ -158,11 +202,12 @@ Symple.Player = Symple.Class.extend({
         this.screen = this.element.find('.symple-player-screen');
         if (!this.screen.length)
             throw 'Player screen element not found';
-            
-        if (this.options.screenWidth)
-            this.screen.width(this.options.screenWidth);
-        if (this.options.screenHeight)
-            this.screen.height(this.options.screenHeight);
+        
+        // Depreciated: Screen is always 100% unless speified otherwise via CSS
+        //if (this.options.screenWidth)
+        //    this.screen.width(this.options.screenWidth);
+        //if (this.options.screenHeight)
+        //    this.screen.height(this.options.screenHeight);
             
         this.message = this.element.find('.symple-player-message')
         if (!this.message.length)
@@ -172,11 +217,13 @@ Symple.Player = Symple.Class.extend({
         if (typeof this.options.engine  == 'undefined') {
             var engine = Symple.Media.preferredCompatibleEngine(this.options.format);
             if (engine)
-                this.options.engine = engine.id
+                this.options.engine = engine.id;
         }
 
         this.bindEvents();
         this.playing = false;
+
+        console.log(this.options.template)
 
         //this.setState('stopped');
         //var self = this;
@@ -204,7 +251,9 @@ Symple.Player = Symple.Class.extend({
                  
         // Instantiate the engine          
         this.engine = new Symple.Player.Engine[id](this);
-        this.engine.setup();      
+        this.engine.setup();  
+        
+        this.element.addClass('engine-' + id.toLowerCase())    
     },
     
     //
@@ -340,11 +389,13 @@ Symple.Player.Engine = Symple.Class.extend({
     setup: function() {},
     destroy: function() {},
     play: function(params) { 
-        this.params = params;
-        if (!this.params.url)
+        this.params = params || {};
+        if (!this.params.url && typeof(params.address) == 'object')
             this.params.url = this.buildURL();
     },
     stop: function() {},
+    pause: function(flag) {},
+    mute: function(flag) {},
     //refresh: function() {},
 
     setState: function(state, message) {
