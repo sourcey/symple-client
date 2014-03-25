@@ -224,29 +224,66 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     // Adds a capability for our current peer
-    addCapability: function(name) {
+    addCapability: function(name, value) {
+        
         var peer = this.peer;
         if (peer) {
+            if (typeof value == 'undefined')
+                value = true
             if (typeof peer.capabilities == 'undefined')
-                peer.capabilities = []; //{}
-            var idx = peer.capabilities.indexOf(name)
-            if (idx == -1) {
-                peer.capabilities.push(name);
-                this.sendPresence();
-            }
+                peer.capabilities = {}
+            peer.capabilities[name] = value;
+            //var idx = peer.capabilities.indexOf(name);
+            //if (idx == -1) {
+            //    peer.capabilities.push(name);
+            //    this.sendPresence();
+            //}
         }
     },
 
     // Removes a capability from our current peer
     removeCapability: function(name) {
         var peer = this.peer;
-        if (peer && typeof(peer.capabilities) != 'undefined') {
-            var idx = peer.capabilities.indexOf(name)
-            if (idx != -1) {
-                peer.capabilities.pop(name);
-                this.sendPresence();                
-            }
+        if (peer && typeof peer.capabilities != 'undefined' && 
+            typeof peer.capabilities[name] != 'undefined') {
+            delete peer.capabilities[key];
+            this.sendPresence();    
+            //var idx = peer.capabilities.indexOf(name)
+            //if (idx != -1) {
+            //    peer.capabilities.pop(name);
+            //    this.sendPresence();                
+            //}
         }        
+    },
+    
+    // Checks if a peer has a specific capbility and returns a boolean
+    hasCapability: function(id, name) {
+        var peer = this.roster.get(id)
+        if (peer) {
+            if (typeof peer.capabilities != 'undefined' && 
+                typeof peer.capabilities[name] != 'undefined')
+                return peer.capabilities[name] !== false;
+            if (typeof peer.data != 'undefined' && 
+                typeof peer.data.capabilities != 'undefined' && 
+                typeof peer.data.capabilities[name] != 'undefined')
+                return peer.data.capabilities[name] !== false;
+        }
+        return false;
+    },
+    
+    // Checks if a peer has a specific capbility and returns the value
+    getCapability: function(id, name) {
+        var peer = this.roster.get(id)
+        if (peer) {
+            if (typeof peer.capabilities != 'undefined' && 
+                typeof peer.capabilities[name] != 'undefined')
+                return peer.capabilities[name];
+            if (typeof peer.data != 'undefined' && 
+                typeof peer.data.capabilities != 'undefined' && 
+                typeof peer.data.capabilities[name] != 'undefined')
+                return peer.data.capabilities[name];
+        }
+        return undefined;
     },
 
     // Sets the client to an error state and and dispatches an error event
@@ -357,7 +394,7 @@ Symple.Roster = Symple.Manager.extend({
                 peer[key] = data[key];
         else
             this.add(data);
-    },
+    }
         
     // Get the peer matching an address string: user@group/id
     //getForAddr: function(addr) {        

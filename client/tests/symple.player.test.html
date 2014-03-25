@@ -89,42 +89,7 @@
         <p>A quick test to instantiate a Symple player for each streaming engine using a range of media formats, and also to test the Symple C++ MediaServer. The MediaServer sample is part of the Symple C++ module distribured with <a href="http://sourcey/projects/libsourcey">LibSourcey</a>.</p>
       </div>
             
-      <div id="flash-mjpeg">
-        <h1>Flash MJPEG</h1>
-        <div class="video-player">      
-        </div>
-      </div>
-      <script>    
-        // Flash MJPEG Player
-        var player = new Symple.Player({
-            element:        '#flash-mjpeg .video-player',
-            engine:         'Flash',
-            //screenWidth:    400,
-            //screenHeight:   300,
-            //url:            'http://' + Symple.SERVICE + '/mjpeg'
-        });
-        player.play({
-          token: "test",
-          format: "MJPEG",
-          protocol: "HTTP",
-          video: {
-              codec: "MJPEG"
-          }//,
-          //candidates: [{
-          //    protocol: "HTTP",
-          //    address: Symple.SERVICE,
-          //    uri: "/streaming?format=MJPEG&framing=multipart&width=400&height=300"
-          //}]	
-        });
-        player.engine.onRemoteCandidate({
-            protocol: "HTTP",
-            address: Symple.SERVICE,
-            uri: "/streaming?format=MJPEG&framing=multipart&width=400&height=300"
-        })
-        $('#flash-mjpeg h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
-      </script>
       
-      <!--
       <div id="relayed-engine">
         <h1>Relayed MJPEG Engine</h1>
         <p class="player-engine">Player Engine: <span>None</span></p>
@@ -189,6 +154,42 @@
           })
       </script>
           
+      <!--
+      <div id="flash-mjpeg">
+        <h1>Flash MJPEG</h1>
+        <div class="video-player">      
+        </div>
+      </div>
+      <script>    
+        // Flash MJPEG Player
+        var player = new Symple.Player({
+            element:        '#flash-mjpeg .video-player',
+            engine:         'Flash',
+            //screenWidth:    400,
+            //screenHeight:   300,
+            //url:            'http://' + Symple.SERVICE + '/mjpeg'
+        });
+        player.play({
+          token: "test",
+          format: "MJPEG",
+          protocol: "HTTP",
+          video: {
+              codec: "MJPEG"
+          }//,
+          //candidates: [{
+          //    protocol: "HTTP",
+          //    address: Symple.SERVICE,
+          //    uri: "/streaming?format=MJPEG&framing=multipart&width=400&height=300"
+          //}]	
+        });
+        player.engine.onRemoteCandidate({
+            protocol: "HTTP",
+            address: Symple.SERVICE,
+            uri: "/streaming?format=MJPEG&framing=multipart&width=400&height=300"
+        })
+        $('#flash-mjpeg h1').after('<p>' + JSON.stringify(Symple.Media.engines['Flash']) + '</p>')
+      </script>
+      
       <div id="mjpeg-native">
         <h1>MJPEG Native</h1>
         <div class="video-player">      

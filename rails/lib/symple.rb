@@ -1,13 +1,10 @@
 require "redis"
 require "json"
 
-# Attempt to provide Engine to Rails
-#require "symple/rails/engine"
-
 module Symple
 
   def options
-    @options ||= {}
+    @options ||= Rails.configuration.redis ||= {}
   end
 
   def options=(val)
@@ -23,7 +20,10 @@ module Symple
   #
   # IMPORTANT: options[:nodeId] must match the Node ID of the Node server we are
   # publishing to otherwise the message will be silently discarded.
-  def publish(channel, message)
+  #
+  # @channel: the group or user channel name identifier
+  # @message: the message data to publish
+  def broadcast(channel, message)
     #  #Socket.IO Redis subscribe: dispatch {"nodeId":672000877,"args":["/4","3:
     #  ::[object Object]",null,["13764695690716688"]]}
     #  dispatch = {
@@ -35,12 +35,25 @@ module Symple
     #      '[]' # exceptions
     #    ]
     #  }
-    #redis.publish("dispatch", "{\"nodeId\":#{options[:nodeId] ||= 1},\"args\":[\
-    #      \"/#{channel}\",\"#{"4:::" + (message.is_a?(String) ? message : message.to_json)}\",\
-    #      null,\"[]\"]}")
+    redis.publish("dispatch", format(channel, message))
+  end
+  
+  def broadcast_user(channel, message)
+    redis.publish("dispatch", format("user-#{channel}", message))
+  end
+  
+  def broadcast_group(channel, message)
+    redis.publish("dispatch", format("group-#{channel}", message))
+  end
+
+  def format(channel, message) #, volatile = nil, exceptions = []
+    #channel = scope + '-' + channel if channel == 'group' || channel == 'user'
     packet = "4:::#{message.is_a?(String) ? message : message.to_json}"
-    redis.publish("dispatch", "{\"nodeId\":#{options[:nodeId] ||= 1},\"args\":" <<
-         "[\"/#{channel}\",#{packet.to_json},null,\"[]\"]}")
+    # room, packet, volatile, exceptions
+    # See socket.io manager.js onDispatch()
+    return "{\"nodeId\":#{options[:nodeId] ||= 1},\"args\":" <<
+         "[\"/#{channel}\",#{packet.to_json},null,\"[]\"]}"
+         #"[\"/#{channel}\",#{packet.to_json},#{volatile},\"#{exceptions}\"]}"
   end
 
   def subscribe(channels)
