@@ -1,0 +1,1 @@
+copy ".\\player\\bin-debug\\SymplePlayer.swf" ".\\..\\symple.player.swf"

@@ -1,0 +1,81 @@
+.symple-form-wrapper {
+    height: 100%;
+}
+
+
+/* 
+    Single Form
+*/
+
+form.symple-form {
+    position: relative;
+}
+form.symple-form h3 {
+}
+form.symple-form fieldset {
+}
+form.symple-form .hint {
+    color: #666;
+}
+form.symple-form .error {
+    color: #c00;
+}
+/* Mesh compatability */
+form.symple-form .hint:hover:before, 
+form.symple-form .hint:hover:after {
+    opacity: 0;
+}
+form.symple-form .hint,
+form.symple-form .error {
+    margin-bottom: 15px;
+    padding: 0;
+    text-align: left;
+}
+form.symple-form .field .hint,
+form.symple-form .field .error {
+    padding: 5px 0 0;
+}
+
+
+/* 
+    Paged Form 
+*/
+
+form.symple-paged-form .symple-form-content .menu {
+    float: left;
+    width: 20%;
+}
+
+form.symple-paged-form .symple-form-content .menu li {
+    border-left: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+form.symple-paged-form .symple-form-content .menu li a {
+    display: block;
+    font-size: 12px;
+    padding: 8px 10px 8px 15px;
+    text-decoration: none;
+    color: #333;
+    background: #fff;
+}
+form.symple-paged-form .symple-form-content .menu li a:hover {
+    background: #f6f6f6;
+}
+form.symple-paged-form .symple-form-content .menu li.selected a {
+    background: #EEF3FA;
+}
+
+form.symple-paged-form .symple-form-content .pages {
+    margin-left: 20%;
+    height: 100%;
+    width: 80%;
+}
+
+form.symple-paged-form .symple-form-content .pages .page {
+    padding: 15px;
+    background: #EEF3FA;
+}
+
+form.symple-paged-form .symple-form-content .pages .page h2 {
+    display: none;
+}
