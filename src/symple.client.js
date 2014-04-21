@@ -2,15 +2,15 @@
 // Symple Client
 //
 Symple.Client = Symple.Dispatcher.extend({
-    init: function(options) { //peer, 
-        console.log('Symple Client: Creating: ', options); //peer, 
+    init: function(options) {
+        console.log('Symple Client: Creating: ', options);
         this.options = $.extend({
             url:     'http://localhost:4000',
             token:   undefined     // pre-arranged server session token
             //timeout: 0           // set for connection timeout
         }, options);
-        this._super(); //this.options
-        this.peer = options.peer;
+        this._super();
+        this.peer = options.peer || {};
         this.roster = new Symple.Roster(this);
         this.socket = null;
     },
@@ -19,7 +19,9 @@ Symple.Client = Symple.Dispatcher.extend({
     // If the server is down the 'error' event will fire.
     connect: function() {
         console.log('Symple Client: Connecting: ', this.options);
-        self = this;        
+        self = this; 
+        if (this.socket)
+            throw 'The client socket is not null'
         this.socket = io.connect(this.options.url, this.options);
         this.socket.on('connect', function() {
             console.log('Symple Client: Connected');
@@ -77,61 +79,18 @@ Symple.Client = Symple.Dispatcher.extend({
                         var rpeer = self.roster.get(m.from);
                         if (rpeer)
                             m.from = rpeer;
-                            
-                        //if (!rpeer) {
-                        //    console.log('Symple Client: Dropping message from unknown peer: ', m);
-                        //    return;
-                        //}
-                        //m.from = rpeer;
+                        else
+                            console.log('Symple Client: Got message from unknown peer: ', m);
                         
+                        // Dispatch to the application
                         self.doDispatch(m.type, m);
-                        
-                        /*
-                        //var fromId = Symple.parseAddress(m.from);
-                        //if (typeof(m.from) == 'string')
-                        //    m.from = self.roster.get(raddr.id)                            
-                        if (m.type == 'message') {     
-                            o = new Symple.Message(m);                       
-                            // o = new Symple.Message(m);
-                            //self.doDispatch('message',
-                            //    new Symple.Message(m));
-                        }
-                        if (m.type == 'command') {
-                            o = new Symple.Command(m);
-                            //self.doDispatch('command',
-                            //    new Symple.Command(m));
-                        }
-                        else if (m.type == 'event') {
-                            o = new Symple.Event(m);
-                            //self.doDispatch('event',
-                            //    new Symple.Event(m));
-                        }
-                        else if (m.type == 'presence') {
-                            o = new Symple.Presence(m);
-                            if (m.data.online)
-                                self.roster.update(m.data);
-                            else
-                                self.roster.remove(m.data.id);
-                            self.doDispatch('presence',
-                                new Symple.Presence(m));
-                            if (m.probe) {
-                                self.sendPresence(
-                                    new Symple.Presence({ to: m.from }));
-                            }
-                        }
-                        else {
-                            o = m; //new Symple.Message(m);
-                            o.type = o.type || 'message';
-                        }
-                        
-                        self.doDispatch(m.type, m);
-                        */
                     }
                 });
             });
         });
         this.socket.on('error', function() {
-            // This is triggered when any transport fails, so not necessarily fatal
+            // This is triggered when any transport fails, 
+            // so not necessarily fatal
             //self.setError('connect');          
             self.doDispatch('connect');   
         });
@@ -144,6 +103,7 @@ Symple.Client = Symple.Dispatcher.extend({
             self.doDispatch('reconnecting');
         });
         this.socket.on('connect_failed', function() {
+            // Called when all transports fail
             console.log('Symple Client: Connect failed');            
             self.doDispatch('connect_failed');
             self.setError('connect');   
@@ -172,24 +132,6 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     send: function(m) {
-        /*
-        //console.log('Symple Client: Sending: ', m);
-        if (!this.online()) throw 'Cannot send message while offline';
-        if (typeof(m) != 'object') throw 'Must send object';
-        if (typeof(m.type) != 'string') throw 'Cannot send message with no type';
-        if (!m.id)  m.id = Symple.randomString(8);
-        if (m.to && typeof(m.to) == 'object' && m.to.group)
-            m.to = Symple.buildAddress(m.to);
-        if (m.to && typeof(m.to) != 'string')
-        if (m.to && m.to.indexOf(this.peer.id) != -1)
-            throw 'The sender cannot match the recipient';
-        //if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
-        //    throw 'The sender must not match the recipient';
-        m.from = Symple.buildAddress(this.peer);
-        console.log('Symple Client: Sending: ', m);
-        this.socket.json.send(m);
-        */
-        
         //console.log('Symple Client: Sending: ', m);
         if (!this.online()) throw 'Cannot send messages when offline';
         if (typeof(m) != 'object') throw 'Message must be an object';
@@ -214,15 +156,13 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     sendMessage: function(m) { //, fn
-        this.send(m); //new Symple.Message(m)); //, fn
+        this.send(m); //, fn
     },
 
     sendPresence: function(p) {
         p = p || {};
-        //console.log('Symple Client: Sending: sendPresence: ', p, this.peer); 
         if (!this.online()) throw 'Cannot send message while offline';
         if (p.data) {
-            //console.log('Symple Client: Sending Presence: ', p.data, this.peer);
             p.data = Symple.merge(this.peer, p.data);
         }
         else
@@ -407,8 +347,14 @@ Symple.Roster = Symple.Manager.extend({
     
     // Get the peer matching an ID or address string: user@group/id
     get: function(id) {
-        id = Symple.parseIDFromAddress(id) || id;
-        return this._super(id);
+    
+        // Handle IDs
+        peer = this._super(id); // id = Symple.parseIDFromAddress(id) || id;
+        if (peer)
+            return peer;
+
+        // Handle address strings
+        return this.findOne(Symple.parseAddress(id));
     },
     
     update: function(data) {

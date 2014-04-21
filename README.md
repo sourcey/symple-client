@@ -107,10 +107,10 @@ While the Symple protocol itself is inherently dependency free, the JavaScript c
 
 ## Symple Projects
 
-Node.js server: https://github.com/sourcey/symple-server-node
-JavaScript client: https://github.com/sourcey/symple-client
-Ruby client: https://github.com/sourcey/symple-client-ruby
-C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple
+Node.js server: https://github.com/sourcey/symple-server-node  
+JavaScript client: https://github.com/sourcey/symple-client  
+Ruby client: https://github.com/sourcey/symple-client-ruby  
+C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple  
 
 ## Contributing
 

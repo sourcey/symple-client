@@ -160,7 +160,7 @@ Symple.Player = Symple.Class.extend({
     init: function(options) {
         // TODO: Use our own options extend
         this.options = $.extend({ //Symple.extend({
-            htmlRoot:       '/static/symple/client',
+            htmlRoot:       '/javascripts/symple',
             element:        '.symple-player:first',
             
             format:         'MJPEG',      // The media format to use (MJPEG, FLV, Speex, ...)
