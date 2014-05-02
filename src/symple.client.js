@@ -3,9 +3,11 @@
 //
 Symple.Client = Symple.Dispatcher.extend({
     init: function(options) {
-        console.log('Symple Client: Creating: ', options);
         this.options = $.extend({
-            url:     'http://localhost:4000',
+            url:     options.url ? options.url : 'http://localhost:4000',
+            secure:  options.url && (
+                         options.url.indexOf('https') == 0 || 
+                         options.url.indexOf('wss') == 0) ? true : false,
             token:   undefined     // pre-arranged server session token
             //timeout: 0           // set for connection timeout
         }, options);
