@@ -21,7 +21,7 @@ Symple.Messenger = Symple.Class.extend({
           </div>'
         }, options);
 
-        console.log('Symple Messenger: Creating: ', this.options);
+        Symple.log('Symple Messenger: Creating: ', this.options);
 
         this.element = $(this.options.element);
         if (this.element.children().length == 0)
@@ -45,7 +45,7 @@ Symple.Messenger = Symple.Class.extend({
         // Scroll to bottom unless position is fixed
         if (!this.fixedScrollPosition) {
             this.messages.scrollTop(this.messages[0].scrollHeight);
-            //console.log('Symple Messenger: Update Scroll: ', this.messages[0].scrollHeight);
+            //Symple.log('Symple Messenger: Update Scroll: ', this.messages[0].scrollHeight);
         }
     },
     
@@ -55,7 +55,7 @@ Symple.Messenger = Symple.Class.extend({
         // Detect message scrolling
         this.messages.scroll(function() {
             self.fixedScrollPosition = !self.isScrollBottom(self.messages);
-            //console.log('Symple Messenger: Message Scrolling: Fixed: ', self.fixedScrollPosition);
+            //Symple.log('Symple Messenger: Message Scrolling: Fixed: ', self.fixedScrollPosition);
         });
 
         // Send account message
@@ -85,24 +85,24 @@ Symple.Messenger = Symple.Class.extend({
     
     // Sends a message using the Symple client
     sendMessage: function(message) {
-        console.log('Symple Messenger: Sending: ', message);
+        Symple.log('Symple Messenger: Sending: ', message);
         this.client.send(message);
     },
 
     onMessage: function(message) {
-        console.log('Symple Messenger: On message: ', message);
+        Symple.log('Symple Messenger: On message: ', message);
 
         if (!this.options.recipient ||
             this.options.recipient.user == message.from.user) {
 
             var e = this.messages.find('.message[data-temp-id="' + message.temp_id + '"]');
             if (e.length) {
-                console.log('Symple Messenger: Message Confimed: ', message);
+                Symple.log('Symple Messenger: Message Confimed: ', message);
                 e.attr('data-message-id', message.id);
                 e.removeClass('pending');
             }
             else {
-                console.log('Symple Messenger: Message Received: ', message);
+                Symple.log('Symple Messenger: Message Received: ', message);
                 this.addMessage(message);
             }
         }
@@ -142,7 +142,7 @@ Symple.Messenger = Symple.Class.extend({
         if (pending)
             element.addClass('pending');
 
-        console.log('Symple Messenger: Added Message');
+        Symple.log('Symple Messenger: Added Message');
         this.options.onAddMessage(message, element);
         return element;
     },
@@ -195,7 +195,7 @@ Symple.Messenger = Symple.Class.extend({
             this.messages.find('.section').each(function() {
                 var e = $(this);
                 var secDate = new Date(e.attr('data-date'));
-                console.log('Symple Messenger: Comparing Date Section: ', secDate.toDateString(), dateStr)
+                Symple.log('Symple Messenger: Comparing Date Section: ', secDate.toDateString(), dateStr)
 
                 // If the section day is later than the message we prepend the
                 // section before the current section.
@@ -210,7 +210,7 @@ Symple.Messenger = Symple.Class.extend({
                 else
                     prev = e;
             });
-            console.log('Symple Messenger: Creating Date Section: ', dateStr, prev)
+            Symple.log('Symple Messenger: Creating Date Section: ', dateStr, prev)
  
             if (!handled) {
                 prev ?

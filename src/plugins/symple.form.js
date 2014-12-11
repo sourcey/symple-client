@@ -59,8 +59,8 @@ Symple.FormBuilder.prototype = {
         if (!formData || !formData.elements)
             throw 'Invalid form data'
         
-        console.log('Form Builder: Update: data:', formData);
-        console.log('Form Builder: Update: BEFORE:', this.form);
+        Symple.log('Form Builder: Update: data:', formData);
+        Symple.log('Form Builder: Update: BEFORE:', this.form);
         
         if (formData.partial !== true) {             
             if (this.form.elements) {
@@ -87,7 +87,7 @@ Symple.FormBuilder.prototype = {
             this.mergeFormElements(this.form, formData);
         }
         
-        console.log('Form Builder: Update: AFTER:', this.form);
+        Symple.log('Form Builder: Update: AFTER:', this.form);
         this.updateElements(formData, 0);
         this.afterBuild();
     },
@@ -105,10 +105,10 @@ Symple.FormBuilder.prototype = {
     },
 
     deleteField: function(id) {
-        console.log('Form Builder: Deleting field:', id);
+        Symple.log('Form Builder: Deleting field:', id);
         var el = this.getHTMLElement(id);    
         if (!el.length) {
-            console.log('Form Builder: Invalid field:', id);
+            Symple.log('Form Builder: Invalid field:', id);
             return null;
         }    
         el.remove();
@@ -120,7 +120,7 @@ Symple.FormBuilder.prototype = {
         var id = el.attr('id');
         var field = this.form.getField(id);
         if (!id || !field) { // || el.attr('name') == 'submit'
-            console.log('Form Builder: Invalid field:', id, this.form);
+            Symple.log('Form Builder: Invalid field:', id, this.form);
             return null;
         }
         switch (el.get(0).nodeName) {
@@ -139,7 +139,7 @@ Symple.FormBuilder.prototype = {
                 break;
             default: return null;
         }
-        //console.log('Form Builder: Updating Field:', id, field.values)
+        //Symple.log('Form Builder: Updating Field:', id, field.values)
         return field;
     },
 
@@ -152,9 +152,9 @@ Symple.FormBuilder.prototype = {
         });
 
         this.element.find('form').unbind().submit(function() {
-            //console.log('Form Builder: Prepare Submit:', self.form);
+            //Symple.log('Form Builder: Prepare Submit:', self.form);
             self.prepareSubmit();
-            //console.log('Form Builder: After Prepare Submit:', self.form);
+            //Symple.log('Form Builder: After Prepare Submit:', self.form);
             return self.options.onSubmit(self.form, self, self.element);
         });
 
@@ -175,7 +175,7 @@ Symple.FormBuilder.prototype = {
 
     // Builds the entire form
     buildForm: function(form) {
-        //console.log('Form Builder: Building:', form)
+        //Symple.log('Form Builder: Building:', form)
         if (!form || !form.id)
             throw 'Invalid form data'
 
@@ -195,7 +195,7 @@ Symple.FormBuilder.prototype = {
     },
 
     updateElements: function(o, depth) {
-        //console.log('Form Builder: Update Elements:', o);
+        //Symple.log('Form Builder: Update Elements:', o);
         if (typeof o.elements != 'undefined') {
             var prev = o;
             var curr;
@@ -227,7 +227,7 @@ Symple.FormBuilder.prototype = {
     },
 
     buildElements: function(o, depth) {
-        //console.log('Form Builder: Build Elements:', o);
+        //Symple.log('Form Builder: Build Elements:', o);
         var html = '';
 
         // Start containers...
@@ -378,7 +378,7 @@ Symple.FormBuilder.prototype = {
     
     // Updates page or section HTML from JSON.
     updateSectionHTML: function(o) {
-        console.log('Form Builder: Updating Element HTML:', o)
+        Symple.log('Form Builder: Updating Element HTML:', o)
 
         // Just update errors
         if (o.error == 'undefined')
@@ -507,7 +507,7 @@ Symple.FormBuilder.prototype = {
 
     // Updates field HTML from JSON.
     updateFieldHTML: function(field) {
-        console.log('Form Builder: Updating Field HTML:', field)
+        Symple.log('Form Builder: Updating Field HTML:', field)
 
         var el = this.element.find('[name="' + field.id + '"]');
         if (el.length) {
@@ -533,7 +533,7 @@ Symple.FormBuilder.prototype = {
             } else
                 fel.find('.error').hide();
             /*
-              console.log('Form Builder: Updating Field HTML: Error Field:', fel.html())
+              Symple.log('Form Builder: Updating Field HTML: Error Field:', fel.html())
             // afterBuild will show/hide errors
             var fel = el.parents('.field:first');
             fel.find('.error').text(field.error ? field.error : '');
@@ -547,11 +547,11 @@ Symple.FormBuilder.prototype = {
     fieldToHTML: function(o) {
         var html = '';
         try {
-            console.log('Form Builder: Building:', 'build' + o.type.classify() + 'Field');
+            Symple.log('Form Builder: Building:', 'build' + o.type.classify() + 'Field');
             html += this['build' + o.type.classify() + 'Field'](o);
         }
         catch(e) {
-            console.log('Form Builder: Unrecognised form field:', o.type, e);
+            Symple.log('Form Builder: Unrecognised form field:', o.type, e);
         }
         return html;
     },
@@ -572,7 +572,7 @@ Symple.FormBuilder.prototype = {
                 else {
                     for (var di = 0; di < destination.elements.length; di++) {
                         if (destination.elements[di].id == source.elements[si].id) {
-                            console.log('Form Builder: mergeFormElements:', destination.elements[di], source.elements[si]);
+                            Symple.log('Form Builder: mergeFormElements:', destination.elements[di], source.elements[si]);
                             destination.elements[di] = source.elements[si];
                         }
                     }

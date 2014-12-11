@@ -2,15 +2,17 @@
 // Symple Client
 //
 Symple.Client = Symple.Dispatcher.extend({
-    init: function(options) { //peer, 
-        console.log('Symple Client: Creating: ', options); //peer, 
+    init: function(options) {
         this.options = $.extend({
-            url:     'http://localhost:4000',
+            url:     options.url ? options.url : 'http://localhost:4000',
+            secure:  options.url && (
+                         options.url.indexOf('https') == 0 || 
+                         options.url.indexOf('wss') == 0) ? true : false,
             token:   undefined     // pre-arranged server session token
             //timeout: 0           // set for connection timeout
         }, options);
-        this._super(); //this.options
-        this.peer = options.peer;
+        this._super();
+        this.peer = options.peer || {};
         this.roster = new Symple.Roster(this);
         this.socket = null;
     },
@@ -18,11 +20,13 @@ Symple.Client = Symple.Dispatcher.extend({
     // Connects and authenticates on the server.
     // If the server is down the 'error' event will fire.
     connect: function() {
-        console.log('Symple Client: Connecting: ', this.options);
-        self = this;        
+        Symple.log('Symple Client: Connecting: ', this.options);
+        self = this; 
+        if (this.socket)
+            throw 'The client socket is not null'
         this.socket = io.connect(this.options.url, this.options);
         this.socket.on('connect', function() {
-            console.log('Symple Client: Connected');
+            Symple.log('Symple Client: Connected');
             self.socket.emit('announce', {
                 token:  self.options.token || "",
                 group:  self.peer.group    || "",
@@ -30,7 +34,7 @@ Symple.Client = Symple.Dispatcher.extend({
                 name:   self.peer.name     || "",
                 type:   self.peer.type     || ""
             }, function(res) {
-                console.log('Symple Client: Announced: ', res);
+                Symple.log('Symple Client: Announced: ', res);
                 if (res.status != 200) {
                     self.setError('auth', res);
                     return;
@@ -40,7 +44,7 @@ Symple.Client = Symple.Dispatcher.extend({
                 self.sendPresence({ probe: true });
                 self.doDispatch('announce', res);
                 self.socket.on('message', function(m) {
-                    //console.log('Symple Client: Receive: ', m);
+                    //Symple.log('Symple Client: Receive: ', m);
                     if (typeof(m) == 'object') {     
                         switch(m.type) {
                             case 'message':
@@ -68,7 +72,7 @@ Symple.Client = Symple.Dispatcher.extend({
                         }
                     
                         if (typeof(m.from) != 'string') {
-                            console.log('Symple Client: Invalid sender address: ', m);
+                            Symple.log('Symple Client: Invalid sender address: ', m);
                             return;
                         }
                             
@@ -77,79 +81,37 @@ Symple.Client = Symple.Dispatcher.extend({
                         var rpeer = self.roster.get(m.from);
                         if (rpeer)
                             m.from = rpeer;
-                            
-                        //if (!rpeer) {
-                        //    console.log('Symple Client: Dropping message from unknown peer: ', m);
-                        //    return;
-                        //}
-                        //m.from = rpeer;
+                        else
+                            Symple.log('Symple Client: Got message from unknown peer: ', m);
                         
+                        // Dispatch to the application
                         self.doDispatch(m.type, m);
-                        
-                        /*
-                        //var fromId = Symple.parseAddress(m.from);
-                        //if (typeof(m.from) == 'string')
-                        //    m.from = self.roster.get(raddr.id)                            
-                        if (m.type == 'message') {     
-                            o = new Symple.Message(m);                       
-                            // o = new Symple.Message(m);
-                            //self.doDispatch('message',
-                            //    new Symple.Message(m));
-                        }
-                        if (m.type == 'command') {
-                            o = new Symple.Command(m);
-                            //self.doDispatch('command',
-                            //    new Symple.Command(m));
-                        }
-                        else if (m.type == 'event') {
-                            o = new Symple.Event(m);
-                            //self.doDispatch('event',
-                            //    new Symple.Event(m));
-                        }
-                        else if (m.type == 'presence') {
-                            o = new Symple.Presence(m);
-                            if (m.data.online)
-                                self.roster.update(m.data);
-                            else
-                                self.roster.remove(m.data.id);
-                            self.doDispatch('presence',
-                                new Symple.Presence(m));
-                            if (m.probe) {
-                                self.sendPresence(
-                                    new Symple.Presence({ to: m.from }));
-                            }
-                        }
-                        else {
-                            o = m; //new Symple.Message(m);
-                            o.type = o.type || 'message';
-                        }
-                        
-                        self.doDispatch(m.type, m);
-                        */
                     }
                 });
             });
         });
         this.socket.on('error', function() {
-            // This is triggered when any transport fails, so not necessarily fatal
+            // This is triggered when any transport fails, 
+            // so not necessarily fatal
             //self.setError('connect');          
             self.doDispatch('connect');   
         });
         this.socket.on('connecting', function() {
-            console.log('Symple Client: Connecting');            
+            Symple.log('Symple Client: Connecting');            
             self.doDispatch('connecting');
         });
         this.socket.on('reconnecting', function() {
-            console.log('Symple Client: Reconnecting');            
+            Symple.log('Symple Client: Reconnecting');            
             self.doDispatch('reconnecting');
         });
         this.socket.on('connect_failed', function() {
-            console.log('Symple Client: Connect failed');            
+            // Called when all transports fail
+            Symple.log('Symple Client: Connect failed');            
             self.doDispatch('connect_failed');
             self.setError('connect');   
         });
         this.socket.on('disconnect', function() {
-            console.log('Symple Client: Disconnect');
+            Symple.log('Symple Client: Disconnect');
             self.peer.online = false;
             self.doDispatch('disconnect');
         });
@@ -162,7 +124,7 @@ Symple.Client = Symple.Dispatcher.extend({
     getPeers: function(fn) {
         self = this;
         this.socket.emit('peers', function(res) {
-            console.log('Peers: ', res);
+            Symple.log('Peers: ', res);
             if (typeof(res) != 'object')
                 for (var peer in res)
                     self.roster.update(peer);
@@ -172,25 +134,7 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     send: function(m) {
-        /*
-        //console.log('Symple Client: Sending: ', m);
-        if (!this.online()) throw 'Cannot send message while offline';
-        if (typeof(m) != 'object') throw 'Must send object';
-        if (typeof(m.type) != 'string') throw 'Cannot send message with no type';
-        if (!m.id)  m.id = Symple.randomString(8);
-        if (m.to && typeof(m.to) == 'object' && m.to.group)
-            m.to = Symple.buildAddress(m.to);
-        if (m.to && typeof(m.to) != 'string')
-        if (m.to && m.to.indexOf(this.peer.id) != -1)
-            throw 'The sender cannot match the recipient';
-        //if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
-        //    throw 'The sender must not match the recipient';
-        m.from = Symple.buildAddress(this.peer);
-        console.log('Symple Client: Sending: ', m);
-        this.socket.json.send(m);
-        */
-        
-        //console.log('Symple Client: Sending: ', m);
+        //Symple.log('Symple Client: Sending: ', m);
         if (!this.online()) throw 'Cannot send messages when offline';
         if (typeof(m) != 'object') throw 'Message must be an object';
         if (typeof(m.type) != 'string') m.type = 'message' //throw 'Message must have a type attribute';
@@ -204,7 +148,7 @@ Symple.Client = Symple.Dispatcher.extend({
         //if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
         //    throw 'The sender must not match the recipient';
         m.from = Symple.buildAddress(this.peer);
-        console.log('Symple Client: Sending: ', m);
+        Symple.log('Symple Client: Sending: ', m);
         this.socket.json.send(m);
     },
     
@@ -214,20 +158,18 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     sendMessage: function(m) { //, fn
-        this.send(m); //new Symple.Message(m)); //, fn
+        this.send(m); //, fn
     },
 
     sendPresence: function(p) {
         p = p || {};
-        //console.log('Symple Client: Sending: sendPresence: ', p, this.peer); 
         if (!this.online()) throw 'Cannot send message while offline';
         if (p.data) {
-            //console.log('Symple Client: Sending Presence: ', p.data, this.peer);
             p.data = Symple.merge(this.peer, p.data);
         }
         else
             p.data = this.peer;
-        console.log('Symple Client: Sending Presence: ', p);
+        Symple.log('Symple Client: Sending Presence: ', p);
         this.send(new Symple.Presence(p));
     },
 
@@ -314,7 +256,7 @@ Symple.Client = Symple.Dispatcher.extend({
 
     // Sets the client to an error state and disconnect
     setError: function(error, message) {
-        console.log('Symple Client: Client error: ', error, message);
+        Symple.log('Symple Client: Client error: ', error, message);
         //if (this.error == error)
         //    return;
         //this.error = error;
@@ -335,13 +277,13 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     clear: function(event, fn) {
-        console.log('Symple Client: Clearing callback: ', event);
+        Symple.log('Symple Client: Clearing callback: ', event);
         if (typeof this.listeners[event] != 'undefined') {
             for (var i = 0; i < this.listeners[event].length; i++) {
                 if (this.listeners[event][i].fn === fn &&
                     String(this.listeners[event][i].fn) == String(fn)) {
                     this.listeners[event].splice(i, 1);
-                    console.log('Symple Client: Clearing callback: OK: ', event);
+                    Symple.log('Symple Client: Clearing callback: OK: ', event);
                 }
             }
         }
@@ -381,14 +323,14 @@ Symple.Client = Symple.Dispatcher.extend({
 //
 Symple.Roster = Symple.Manager.extend({
     init: function(client) {
-        console.log('Symple Roster: Creating');
+        Symple.log('Symple Roster: Creating');
         this._super();
         this.client = client;
     },
     
     // Add a peer object to the roster
     add: function(peer) {
-        console.log('Symple Roster: Adding: ', peer);
+        Symple.log('Symple Roster: Adding: ', peer);
         if (!peer || !peer.id || !peer.user || !peer.group)
             throw 'Cannot add invalid peer'
         this._super(peer);
@@ -399,7 +341,7 @@ Symple.Roster = Symple.Manager.extend({
     remove: function(id) {
         id = Symple.parseIDFromAddress(id) || id;
         var peer = this._super(id);
-        console.log('Symple Roster: Removing: ', id, peer);
+        Symple.log('Symple Roster: Removing: ', id, peer);
         if (peer)
             this.client.doDispatch('removePeer', peer);
         return peer;
@@ -407,8 +349,14 @@ Symple.Roster = Symple.Manager.extend({
     
     // Get the peer matching an ID or address string: user@group/id
     get: function(id) {
-        id = Symple.parseIDFromAddress(id) || id;
-        return this._super(id);
+    
+        // Handle IDs
+        peer = this._super(id); // id = Symple.parseIDFromAddress(id) || id;
+        if (peer)
+            return peer;
+
+        // Handle address strings
+        return this.findOne(Symple.parseAddress(id));
     },
     
     update: function(data) {
@@ -799,6 +747,14 @@ var Symple = {
             pad(date.getSeconds()).toString() + ' ' +
             pad(date.getDate()).toString() + '/' +
             pad(date.getMonth()).toString();
+    },
+    
+    // Debug logger
+    log: function () {
+        if (typeof console != "undefined" && 
+            typeof console.log != "undefined") {
+            console.log.apply(console, arguments);
+        }
     }
 };
 
@@ -895,12 +851,12 @@ Symple.Dispatcher = Symple.Class.extend({
     },
 
     dispatch: function() {
-        //console.log('Dispatching: ', arguments);
+        //Symple.log('Dispatching: ', arguments);
         var event = arguments[0];
         var args = Array.prototype.slice.call(arguments, 1);
         if (typeof this.listeners[event] != 'undefined') {
             for (var i = 0; i < this.listeners[event].length; i++) {
-                //console.log('Dispatching: Function: ', this.listeners[event][i]);
+                //Symple.log('Dispatching: Function: ', this.listeners[event][i]);
                 if (this.listeners[event][i].constructor == Function)
                     this.listeners[event][i].apply(this, args);
             }
@@ -967,6 +923,7 @@ Symple.Manager = Symple.Class.extend({
         return this.store.length;
     }
 });
+
 // -----------------------------------------------------------------------------
 // Flash => Javascript Object Bridge
 //
@@ -974,7 +931,7 @@ var JFlashBridge = {
     items: {},
 
     bind: function(id, klass) {
-        console.log('JFlashBridge: Bind: ', id, klass);
+        Symple.log('JFlashBridge: Bind: ', id, klass);
         this.items[id] = klass;
     },
 
@@ -983,17 +940,17 @@ var JFlashBridge = {
     },
 
     call: function() {
-        //console.log('JFlashBridge: Call: ', arguments);
+        //Symple.log('JFlashBridge: Call: ', arguments);
         var klass = this.items[arguments[0]];
         if (klass) {
             var method = klass[arguments[1]];
             if (method)
                 method.apply(klass, Array.prototype.slice.call(arguments, 2));
             else
-                console.log('JFlashBridge: No method: ', arguments[1]);
+                Symple.log('JFlashBridge: No method: ', arguments[1]);
         }
         else
-            console.log('JFlashBridge: No binding: ', arguments);
+            Symple.log('JFlashBridge: No binding: ', arguments);
     },
 
     getSWF: function(movieName) {
@@ -1021,7 +978,7 @@ Symple.Media.registerEngine({
 
 Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     init: function(player) {
-        console.log("SympleFlashEngine: Init");
+        Symple.log("SympleFlashEngine: Init");
         this._super(player);
         this.initialized = false;
         this.streamOnInit = false;
@@ -1029,13 +986,13 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     setup: function() {
-        console.log("SympleFlashEngine: Create");
+        Symple.log("SympleFlashEngine: Create");
         this.initialized = false;
         this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
         
         JFlashBridge.bind(this.id, this);
         
-        //console.log("SympleFlashEngine: SWF:", this.id, this.player.options.htmlRoot + '/symple.player.swf');
+        //Symple.log("SympleFlashEngine: SWF:", this.id, this.player.options.htmlRoot + '/symple.player.swf');
         swfobject.embedSWF(
             this.player.options.swf ? 
                 this.player.options.swf : 
@@ -1062,28 +1019,28 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     play: function(params) {        
-        console.log("SympleFlashEngine: Play", params);        
+        Symple.log("SympleFlashEngine: Play", params);        
         this.params = params;
         if (this.initialized) {
-            console.log("SympleFlashEngine: Opening", params);
+            Symple.log("SympleFlashEngine: Opening", params);
             this.swf().open(params);
             
             // Push through any pending candiates
             if (this.candidates) {
                 for (var i = 0; i < this.candidates.length; i++) {
-                    console.log("SympleFlashEngine: Add stored candidate", this.candidates[i]);
+                    Symple.log("SympleFlashEngine: Add stored candidate", this.candidates[i]);
                     this.swf().addCandidate(this.candidates[i]);
                 }
             }
         }
         else {            
-            console.log("SympleFlashEngine: Waiting for SWF");
+            Symple.log("SympleFlashEngine: Waiting for SWF");
             this.streamOnInit = true;
         }
     },
 
     stop: function() {
-        console.log("SympleFlashEngine: Stop");
+        Symple.log("SympleFlashEngine: Stop");
         if (this.initialized) {
             this.swf().close();
             this.setState('stopped'); // No need to wait for callback
@@ -1095,12 +1052,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     isJSReady: function() {
-        console.log("SympleFlashEngine: JavaScript Ready: " + $.isReady);
+        Symple.log("SympleFlashEngine: JavaScript Ready: " + $.isReady);
         return $.isReady;
     },
 
     refresh: function() {
-        console.log("SympleFlashEngine: Refresh");
+        Symple.log("SympleFlashEngine: Refresh");
         try {
           if (this.initialized)
             this.swf().refresh();
@@ -1112,11 +1069,11 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
             throw "Cannot add candiate after explicit URL was provided."
            
         if (this.initialized) {
-            console.log("SympleFlashEngine: Adding remote candiate ", candidate);
+            Symple.log("SympleFlashEngine: Adding remote candiate ", candidate);
             this.swf().addCandiate(candidate);
         }        
         else {      
-            console.log("SympleFlashEngine: Storing remote candiate ", candidate);
+            Symple.log("SympleFlashEngine: Storing remote candiate ", candidate);
               
             // Store candidates while waiting for flash to load
             if (!this.candidates)
@@ -1126,7 +1083,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
         
     onSWFLoaded: function() {
-        console.log("SympleFlashEngine: Loaded");
+        Symple.log("SympleFlashEngine: Loaded");
         this.initialized = true;
         if (this.streamOnInit)     
             this.play(this.params);
@@ -1137,13 +1094,13 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         state = state.toLowerCase();
         if (state == 'error' && (!error || error.length == 0))
             error = "Streaming connection to the host was lost."
-        console.log("SympleFlashEngine: On state: ", state, error, this.player.state);
+        Symple.log("SympleFlashEngine: On state: ", state, error, this.player.state);
         if (state != 'none')
             this.setState(state, error);
     },
 
     onMetadata: function(data) {
-        //console.log("SympleFlashEngine: Metadata: ", data);
+        //Symple.log("SympleFlashEngine: Metadata: ", data);
         if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {
@@ -1157,16 +1114,16 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onLogMessage: function(type, text) {
-        console.log('SympleFlashEngine: ' + type + ': ' + text);
+        Symple.log('SympleFlashEngine: ' + type + ': ' + text);
     }
 });
 Symple.Media = {
     engines: {}, // Object containing references for candidate selection
     
     registerEngine: function(engine) {
-        console.log('Register media engine: ', engine)
+        Symple.log('Register media engine: ', engine)
         if (!engine.name || typeof engine.preference == 'undefined' || typeof engine.support == 'undefined') {
-            console.log('Cannot register invalid engine: ', engine)
+            Symple.log('Cannot register invalid engine: ', engine)
             return false;
         }   
         this.engines[engine.id] = engine;
@@ -1199,7 +1156,7 @@ Symple.Media = {
             engine = this.engines[item];
             if (engine.preference == 0) 
                 continue;
-            console.log('Symple Media: Supported: ', engine.name, engine.support)            
+            Symple.log('Symple Media: Supported: ', engine.name, engine.support)            
             if (engine.support == true)        
                 arr.push(engine)
         }
@@ -1217,7 +1174,7 @@ Symple.Media = {
     preferredCompatibleEngine: function(format) {    
         var arr = this.compatibleEngines(format), engine;  
         engine = arr.length ? arr[0] : null;
-        console.log('Symple Media: Preferred Engine: ', engine);
+        Symple.log('Symple Media: Preferred Engine: ', engine);
         return engine; 
     },
 
@@ -1255,7 +1212,7 @@ Symple.Media = {
     // Rescales video dimensions maintaining perspective
     // TODO: Different aspect ratios
     rescaleVideo: function(srcW, srcH, maxW, maxH) {
-        //console.log('Symple Player: Rescale Video: ', srcW, srcH, maxW, maxH);
+        //Symple.log('Symple Player: Rescale Video: ', srcW, srcH, maxW, maxH);
         var maxRatio = maxW / maxH;
         var srcRatio = 1.33; //srcW / srcH;
         if (srcRatio < maxRatio) {
@@ -1271,7 +1228,7 @@ Symple.Media = {
     // Basic checking for ICE style streaming candidates
     // TODO: Latency checks and best candidate switching
     checkCandidate: function(url, fn) {
-        console.log('Symple Media: Checking candidate: ', url);
+        Symple.log('Symple Media: Checking candidate: ', url);
 
         var xhr;
         if (window.XMLHttpRequest) {
@@ -1284,11 +1241,11 @@ Symple.Media = {
         }
 
         xhr.onreadystatechange = function() {
-            //console.log('Symple Media: Candidate state', xhr.readyState, xhr.status);
+            //Symple.log('Symple Media: Candidate state', xhr.readyState, xhr.status);
 
             if (xhr.readyState == 2) {
                 if (fn) {
-                    console.log('Symple Media: Candidate result: ', xhr.readyState, xhr.status);
+                    Symple.log('Symple Media: Candidate result: ', xhr.readyState, xhr.status);
                     fn(url, xhr.status == 200);
                     fn = null;
 
@@ -1301,7 +1258,7 @@ Symple.Media = {
             }
             else if (xhr.readyState == 4/* && xhr.status != 0*/) {
                 if (fn) {
-                    console.log('Symple Media: Candidate result: ', xhr.readyState, xhr.status);
+                    Symple.log('Symple Media: Candidate result: ', xhr.readyState, xhr.status);
                     fn(url, /*xhr.status == 200*/true);
                     fn = null;
                 }
@@ -1322,7 +1279,7 @@ Symple.Player = Symple.Class.extend({
     init: function(options) {
         // TODO: Use our own options extend
         this.options = $.extend({ //Symple.extend({
-            htmlRoot:       '/static/symple/client',
+            htmlRoot:       '/javascripts/symple',
             element:        '.symple-player:first',
             
             format:         'MJPEG',      // The media format to use (MJPEG, FLV, Speex, ...)
@@ -1385,7 +1342,7 @@ Symple.Player = Symple.Class.extend({
         this.bindEvents();
         this.playing = false;
 
-        console.log(this.options.template)
+        Symple.log(this.options.template)
 
         //this.setState('stopped');
         //var self = this;
@@ -1422,7 +1379,7 @@ Symple.Player = Symple.Class.extend({
     // Player Controls
     //
     play: function(params) {
-        console.log('Symple Player: Play: ', params)
+        Symple.log('Symple Player: Play: ', params)
         try {    
             if (!this.engine)
                 this.setup();
@@ -1443,7 +1400,7 @@ Symple.Player = Symple.Class.extend({
     },
 
     stop: function() {
-        console.log('Symple Player: Stop')
+        Symple.log('Symple Player: Stop')
         if (this.state != 'stopped') {
             if (this.engine)
                 this.engine.stop(); // engine updates state to stopped
@@ -1457,7 +1414,7 @@ Symple.Player = Symple.Class.extend({
     },
 
     setState: function(state, message) {
-        console.log('Symple Player: Set state:', this.state, '=>', state, message)
+        Symple.log('Symple Player: Set state:', this.state, '=>', state, message)
         if (this.state == state)
             return;
         
@@ -1484,7 +1441,7 @@ Symple.Player = Symple.Class.extend({
     // Display an overlayed player message
     // error, warning, info
     displayMessage: function(type, message) {
-        console.log('Symple Player: Display message:', type, message)
+        Symple.log('Symple Player: Display message:', type, message)
         if (message) {
             this.message.html('<p class="' + type + '-message">' + message + '</p>').show();
         }
@@ -1565,12 +1522,12 @@ Symple.Player.Engine = Symple.Class.extend({
     },
     
     setError: function(error) {
-        console.log('Symple Player Engine: Error:', error);
+        Symple.log('Symple Player Engine: Error:', error);
         this.setState('error', error);
     },
     
     onRemoteCandidate: function(candidate) {
-        console.log('Symple Player Engine: Remote candidates not supported.');
+        Symple.log('Symple Player Engine: Remote candidates not supported.');
     },
 
     updateFPS: function() {
@@ -1631,17 +1588,17 @@ Symple.Player.Engine = Symple.Class.extend({
             css.left = css.left ? css.left : 0;
             css.top = css.top ? css.top : 0;
         }
-        console.log('Symple Player: Setting Size: ', css);
+        Symple.log('Symple Player: Setting Size: ', css);
 
         this.screen.css(css);
 
         //var e = this.element.find('#player-screen');
-          //console.log('refresh: scaled:', size)
-          console.log('refresh: screenWidth:', this.options.screenWidth)
-          console.log('refresh: width:', this.screen.width())
-          console.log('refresh: screenHeight:', this.options.screenHeight)
-          console.log('refresh: height:', this.screen.height())
-          console.log('refresh: css:', css)
+          //Symple.log('refresh: scaled:', size)
+          Symple.log('refresh: screenWidth:', this.options.screenWidth)
+          Symple.log('refresh: width:', this.screen.width())
+          Symple.log('refresh: screenHeight:', this.options.screenHeight)
+          Symple.log('refresh: height:', this.screen.height())
+          Symple.log('refresh: css:', css)
     },
      
     getBestEngineForFormat: function(format) {
@@ -1772,7 +1729,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     play: function(params) {    
         //params = params || {};
         //params.framing = 'multipart'; // using multipart/x-mixed-replace
-        console.log("MJPEG Native: Play", params);
+        Symple.log("MJPEG Native: Play", params);
         
         if (this.img)
           throw 'Streaming already initialized'
@@ -1793,7 +1750,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
         //this.img.style.height = '100%';
         this.img.style.display = 'none';
         this.img.onload = function() {
-            console.log("MJPEG Native: Success");
+            Symple.log("MJPEG Native: Success");
         
             // Most browsers inclusing WebKit just call onload once.
             if (init) {
@@ -1820,7 +1777,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log("MJPEG Native: Stop");
+        Symple.log("MJPEG Native: Stop");
         this.cleanup();
         this.setState('stopped');
     },
@@ -1837,7 +1794,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     },
     
     setError: function(error) {
-        console.log('Symple MJPEG Engine: Error:', error);
+        Symple.log('Symple MJPEG Engine: Error:', error);
         this.cleanup();
         this.setState('error', error);
     }
@@ -1879,15 +1836,15 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
         
         var self = this, init = true;     
         
-        console.log("MJPEG WebSocket: Play:", this.params);
+        Symple.log("MJPEG WebSocket: Play:", this.params);
         this.socket = new WebSocket(this.normalizeURL(this.params.url));
         
         this.socket.onopen = function () {
-            console.log("MJPEG WebSocket: Open");    
+            Symple.log("MJPEG WebSocket: Open");    
             //self.socket.send('Ping');  
         };                
         this.socket.onmessage = function (e) {
-            console.log("MJPEG WebSocket: Message: ", e);    
+            Symple.log("MJPEG WebSocket: Message: ", e);    
             
             // http://www.adobe.com/devnet/html5/articles/real-time-data-exchange-in-html5-with-websockets.html
             // http://stackoverflow.com/questions/15040126/receiving-websocket-arraybuffer-data-in-the-browser-receiving-string-instead
@@ -1903,7 +1860,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
             }
 
             // TODO: Image content type
-            console.log("MJPEG WebSocket: Frame", self, e.data);
+            Symple.log("MJPEG WebSocket: Frame", self, e.data);
             var blob = window.URL.createObjectURL(e.data);     
             self.img.onload = function() {
                 window.URL.revokeObjectURL(blob);
@@ -1918,7 +1875,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log("MJPEG WebSocket: Stop");
+        Symple.log("MJPEG WebSocket: Stop");
         this.cleanup();
         this.setState('stopped');
     },
@@ -1928,7 +1885,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
     },
     
     cleanup: function() {
-        console.log("MJPEG WebSocket: Cleanup");
+        Symple.log("MJPEG WebSocket: Cleanup");
         if (this.img) {
             this.img.style.display = 'none';
             this.img.src = "#"; // XXX: Closes socket in ff, but not safari
@@ -1938,7 +1895,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
             this.img = null;
         }
         if (this.socket) {
-            console.log("MJPEG WebSocket: Cleanup: Socket: ", this.socket);
+            Symple.log("MJPEG WebSocket: Cleanup: Socket: ", this.socket);
             
             // BUG: Not closing in latest chrome,
             this.socket.close()
@@ -1957,7 +1914,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
             // remote side disconnects stream.
             var self = this;
             this.img.onerror = function(e) {
-                console.log("MJPEG WebSocket: Image load error: ", e);
+                Symple.log("MJPEG WebSocket: Image load error: ", e);
                 //self.setError(
                 //  'Invalid MJPEG stream');
             }
@@ -1974,7 +1931,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
     //},
     
     setError: function(error) {
-        console.log('MJPEG WebSocket: Error:', error);
+        Symple.log('MJPEG WebSocket: Error:', error);
         this.cleanup();
         this.setState('error', error);
     }
@@ -2003,7 +1960,7 @@ Symple.MultipartParser = Symple.Class.extend({
     },
 
     processPart: function(part) { 
-        //console.log('MultipartParser: processPart: ', this.boundary)
+        //Symple.log('MultipartParser: processPart: ', this.boundary)
         part = part.replace(this.boundary + "\r\n", '');
         var lines = part.split("\r\n");
         var headers = {};
@@ -2020,7 +1977,7 @@ Symple.MultipartParser = Symple.Class.extend({
     },
 
     incrParse: function(buffer) {
-        //console.log('MultipartParser: incrParse: ', this.boundary)
+        //Symple.log('MultipartParser: incrParse: ', this.boundary)
         if (buffer.length < 1) return [-1];
         var start = buffer.indexOf(this.boundary);
         if (start == -1) return [-1];
@@ -2063,7 +2020,7 @@ Symple.ChunkedParser = Symple.Class.extend({
         /*            
         // Image start
         if (frame.indexOf("/9j/") == 0) {        
-            console.log('Symple ChunkedParser: Got Image Start')
+            Symple.log('Symple ChunkedParser: Got Image Start')
         
             // Draw the current frame
             if (this.currentFrame.length) {
@@ -2072,7 +2029,7 @@ Symple.ChunkedParser = Symple.Class.extend({
             }         
         }
         else 
-            console.log('Symple ChunkedParser: Partial Packet')  
+            Symple.log('Symple ChunkedParser: Partial Packet')  
                       
         // Append data to current frame
         this.currentFrame += frame;  
@@ -2131,7 +2088,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         
         // TODO: Playback timer to set error if not playing after X
         
-        //console.log('MJPEGBase64MXHR: Play: ', this.params)                
+        //Symple.log('MJPEGBase64MXHR: Play: ', this.params)                
         this.rotateConnection();
     },
 
@@ -2155,7 +2112,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         this.xhrID++;
         var self = this, xhr = this.createXHR();
         
-        //console.log('MJPEGBase64MXHR: Connecting:', this.xhrID)
+        //Symple.log('MJPEGBase64MXHR: Connecting:', this.xhrID)
         
         xhr.xhrID = this.xhrID;
         xhr.connecting = true;
@@ -2171,11 +2128,11 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
               // and set it as the new media connection.
               if (this.connecting) {
                   this.connecting = false;
-                  //console.log('MJPEGBase64MXHR: Loaded:', this.xhrID)
+                  //Symple.log('MJPEGBase64MXHR: Loaded:', this.xhrID)
                   
                   // Close the old connection (if any)
                   if (self.xhrConn) {
-                      //console.log('MJPEGBase64MXHR: Freeing Old XHR:', self.xhrConn.xhrID)
+                      //Symple.log('MJPEGBase64MXHR: Freeing Old XHR:', self.xhrConn.xhrID)
                       if (self.xhrConn.xhrID == this.xhrID)
                           throw 'XHR ID mismatch'                          
                       if (self.xhrConn === this)
@@ -2200,7 +2157,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
                   this.responseText && 
                   this.responseText.length > (1048576 * 2)) {
                   this.cancelled = true;
-                  //console.log('MJPEGBase64MXHR: Switching Connection:', this.xhrID, this.responseText.length)
+                  //Symple.log('MJPEGBase64MXHR: Switching Connection:', this.xhrID, this.responseText.length)
                   self.rotateConnection();
               }
           }
@@ -2211,7 +2168,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
 
     draw: function(frame) {
-        //console.log('MJPEGBase64MXHR: Draw:', this.contentType, frame.length) //, frame
+        //Symple.log('MJPEGBase64MXHR: Draw:', this.contentType, frame.length) //, frame
                 
         if (!this.img) {
             this.img = this.createImage()
@@ -2234,7 +2191,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     freeXHR: function(xhr) {           
-        //console.log('MJPEGBase64MXHR: Freeing XHR:', xhr.xhrID)
+        //Symple.log('MJPEGBase64MXHR: Freeing XHR:', xhr.xhrID)
         xhr.canceled = true;
         xhr.abort();    
         xhr.onreadystatechange = new Function;
@@ -2247,13 +2204,13 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         img.self = this;           
         img.style.zIndex = -1; // hide until loaded    
         img.onload = function() {
-            console.log('MJPEGBase64MXHR: Onload');
+            Symple.log('MJPEGBase64MXHR: Onload');
             if (this.self.player.state == 'loading')
                 this.self.setState('playing');
             this.self.errors = 0; // reset error count
         }        
         img.onerror = function() {              
-            console.log('MJPEGBase64MXHR: Bad frame: ', frame.length, 
+            Symple.log('MJPEGBase64MXHR: Bad frame: ', frame.length, 
                 frame.substr(0, 50), 
                 frame.substr(frame.length - 50, frame.length)); // for debuggering
         
@@ -2267,7 +2224,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     freeImage: function(img) {  
-        ////console.log('MJPEGBase64MXHR: Remove:', img.seq);        
+        ////Symple.log('MJPEGBase64MXHR: Remove:', img.seq);        
         img.onload = new Function;
         img.onerror = new Function;
         if (img.parentNode)
@@ -2276,13 +2233,13 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     onReadyState: function(xhr) {
-        ////console.log('MJPEGBase64MXHR: Ready State Change: ',  xhr.readyState, xhr.xhrID, xhr.numParsed)         
+        ////Symple.log('MJPEGBase64MXHR: Ready State Change: ',  xhr.readyState, xhr.xhrID, xhr.numParsed)         
         if (xhr.readyState == 2) {
         
             // If a multipart/x-mixed-replace header is received then we will
             // be parsing the multipart response ourselves.
             var contentTypeHeader = xhr.getResponseHeader("Content-Type");
-            //console.log('MJPEGBase64MXHR: Content Type Header: ', contentTypeHeader)
+            //Symple.log('MJPEGBase64MXHR: Content Type Header: ', contentTypeHeader)
             if (contentTypeHeader &&
                 contentTypeHeader.indexOf("multipart/") != -1) {
                 // TODO: Handle boundaries enclosed in commas
@@ -2297,7 +2254,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
             }
         }
         else if (xhr.readyState == 3) {
-            //console.log('MJPEGBase64MXHR: Data: ', xhr.readyState)     
+            //Symple.log('MJPEGBase64MXHR: Data: ', xhr.readyState)     
         
             if (isNaN(xhr.numParsed)) {
                 xhr.numParsed = 0;
@@ -2328,7 +2285,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     onComplete: function(status) {
-        //console.log('MJPEGBase64MXHR: Complete: ', status)        
+        //Symple.log('MJPEGBase64MXHR: Complete: ', status)        
         if (this.player.playing) {
             stop();
             this.player.displayMessage('info', 'Streaming ended: Connection closed by peer.');
@@ -2374,7 +2331,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
 
     play: function(params) {
         this._super(params);        
-        console.log('PseudoMJPEG: Play: ', this.params)     
+        Symple.log('PseudoMJPEG: Play: ', this.params)     
         
         // Load an image for each thread
         for (var i = 0; i < this.player.options.threads; ++i)
@@ -2382,7 +2339,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log('Symple PseudoMJPEG: stop');
+        Symple.log('Symple PseudoMJPEG: stop');
         this.player.playing = false;
         if (this.lastImage) {
             this.free(this.lastImage);
@@ -2405,7 +2362,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
         //img.width = this.player.options.screenWidth;
         //img.height = this.player.options.screenHeight;
         img.onload = function() {
-            console.log('Symple PseudoMJPEG: Onload');
+            Symple.log('Symple PseudoMJPEG: Onload');
             
             // Set playing state when the first image loads
             if (self.player.state == 'loading')        
@@ -2413,10 +2370,10 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
             
             self.show.call(self, this);
         }
-        console.log('Symple PseudoMJPEG: loadNext', this.seq );
+        Symple.log('Symple PseudoMJPEG: loadNext', this.seq );
         if (this.seq < 5) {
             img.onerror = function() {
-                console.log('Symple PseudoMJPEG: OnError');
+                Symple.log('Symple PseudoMJPEG: OnError');
                 self.free(img);
                 self.setError('Streaming connection failed.');
             }
@@ -2427,7 +2384,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
     },
 
     show: function(img) {
-         console.log('Symple PseudoMJPEG: Show');
+         Symple.log('Symple PseudoMJPEG: Show');
         if (!this.player.playing)        
             return;
 
@@ -2435,7 +2392,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
         if (this.lastImage &&
             this.lastImage.seq > img.seq) {
             this.free(img);
-            console.log('Symple PseudoMJPEG: Dropping: ' + img.seq + ' < ' + this.lastImage.seq);
+            Symple.log('Symple PseudoMJPEG: Dropping: ' + img.seq + ' < ' + this.lastImage.seq);
             return;
         }
 
@@ -2456,7 +2413,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
     },
         
     setError: function(error) {
-        console.log('Symple PseudoMJPEG: Error:', error);
+        Symple.log('Symple PseudoMJPEG: Error:', error);
         this.setState('error', error);
     }
 });
@@ -2468,7 +2425,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
 
     onLoad: function() {
         var self = this.self;
-        console.log('Symple PseudoMJPEG: Onload: ', self.seq);
+        Symple.log('Symple PseudoMJPEG: Onload: ', self.seq);
         
         // Set playing state when the firtst image loads
         if (self.player.state == 'loading')        
@@ -2563,7 +2520,7 @@ Symple.Media.registerEngine({
 
 Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     init: function(player) {
-        console.log("SympleWebRTC: Init");
+        Symple.log("SympleWebRTC: Init");
         this._super(player);
         
         this.rtcConfig = player.options.rtcConfig || {
@@ -2586,7 +2543,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     },
     
     setup: function() {
-        console.log("SympleWebRTC: Setup");
+        Symple.log("SympleWebRTC: Setup");
         
         this._createPeerConnection(); 
         
@@ -2594,7 +2551,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         // the parent element size. Need to test in other browsers.        
         
         if (typeof(this.video) == 'undefined') {
-            console.log("SympleWebRTC: Setup: Peer video");
+            Symple.log("SympleWebRTC: Setup: Peer video");
             this.video = $('<video autoplay></video>')
             this.player.screen.prepend(this.video);    
         }
@@ -2605,7 +2562,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     },
       
     destroy: function() {   
-        console.log("SympleWebRTC: Destroy");
+        Symple.log("SympleWebRTC: Destroy");
         this.sendLocalSDP = null;
         this.sendLocalCandidate = null;
         
@@ -2624,7 +2581,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     },
 
     play: function(params) {        
-        console.log("SympleWebRTC: Play", params);
+        Symple.log("SympleWebRTC: Play", params);
         
         // The 'playing' state will be set when candidates
         // gathering is complete.
@@ -2635,31 +2592,39 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
           
             // Get the local stream, show it in the local video element and send it
             var self = this;  
-            navigator.getUserMedia({ audio: !params.disableAudio, video: !params.disableVideo }, function (stream) {              
-                
-                //self._createPeerConnection(); 
+            navigator.getUserMedia({ audio: !params.disableAudio, video: !params.disableVideo }, 
+            
+                // successCallback
+                function (localStream) {              
                     
-                // Play the local stream
-                self.video[0].src = URL.createObjectURL(stream);
-                self.pc.addStream(stream);
+                    //self._createPeerConnection(); 
+                        
+                    // Play the local stream
+                    self.video[0].src = URL.createObjectURL(localStream);
+                    self.pc.addStream(localStream);
 
-                //if (params.caller)
-                    self.pc.createOffer(
-                        function(desc) { self._onLocalSDP(desc); });
-                //else
-                //    self.pc.createAnswer(
-                //        function(desc) { self._onLocalSDP(desc); },
-                //        function() { // error
-                //            self.setError("Cannot create local SDP answer");
-                //        },
-                //        null //this.mediaConstraints;
-                //    )
+                    //if (params.caller)
+                        self.pc.createOffer(
+                            function(desc) { self._onLocalSDP(desc); });
+                    //else
+                    //    self.pc.createAnswer(
+                    //        function(desc) { self._onLocalSDP(desc); },
+                    //        function() { // error
+                    //            self.setError("Cannot create local SDP answer");
+                    //        },
+                    //        null //this.mediaConstraints;
+                    //    )
 
-                //function gotDescription(desc) {
-                //    pc.setLocalDescription(desc);
-                //    signalingChannel.send(JSON.stringify({ "sdp": desc }));
-                //}
-            });
+                    //function gotDescription(desc) {
+                    //    pc.setLocalDescription(desc);
+                    //    signalingChannel.send(JSON.stringify({ "sdp": desc }));
+                    //}
+                },
+
+                // errorCallback
+                function(err) {
+                    self.setError("getUserMedia() Failed: " + err);
+                });
         }
     },
 
@@ -2682,7 +2647,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     mute: function(flag) {
         // Mute unless explicit false given
         flag = flag === false ? false : true;
-        console.log("SympleWebRTC: Mute:", flag);
+        Symple.log("SympleWebRTC: Mute:", flag);
         
         if (this.video) {
             this.video.prop('muted', flag); //mute
@@ -2691,7 +2656,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
 
     // Initiates the player with local media capture
     //startLocalMedia: function(params) {        
-        //console.log("SympleWebRTC: Play", params);
+        //Symple.log("SympleWebRTC: Play", params);
         
         // The 'playing' state will be set when candidates
         // gathering is complete.
@@ -2710,7 +2675,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     //
     // Called when remote SDP is received from the peer.
     onRemoteSDP: function(desc) {   
-        console.log('SympleWebRTC: Recieve remote SDP:', desc)        
+        Symple.log('SympleWebRTC: Recieve remote SDP:', desc)        
         if (!desc || !desc.type || !desc.sdp)
             throw "Invalid SDP data"
                     
@@ -2720,7 +2685,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         var self = this;             
         this.pc.setRemoteDescription(new RTCSessionDescription(desc), 
             function() {
-                console.log('SympleWebRTC: SDP success');
+                Symple.log('SympleWebRTC: SDP success');
                 //alert('success')
             }, 
             function(message) {
@@ -2746,7 +2711,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
     //
     // Called when remote candidate is received from the peer.
     onRemoteCandidate: function(candidate) { 
-        //console.log("SympleWebRTC: Recieve remote candiate ", candidate);
+        //Symple.log("SympleWebRTC: Recieve remote candiate ", candidate);
         if (!this.pc)
             throw 'The peer connection is not initialized' // call onRemoteSDP first
             
@@ -2770,7 +2735,7 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
             this.sendLocalSDP(desc);
         } 
         catch (e) {
-            console.log("Failed to send local SDP:", e);            
+            Symple.log("Failed to send local SDP:", e);            
         }
     }, 
     
@@ -2778,21 +2743,21 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
         if (this.pc)
             throw 'The peer connection is already initialized'
               
-        console.log("SympleWebRTC: Creating peer connection: ", this.rtcConfig);
+        Symple.log("SympleWebRTC: Creating peer connection: ", this.rtcConfig);
                 
         var self = this;
         this.pc = new RTCPeerConnection(this.rtcConfig, this.rtcOptions);
         this.pc.onicecandidate = function(event) {
             if (event.candidate) {
-                //console.log("SympleWebRTC: Local candidate gathered:", event.candidate);                
+                //Symple.log("SympleWebRTC: Local candidate gathered:", event.candidate);                
                 self.sendLocalCandidate(event.candidate); 
             } 
             else {
-                console.log("SympleWebRTC: Local candidate gathering complete");
+                Symple.log("SympleWebRTC: Local candidate gathering complete");
             }
         };
         this.pc.onaddstream = function(event) {         
-            console.log("SympleWebRTC: Remote stream added:", URL.createObjectURL(event.stream));
+            Symple.log("SympleWebRTC: Remote stream added:", URL.createObjectURL(event.stream));
                 
             // Set the state to playing once candidates have completed gathering.
             // This is the best we can do until ICE onstatechange is implemented.
@@ -2802,19 +2767,19 @@ Symple.Player.Engine.WebRTC = Symple.Player.Engine.extend({
             self.video[0].play(); 
         };
         this.pc.onremovestream = function(event) { 
-            console.log("SympleWebRTC: Remote stream removed:", event);
+            Symple.log("SympleWebRTC: Remote stream removed:", event);
             self.video[0].stop(); 
         };
         
         // Note: The following state events are completely unreliable.
         // Hopefully when the spec is complete this will change, but
         // until then we need to "guess" the state.
-        //this.pc.onconnecting = function(event) { console.log("SympleWebRTC: onconnecting:", event); };
-        //this.pc.onopen = function(event) { console.log("SympleWebRTC: onopen:", event); };
-        //this.pc.onicechange = function(event) { console.log("SympleWebRTC: onicechange :", event); };
-        //this.pc.onstatechange = function(event) { console.log("SympleWebRTC: onstatechange :", event); };
+        //this.pc.onconnecting = function(event) { Symple.log("SympleWebRTC: onconnecting:", event); };
+        //this.pc.onopen = function(event) { Symple.log("SympleWebRTC: onopen:", event); };
+        //this.pc.onicechange = function(event) { Symple.log("SympleWebRTC: onicechange :", event); };
+        //this.pc.onstatechange = function(event) { Symple.log("SympleWebRTC: onstatechange :", event); };
         
-        console.log("SympleWebRTC: Setupd RTCPeerConnnection with config: " + JSON.stringify(this.rtcConfig));
+        Symple.log("SympleWebRTC: Setupd RTCPeerConnnection with config: " + JSON.stringify(this.rtcConfig));
     }
 });
 

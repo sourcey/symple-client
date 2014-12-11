@@ -25,7 +25,7 @@
         items: {},
 
         bind: function(id, klass) {
-            console.log('JFlashBridge: Bind: ', id, klass);
+            Symple.log('JFlashBridge: Bind: ', id, klass);
             this.items[id] = klass;
         },
 
@@ -34,7 +34,7 @@
         },
 
         call: function() {
-            //console.log('JFlashBridge: Call: ', arguments);
+            //Symple.log('JFlashBridge: Call: ', arguments);
             try {
                 var klass = this.items[arguments[0]];
                 if (klass) {
@@ -42,13 +42,13 @@
                     if (method)
                         method.apply(klass, Array.prototype.slice.call(arguments, 2));
                     else
-                        console.log('JFlashBridge: No method: ', arguments[1]);
+                        Symple.log('JFlashBridge: No method: ', arguments[1]);
                 }
                 else
-                    console.log('JFlashBridge: No binding: ', arguments);
+                    Symple.log('JFlashBridge: No binding: ', arguments);
             }
             catch (e) {
-                console.log('JFlashBridge Error: ', e);
+                Symple.log('JFlashBridge Error: ', e);
             }
         },
 
@@ -68,7 +68,7 @@ var output = "You have Flash player " + playerVersion.major +
              " installed";
 alert(output);
         
-        console.log("Symple Flash Player: SWF:", '/assetpipe/symple/as3/player/bin-debug/SymplePlayer.swf');
+        Symple.log("Symple Flash Player: SWF:", '/assetpipe/symple/as3/player/bin-debug/SymplePlayer.swf');
         // swfobject.embedSWF(swfUrl, id, width, height, version, expressInstallSwfurl, flashvars, params, attributes, callbackFn)
         swfobject.embedSWF(
             '/assetpipe/symple/as3/player/bin-debug/SymplePlayer.swf', "swfid",
@@ -103,7 +103,7 @@ alert(output);
           $(document).ready(function() {
               // Inline logging for peski mobile devices :P
               var logger = $('#debug-log div')
-              console.log = function() {
+              Symple.log = function() {
                   if (logger.length)
                       logger.prepend(Array.prototype.slice.call(arguments).join(' ') + '<br>')
               }  

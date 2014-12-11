@@ -33,7 +33,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     play: function(params) {    
         //params = params || {};
         //params.framing = 'multipart'; // using multipart/x-mixed-replace
-        console.log("MJPEG Native: Play", params);
+        Symple.log("MJPEG Native: Play", params);
         
         if (this.img)
           throw 'Streaming already initialized'
@@ -54,7 +54,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
         //this.img.style.height = '100%';
         this.img.style.display = 'none';
         this.img.onload = function() {
-            console.log("MJPEG Native: Success");
+            Symple.log("MJPEG Native: Success");
         
             // Most browsers inclusing WebKit just call onload once.
             if (init) {
@@ -81,7 +81,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log("MJPEG Native: Stop");
+        Symple.log("MJPEG Native: Stop");
         this.cleanup();
         this.setState('stopped');
     },
@@ -98,7 +98,7 @@ Symple.Player.Engine.MJPEG = Symple.Player.Engine.extend({
     },
     
     setError: function(error) {
-        console.log('Symple MJPEG Engine: Error:', error);
+        Symple.log('Symple MJPEG Engine: Error:', error);
         this.cleanup();
         this.setState('error', error);
     }
@@ -140,15 +140,15 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
         
         var self = this, init = true;     
         
-        console.log("MJPEG WebSocket: Play:", this.params);
+        Symple.log("MJPEG WebSocket: Play:", this.params);
         this.socket = new WebSocket(this.normalizeURL(this.params.url));
         
         this.socket.onopen = function () {
-            console.log("MJPEG WebSocket: Open");    
+            Symple.log("MJPEG WebSocket: Open");    
             //self.socket.send('Ping');  
         };                
         this.socket.onmessage = function (e) {
-            console.log("MJPEG WebSocket: Message: ", e);    
+            Symple.log("MJPEG WebSocket: Message: ", e);    
             
             // http://www.adobe.com/devnet/html5/articles/real-time-data-exchange-in-html5-with-websockets.html
             // http://stackoverflow.com/questions/15040126/receiving-websocket-arraybuffer-data-in-the-browser-receiving-string-instead
@@ -164,7 +164,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
             }
 
             // TODO: Image content type
-            console.log("MJPEG WebSocket: Frame", self, e.data);
+            Symple.log("MJPEG WebSocket: Frame", self, e.data);
             var blob = window.URL.createObjectURL(e.data);     
             self.img.onload = function() {
                 window.URL.revokeObjectURL(blob);
@@ -179,7 +179,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log("MJPEG WebSocket: Stop");
+        Symple.log("MJPEG WebSocket: Stop");
         this.cleanup();
         this.setState('stopped');
     },
@@ -189,7 +189,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
     },
     
     cleanup: function() {
-        console.log("MJPEG WebSocket: Cleanup");
+        Symple.log("MJPEG WebSocket: Cleanup");
         if (this.img) {
             this.img.style.display = 'none';
             this.img.src = "#"; // XXX: Closes socket in ff, but not safari
@@ -199,7 +199,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
             this.img = null;
         }
         if (this.socket) {
-            console.log("MJPEG WebSocket: Cleanup: Socket: ", this.socket);
+            Symple.log("MJPEG WebSocket: Cleanup: Socket: ", this.socket);
             
             // BUG: Not closing in latest chrome,
             this.socket.close()
@@ -218,7 +218,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
             // remote side disconnects stream.
             var self = this;
             this.img.onerror = function(e) {
-                console.log("MJPEG WebSocket: Image load error: ", e);
+                Symple.log("MJPEG WebSocket: Image load error: ", e);
                 //self.setError(
                 //  'Invalid MJPEG stream');
             }
@@ -235,7 +235,7 @@ Symple.Player.Engine.MJPEGWebSocket = Symple.Player.Engine.extend({
     //},
     
     setError: function(error) {
-        console.log('MJPEG WebSocket: Error:', error);
+        Symple.log('MJPEG WebSocket: Error:', error);
         this.cleanup();
         this.setState('error', error);
     }
@@ -264,7 +264,7 @@ Symple.MultipartParser = Symple.Class.extend({
     },
 
     processPart: function(part) { 
-        //console.log('MultipartParser: processPart: ', this.boundary)
+        //Symple.log('MultipartParser: processPart: ', this.boundary)
         part = part.replace(this.boundary + "\r\n", '');
         var lines = part.split("\r\n");
         var headers = {};
@@ -281,7 +281,7 @@ Symple.MultipartParser = Symple.Class.extend({
     },
 
     incrParse: function(buffer) {
-        //console.log('MultipartParser: incrParse: ', this.boundary)
+        //Symple.log('MultipartParser: incrParse: ', this.boundary)
         if (buffer.length < 1) return [-1];
         var start = buffer.indexOf(this.boundary);
         if (start == -1) return [-1];
@@ -324,7 +324,7 @@ Symple.ChunkedParser = Symple.Class.extend({
         /*            
         // Image start
         if (frame.indexOf("/9j/") == 0) {        
-            console.log('Symple ChunkedParser: Got Image Start')
+            Symple.log('Symple ChunkedParser: Got Image Start')
         
             // Draw the current frame
             if (this.currentFrame.length) {
@@ -333,7 +333,7 @@ Symple.ChunkedParser = Symple.Class.extend({
             }         
         }
         else 
-            console.log('Symple ChunkedParser: Partial Packet')  
+            Symple.log('Symple ChunkedParser: Partial Packet')  
                       
         // Append data to current frame
         this.currentFrame += frame;  
@@ -392,7 +392,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         
         // TODO: Playback timer to set error if not playing after X
         
-        //console.log('MJPEGBase64MXHR: Play: ', this.params)                
+        //Symple.log('MJPEGBase64MXHR: Play: ', this.params)                
         this.rotateConnection();
     },
 
@@ -416,7 +416,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         this.xhrID++;
         var self = this, xhr = this.createXHR();
         
-        //console.log('MJPEGBase64MXHR: Connecting:', this.xhrID)
+        //Symple.log('MJPEGBase64MXHR: Connecting:', this.xhrID)
         
         xhr.xhrID = this.xhrID;
         xhr.connecting = true;
@@ -432,11 +432,11 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
               // and set it as the new media connection.
               if (this.connecting) {
                   this.connecting = false;
-                  //console.log('MJPEGBase64MXHR: Loaded:', this.xhrID)
+                  //Symple.log('MJPEGBase64MXHR: Loaded:', this.xhrID)
                   
                   // Close the old connection (if any)
                   if (self.xhrConn) {
-                      //console.log('MJPEGBase64MXHR: Freeing Old XHR:', self.xhrConn.xhrID)
+                      //Symple.log('MJPEGBase64MXHR: Freeing Old XHR:', self.xhrConn.xhrID)
                       if (self.xhrConn.xhrID == this.xhrID)
                           throw 'XHR ID mismatch'                          
                       if (self.xhrConn === this)
@@ -461,7 +461,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
                   this.responseText && 
                   this.responseText.length > (1048576 * 2)) {
                   this.cancelled = true;
-                  //console.log('MJPEGBase64MXHR: Switching Connection:', this.xhrID, this.responseText.length)
+                  //Symple.log('MJPEGBase64MXHR: Switching Connection:', this.xhrID, this.responseText.length)
                   self.rotateConnection();
               }
           }
@@ -472,7 +472,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
 
     draw: function(frame) {
-        //console.log('MJPEGBase64MXHR: Draw:', this.contentType, frame.length) //, frame
+        //Symple.log('MJPEGBase64MXHR: Draw:', this.contentType, frame.length) //, frame
                 
         if (!this.img) {
             this.img = this.createImage()
@@ -495,7 +495,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     freeXHR: function(xhr) {           
-        //console.log('MJPEGBase64MXHR: Freeing XHR:', xhr.xhrID)
+        //Symple.log('MJPEGBase64MXHR: Freeing XHR:', xhr.xhrID)
         xhr.canceled = true;
         xhr.abort();    
         xhr.onreadystatechange = new Function;
@@ -508,13 +508,13 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
         img.self = this;           
         img.style.zIndex = -1; // hide until loaded    
         img.onload = function() {
-            console.log('MJPEGBase64MXHR: Onload');
+            Symple.log('MJPEGBase64MXHR: Onload');
             if (this.self.player.state == 'loading')
                 this.self.setState('playing');
             this.self.errors = 0; // reset error count
         }        
         img.onerror = function() {              
-            console.log('MJPEGBase64MXHR: Bad frame: ', frame.length, 
+            Symple.log('MJPEGBase64MXHR: Bad frame: ', frame.length, 
                 frame.substr(0, 50), 
                 frame.substr(frame.length - 50, frame.length)); // for debuggering
         
@@ -528,7 +528,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     freeImage: function(img) {  
-        ////console.log('MJPEGBase64MXHR: Remove:', img.seq);        
+        ////Symple.log('MJPEGBase64MXHR: Remove:', img.seq);        
         img.onload = new Function;
         img.onerror = new Function;
         if (img.parentNode)
@@ -537,13 +537,13 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     onReadyState: function(xhr) {
-        ////console.log('MJPEGBase64MXHR: Ready State Change: ',  xhr.readyState, xhr.xhrID, xhr.numParsed)         
+        ////Symple.log('MJPEGBase64MXHR: Ready State Change: ',  xhr.readyState, xhr.xhrID, xhr.numParsed)         
         if (xhr.readyState == 2) {
         
             // If a multipart/x-mixed-replace header is received then we will
             // be parsing the multipart response ourselves.
             var contentTypeHeader = xhr.getResponseHeader("Content-Type");
-            //console.log('MJPEGBase64MXHR: Content Type Header: ', contentTypeHeader)
+            //Symple.log('MJPEGBase64MXHR: Content Type Header: ', contentTypeHeader)
             if (contentTypeHeader &&
                 contentTypeHeader.indexOf("multipart/") != -1) {
                 // TODO: Handle boundaries enclosed in commas
@@ -558,7 +558,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
             }
         }
         else if (xhr.readyState == 3) {
-            //console.log('MJPEGBase64MXHR: Data: ', xhr.readyState)     
+            //Symple.log('MJPEGBase64MXHR: Data: ', xhr.readyState)     
         
             if (isNaN(xhr.numParsed)) {
                 xhr.numParsed = 0;
@@ -589,7 +589,7 @@ Symple.Player.Engine.MJPEGBase64MXHR = Symple.Player.Engine.extend({
     },
     
     onComplete: function(status) {
-        //console.log('MJPEGBase64MXHR: Complete: ', status)        
+        //Symple.log('MJPEGBase64MXHR: Complete: ', status)        
         if (this.player.playing) {
             stop();
             this.player.displayMessage('info', 'Streaming ended: Connection closed by peer.');
@@ -635,7 +635,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
 
     play: function(params) {
         this._super(params);        
-        console.log('PseudoMJPEG: Play: ', this.params)     
+        Symple.log('PseudoMJPEG: Play: ', this.params)     
         
         // Load an image for each thread
         for (var i = 0; i < this.player.options.threads; ++i)
@@ -643,7 +643,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
     },
 
     stop: function() {
-        console.log('Symple PseudoMJPEG: stop');
+        Symple.log('Symple PseudoMJPEG: stop');
         this.player.playing = false;
         if (this.lastImage) {
             this.free(this.lastImage);
@@ -666,7 +666,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
         //img.width = this.player.options.screenWidth;
         //img.height = this.player.options.screenHeight;
         img.onload = function() {
-            console.log('Symple PseudoMJPEG: Onload');
+            Symple.log('Symple PseudoMJPEG: Onload');
             
             // Set playing state when the first image loads
             if (self.player.state == 'loading')        
@@ -674,10 +674,10 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
             
             self.show.call(self, this);
         }
-        console.log('Symple PseudoMJPEG: loadNext', this.seq );
+        Symple.log('Symple PseudoMJPEG: loadNext', this.seq );
         if (this.seq < 5) {
             img.onerror = function() {
-                console.log('Symple PseudoMJPEG: OnError');
+                Symple.log('Symple PseudoMJPEG: OnError');
                 self.free(img);
                 self.setError('Streaming connection failed.');
             }
@@ -688,7 +688,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
     },
 
     show: function(img) {
-         console.log('Symple PseudoMJPEG: Show');
+         Symple.log('Symple PseudoMJPEG: Show');
         if (!this.player.playing)        
             return;
 
@@ -696,7 +696,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
         if (this.lastImage &&
             this.lastImage.seq > img.seq) {
             this.free(img);
-            console.log('Symple PseudoMJPEG: Dropping: ' + img.seq + ' < ' + this.lastImage.seq);
+            Symple.log('Symple PseudoMJPEG: Dropping: ' + img.seq + ' < ' + this.lastImage.seq);
             return;
         }
 
@@ -717,7 +717,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
     },
         
     setError: function(error) {
-        console.log('Symple PseudoMJPEG: Error:', error);
+        Symple.log('Symple PseudoMJPEG: Error:', error);
         this.setState('error', error);
     }
 });
@@ -729,7 +729,7 @@ Symple.Player.Engine.PseudoMJPEG = Symple.Player.Engine.extend({
 
     onLoad: function() {
         var self = this.self;
-        console.log('Symple PseudoMJPEG: Onload: ', self.seq);
+        Symple.log('Symple PseudoMJPEG: Onload: ', self.seq);
         
         // Set playing state when the firtst image loads
         if (self.player.state == 'loading')        

@@ -5,7 +5,7 @@ var JFlashBridge = {
     items: {},
 
     bind: function(id, klass) {
-        console.log('JFlashBridge: Bind: ', id, klass);
+        Symple.log('JFlashBridge: Bind: ', id, klass);
         this.items[id] = klass;
     },
 
@@ -14,17 +14,17 @@ var JFlashBridge = {
     },
 
     call: function() {
-        //console.log('JFlashBridge: Call: ', arguments);
+        //Symple.log('JFlashBridge: Call: ', arguments);
         var klass = this.items[arguments[0]];
         if (klass) {
             var method = klass[arguments[1]];
             if (method)
                 method.apply(klass, Array.prototype.slice.call(arguments, 2));
             else
-                console.log('JFlashBridge: No method: ', arguments[1]);
+                Symple.log('JFlashBridge: No method: ', arguments[1]);
         }
         else
-            console.log('JFlashBridge: No binding: ', arguments);
+            Symple.log('JFlashBridge: No binding: ', arguments);
     },
 
     getSWF: function(movieName) {
@@ -52,7 +52,7 @@ Symple.Media.registerEngine({
 
 Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     init: function(player) {
-        console.log("SympleFlashEngine: Init");
+        Symple.log("SympleFlashEngine: Init");
         this._super(player);
         this.initialized = false;
         this.streamOnInit = false;
@@ -60,13 +60,13 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     setup: function() {
-        console.log("SympleFlashEngine: Create");
+        Symple.log("SympleFlashEngine: Create");
         this.initialized = false;
         this.player.screen.prepend('<div id="' + this.id + '">Flash version 10.0.0 or newer is required.</div>');
         
         JFlashBridge.bind(this.id, this);
         
-        //console.log("SympleFlashEngine: SWF:", this.id, this.player.options.htmlRoot + '/symple.player.swf');
+        //Symple.log("SympleFlashEngine: SWF:", this.id, this.player.options.htmlRoot + '/symple.player.swf');
         swfobject.embedSWF(
             this.player.options.swf ? 
                 this.player.options.swf : 
@@ -93,28 +93,28 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     play: function(params) {        
-        console.log("SympleFlashEngine: Play", params);        
+        Symple.log("SympleFlashEngine: Play", params);        
         this.params = params;
         if (this.initialized) {
-            console.log("SympleFlashEngine: Opening", params);
+            Symple.log("SympleFlashEngine: Opening", params);
             this.swf().open(params);
             
             // Push through any pending candiates
             if (this.candidates) {
                 for (var i = 0; i < this.candidates.length; i++) {
-                    console.log("SympleFlashEngine: Add stored candidate", this.candidates[i]);
+                    Symple.log("SympleFlashEngine: Add stored candidate", this.candidates[i]);
                     this.swf().addCandidate(this.candidates[i]);
                 }
             }
         }
         else {            
-            console.log("SympleFlashEngine: Waiting for SWF");
+            Symple.log("SympleFlashEngine: Waiting for SWF");
             this.streamOnInit = true;
         }
     },
 
     stop: function() {
-        console.log("SympleFlashEngine: Stop");
+        Symple.log("SympleFlashEngine: Stop");
         if (this.initialized) {
             this.swf().close();
             this.setState('stopped'); // No need to wait for callback
@@ -126,12 +126,12 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     isJSReady: function() {
-        console.log("SympleFlashEngine: JavaScript Ready: " + $.isReady);
+        Symple.log("SympleFlashEngine: JavaScript Ready: " + $.isReady);
         return $.isReady;
     },
 
     refresh: function() {
-        console.log("SympleFlashEngine: Refresh");
+        Symple.log("SympleFlashEngine: Refresh");
         try {
           if (this.initialized)
             this.swf().refresh();
@@ -143,11 +143,11 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
             throw "Cannot add candiate after explicit URL was provided."
            
         if (this.initialized) {
-            console.log("SympleFlashEngine: Adding remote candiate ", candidate);
+            Symple.log("SympleFlashEngine: Adding remote candiate ", candidate);
             this.swf().addCandiate(candidate);
         }        
         else {      
-            console.log("SympleFlashEngine: Storing remote candiate ", candidate);
+            Symple.log("SympleFlashEngine: Storing remote candiate ", candidate);
               
             // Store candidates while waiting for flash to load
             if (!this.candidates)
@@ -157,7 +157,7 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
         
     onSWFLoaded: function() {
-        console.log("SympleFlashEngine: Loaded");
+        Symple.log("SympleFlashEngine: Loaded");
         this.initialized = true;
         if (this.streamOnInit)     
             this.play(this.params);
@@ -168,13 +168,13 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
         state = state.toLowerCase();
         if (state == 'error' && (!error || error.length == 0))
             error = "Streaming connection to the host was lost."
-        console.log("SympleFlashEngine: On state: ", state, error, this.player.state);
+        Symple.log("SympleFlashEngine: On state: ", state, error, this.player.state);
         if (state != 'none')
             this.setState(state, error);
     },
 
     onMetadata: function(data) {
-        //console.log("SympleFlashEngine: Metadata: ", data);
+        //Symple.log("SympleFlashEngine: Metadata: ", data);
         if (data && data.length) {
             var status = '';
             for (var i = 0; i < data.length; ++i) {
@@ -188,6 +188,6 @@ Symple.Player.Engine.Flash = Symple.Player.Engine.extend({
     },
 
     onLogMessage: function(type, text) {
-        console.log('SympleFlashEngine: ' + type + ': ' + text);
+        Symple.log('SympleFlashEngine: ' + type + ': ' + text);
     }
 });
