@@ -100,15 +100,13 @@ For a full fledged example using Symple for signalling in a live WebRTC chat app
 
 ## Dependencies
 
-While the Symple protocol itself is inherently dependency free, the JavaScript client currently relies on the following third party libraries:
-
-* [JQuery](http://jquery.com/)
-* [Socket.IO](http://socket.io)
+The Symple JavaScript client is built on top of [Socket.IO](http://socket.io).
 
 ## Symple Projects
 
 Node.js server: https://github.com/sourcey/symple-server-node  
 JavaScript client: https://github.com/sourcey/symple-client  
+JavaScript client player: https://github.com/sourcey/symple-client-player  
 Ruby client: https://github.com/sourcey/symple-client-ruby  
 C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple  
 
@@ -123,4 +121,4 @@ C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple
 ## Contact
 
 For more information please check out the Symple homepage: http://sourcey.com/symple/  
-If you have a bug or an issue then please use the Github issue tracker: https://github.com/sourcey/symple-client/issues
+For bugs and issues then please use the Github issue tracker: https://github.com/sourcey/symple-client/issues
