@@ -123,4 +123,4 @@ C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple
 ## Contact
 
 For more information please check out the Symple homepage: http://sourcey.com/symple/  
-If you have a bug or an issue then please use our new Github issue tracker: https://github.com/sourcey/symple-client/issues
+If you have a bug or an issue then please use the Github issue tracker: https://github.com/sourcey/symple-client/issues
