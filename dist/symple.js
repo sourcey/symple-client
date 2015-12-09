@@ -389,7 +389,7 @@ Symple.Manager = Symple.Class.extend({
 //
 Symple.Client = Symple.Dispatcher.extend({
     init: function(options) {
-        this.options = $.extend({
+        this.options = Symple.extend({ //$.extend
             url:     options.url ? options.url : 'http://localhost:4000',
             secure:  options.url && (
                          options.url.indexOf('https') == 0 || 
@@ -425,7 +425,7 @@ Symple.Client = Symple.Dispatcher.extend({
                     self.setError('auth', res);
                     return;
                 }
-                self.peer = $.extend(self.peer, res.data);
+                self.peer = Symple.extend(self.peer, res.data); //$.extend
                 self.roster.add(res.data);
                 self.sendPresence({ probe: true });
                 self.doDispatch('announce', res);
