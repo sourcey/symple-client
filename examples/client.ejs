@@ -3,18 +3,15 @@
   <head>
     <title>Symple Client Test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="symple.tests.css">
+    <link rel="stylesheet" type="text/css" href="client.css">
     <script type="text/javascript" src="../deps/socket.io.js"></script>
     <script type="text/javascript" src="../dist/symple.js"></script>
     <script>
         var client = new Symple.Client({
-          url: 'http://localhost:4500',
-          secure: false,
-          peer: {
-            user: 'demo',
-            name: 'Demo User',
-            group: 'public'
-          }});
+          url: 'http://localhost:4500', // the symple-server endpoint
+          token: <%- token %>,
+          peer: <%- JSON.stringify(peer) %>
+        });
 
         client.on('announce', function(peer) {
           console.log('Authentication success:', peer)
@@ -41,7 +38,7 @@
         });
 
         client.on('error', function(error, message) {
-          console.log('Connection error:', error, messagee)
+          console.log('Connection error:', error, message)
         });
 
         client.on('addPeer', function(peer) {
