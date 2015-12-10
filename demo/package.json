@@ -1,0 +1,14 @@
+{
+  "name": "symple-client-webrtc-demo",
+  "title": "Symple Client WebRTC Demo",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "start": "node webserver.js"
+  },
+  "dependencies": {
+    "express" : "~4.13.3",
+    "ejs" : "~2.3.4",
+    "redis" : "~2.4.2"
+  }
+}
