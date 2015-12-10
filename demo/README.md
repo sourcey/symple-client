@@ -1,6 +1,6 @@
 # Symple WebRTC Video Chat Demo
 
-The Symple video chat demo is an example of how to use the Symple for instant messaging and WebRTC signaling. External projects used are AngularJS, Bootstrap, Node.js and Express
+The Symple video chat demo is an example of how to use the Symple for instant messaging and WebRTC signaling in about 100 lines of JavaScript. External projects used are AngularJS, Bootstrap, Node.js and Express
 
 See this blog post for more information about the demo: http://sourcey.com/symple-webrtc-video-chat-demo
 
@@ -36,13 +36,7 @@ Other than that all relevant JavaScript is located in `public/js/app.js` and `pu
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
 
-## TODO
-
-1. Store last 50 messages via json - store via server using a group cache options or flat file?.
-2  Gruntfile for compressing scripts.
-3. Sync with twitter API to get user info and profile photo for handles.
-
 ## Contact
 
 For more information please check out the Symple homepage: http://sourcey.com/symple/
-If you have a bug or an issue then please use our new Github issue tracker: https://github.com/sourcey/symple-client/issues
+If you have a bug or an issue then please use the Github issue tracker: https://github.com/sourcey/symple-client/issues
