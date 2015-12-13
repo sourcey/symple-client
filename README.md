@@ -2,105 +2,120 @@
 
 The Symple JavaScript client is a client-side implementation of the Symple protocol which runs in the web browser. 
 
-## What is Symple?
+Symple is a unrestrictive real time messaging and presence protocol that implements the minimum number of features required to build full fledged messaging applications with security, flexibility, performance and scalability in mind. These features include:
 
-Symple is a unrestrictive real-time messaging and presence protocol. 
+* Session sharing with any backend (via Redis)
+* User rostering and presence
+* Media streaming (via WebRTC, [see demo](symple.sourcey.com))
+* Scoped messaging ie. direct, user and group scope
+* Real-time commands and events
+* Real-time forms
 
-The protocol itself is semantically similar to XMPP, except that it is much more flexible and economical due to the use of JSON instead of XML for encoding messages. 
+## Installation
 
-Symple currently has client implementations in [JavaScript](https://github.com/sourcey/symple-client), [Ruby](https://github.com/sourcey/symple-client-ruby) and [C++](https://github.com/sourcey/libsourcey/tree/master/src/symple), which make it ideal for a wide range of messaging requirements, such as building real-time games and applications which run in the web browser, desktop, and mobile phone.
+```bash
+# install the server
+npm install symple
 
-## Using Symple
+# install the client
+npm install symple-client
+```
 
-1. Clone the `symple-server` repository and fire up the Node.js server `node server`
-2. Clone the `symple-client` repository and check the `examples` folder to start hacking!
-3. Also check the `symple-client-webrtc-demo` for a fully featured WebRTC video chat demo using Symple.
+## Usage
 
-## Examples
+To use Symple in your app just add the following two scripts into your HTML, replacing the `src` path with the correct script locations as necessary.
 
-A basic Symple client looks like this:
+**Note:** [Socket.IO](https://github.com/socketio/socket.io-client) is the only dependency (1.3.7 at the time of writing).
+
+```
+  <script type="text/javascript" src="socket.io.js"></script>
+  <script type="text/javascript" src="symple.min.js"></script>
+```
+
+The next thing is to instantiate the client. The code below should provide you with a solid starting point, and illustrate the available callback API methods:
 
 ```javascript
 client = new Symple.Client({	
-	url: 'http://localhost:4500',    // Server URL [http/https]
-    peer: {                          // Peer object contains user information
-        name: 'My Name',             // User display name 
-        user: 'myusername',          // User ID 
-        group: 'somegroup',          // Peer group/room this user's communication is restricted to
-        token: 'someauthtoken'       // An optional pre-arranged session token 
+  token: 'someauthtoken',        // An optional pre-arranged session token 
+	url: 'http://localhost:4500',  // Symple server URL [http/https]
+  peer: {                        // Peer object contains user information
+    name: 'My Name',             // User display name 
+    user: 'myusername',          // User ID 
+    group: 'somegroup',          // Peer group/room this user's communication is restricted to
 
-        // The peer object may be extended any custom information, which will  
-        // automatically be broadcast to other group peers via presence updates.
-    }
+    // Note: The peer object may be extended any custom data, which will  
+    // automatically be broadcast to other group peers via presence updates.
+  }
 }); 
     
 client.on('announce', function(peer) {
-    console.log('announce:', peer)
+  console.log('announce:', peer)
 
-    // The user has successfully authenticated
+  // The user has successfully authenticated
 });
 
 client.on('presence', function(p) {
-    console.log('presence:', p)
+  console.log('presence:', p)
 
-    // Captures a presence message broadcast by a peer
+  // Captures a presence message broadcast by a peer
 });
 
 client.on('message', function(m) {
-    console.log('message:', m)
+  console.log('message:', m)
 
-    // Captures a message broadcast by a peer
+  // Captures a message broadcast by a peer
 });
 
 client.on('command', function(c) {
-    console.log('command:', c)
+  console.log('command:', c)
 
-    // Captures a command send from a remote peer
+  // Captures a command send from a remote peer
 });
 
 client.on('event', function(e) {  
-    console.log('event:', e)    
+  console.log('event:', e)    
 
-    // Captures an event broadcast from a remote peer 
+  // Captures an event broadcast from a remote peer 
 });
 
 client.on('error', function(error, message) {
-    console.log('connection error:', error, message)
+  console.log('connection error:', error, message)
 
-    // Connection or authentication failed
-    if (error == 'connect') {
-    	// Authentication failed
-    }
-    else if (error == 'connect') {
-    	// Connection failed
-    }
+  // Connection or authentication failed
+  if (error == 'connect') {
+  	// Authentication failed
+  }
+  else if (error == 'connect') {
+  	// Connection failed
+  }
 });
 
 client.on('disconnect', function() {
-    console.log('disconnected')
+  console.log('disconnected')
 
-    // Disconnected from the server
+  // Disconnected from the server
 });
 
 client.on('addPeer', function(peer) {
-    console.log('add peer:', peer)  
+  console.log('add peer:', peer)  
 
-    // A peer connected       
+  // A peer connected       
 });
 
 client.on('removePeer', function(peer) {
-    console.log('remove peer:', peer)
+  console.log('remove peer:', peer)
 
-    // A peer disconnected  
+  // A peer disconnected  
 });
-
 ```
 
-For a full fledged example using Symple for signalling in a live WebRTC chat application check out: http://symple.sourcey.com
+Now all that's left is to build your awesome app!
 
-## Dependencies
+## Demo
 
-The Symple JavaScript client is built on top of [Socket.IO](http://socket.io).
+We've included a fully featured WebRTC video chat demo using Symple for your hacking pleasure. The source code is located in the `demo` folder. 
+
+You can see it live here: http://symple.sourcey.com
 
 ## Symple Projects
 
@@ -121,4 +136,4 @@ C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple
 ## Contact
 
 For more information please check out the Symple homepage: http://sourcey.com/symple/  
-For bugs and issues then please use the Github issue tracker: https://github.com/sourcey/symple-client/issues
+For bugs and issues please use the Github issue tracker: https://github.com/sourcey/symple-client/issues

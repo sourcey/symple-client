@@ -3,8 +3,8 @@
 //
 Symple.Client = Symple.Dispatcher.extend({
     init: function(options) {
-        this.options = Symple.extend({ //$.extend
-            url:     options.url ? options.url : 'http://localhost:4000',
+        this.options = Symple.extend({
+            url:     options.url || 'http://localhost:4000',
             secure:  options.url && (
                          options.url.indexOf('https') == 0 ||
                          options.url.indexOf('wss') == 0) ? true : false,

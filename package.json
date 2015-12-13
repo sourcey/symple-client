@@ -1,11 +1,29 @@
 {
-    "name" : "symple-client",
-    "title" : "Symple Client",
-    "version" : "0.9.0",
-    "devDependencies": {
-        "grunt": "~0.4.2",
-        "grunt-contrib-concat": "~0.1.3",
-        "grunt-contrib-watch" : "~0.5.3",
-        "grunt-contrib-uglify" : "~0.2.0"
-    }
+  "name": "symple-client",
+  "version": "0.9.0",
+  "description": "Symple real time messaging client",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-cssmin": "^0.6.2",
+    "grunt-contrib-watch" : "^0.5.3",
+    "grunt-contrib-uglify" : "^0.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sourcey/symple-client.git"
+  },
+  "keywords": [
+    "symple",
+    "real time",
+    "messaging",
+    "chat"
+  ],
+  "author": "Kam Low <auscaster@gmail.com> (http://sourcey.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sourcey/symple-client/issues"
+  },
+  "homepage": "http://sourcey.com/symple"
 }

@@ -1,28 +1,25 @@
 <html ng-app>
 <head>
 <title>Symple WebRTC Live Video Chat Demo</title>
-<meta name="description" content="This live demo showcases the awesomeness of Symple and WebRTC. To get started choose someone from the left sidebar to video chat with, or just join the conversation...">
+<meta name="description" content="This demo showcases how to use Symple to create a WebRTC chat application. To get started choose someone from the left sidebar to video chat with, or just join the conversation...">
 
 <script>
 
-    // Symple client options
-    CLIENT_OPTIONS = {
-        url: 'http://localhost:4500', // Local testing: http://localhost:4500
-        //url: 'http://sympleserver.sourcey.com:80', // Local testing: http://localhost:4500
-        //transports: ['polling', 'flashsocket'],    // Removing 'websocket' while testing
-        peer: {
-            // user: 'myusername',
-            // name: 'My Name',
-            group: 'public'
-        }}
+  // Symple client options
+  CLIENT_OPTIONS = {
+    url: 'http://localhost:<%- port %>',
+    //url: 'http://sympleserver.sourcey.com:<%- port %>',
+    token: <%- token %>,
+    peer: <%- JSON.stringify(peer) %>
+  }
 
-    // WebRTC config
-    // This is where you would add TURN servers for use in production
-    WEBRTC_CONFIG = {
-      'iceServers': [
-        {'url': 'stun:stun.l.google.com:19302'}
-      ]
-    }
+  // WebRTC config
+  // This is where you would add TURN servers for use in production
+  WEBRTC_CONFIG = {
+    'iceServers': [
+      {'url': 'stun:stun.l.google.com:19302'}
+    ]
+  }
 </script>
 <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.4/angular.min.js"></script>
 <script type="text/javascript" src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
