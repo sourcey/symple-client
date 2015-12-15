@@ -6,7 +6,7 @@ Symple is a unrestrictive real time messaging and presence protocol that impleme
 
 * Session sharing with any backend (via Redis)
 * User rostering and presence
-* Media streaming (via WebRTC, [see demo](symple.sourcey.com))
+* Media streaming (via WebRTC)
 * Scoped messaging ie. direct, user and group scope
 * Real-time commands and events
 * Real-time forms
@@ -21,9 +21,23 @@ npm install symple
 npm install symple-client
 ```
 
+## Demo
+
+We've included a fully featured video chat demo using Symple and WebRTC for your hacking pleasure. The source code is located in the `demo` folder. 
+
+You can see it live here: http://symple.sourcey.com
+
 ## Usage
 
-To use Symple in your app just add the following two scripts into your HTML, replacing the `src` path with the correct script locations as necessary.
+The first thing to do is fire up the server:
+
+```bash
+cd /path/to/symple/server
+
+node server
+```
+
+To use Symple in your app just add the following two scripts into your HTML head, replacing the `src` path with the correct script locations as necessary.
 
 **Note:** [Socket.IO](https://github.com/socketio/socket.io-client) is the only dependency (1.3.7 at the time of writing).
 
@@ -32,19 +46,19 @@ To use Symple in your app just add the following two scripts into your HTML, rep
   <script type="text/javascript" src="symple.min.js"></script>
 ```
 
-The next thing is to instantiate the client. The code below should provide you with a solid starting point, and illustrate the available callback API methods:
+The next thing is to instantiate the client. The code below should provide you with a solid starting point, and illustrates the available callback API methods:
 
 ```javascript
 client = new Symple.Client({	
-  token: 'someauthtoken',        // An optional pre-arranged session token 
-	url: 'http://localhost:4500',  // Symple server URL [http/https]
-  peer: {                        // Peer object contains user information
-    name: 'My Name',             // User display name 
-    user: 'myusername',          // User ID 
-    group: 'somegroup',          // Peer group/room this user's communication is restricted to
-
+  token: 'someauthtoken',        // An optional pre-arranged session token  
+  url: 'http://localhost:4500',  // Symple server URL [http/https]  
+  peer: {                        // Peer object contains user information  
+    name: 'My Name',             // User display name  
+    user: 'myusername',          // User ID  
+    group: 'somegroup',          // Peer group/room this user's communication is restricted to  
+    
     // Note: The peer object may be extended any custom data, which will  
-    // automatically be broadcast to other group peers via presence updates.
+    // automatically be broadcast to other group peers via presence updates.  
   }
 }); 
     
@@ -110,12 +124,6 @@ client.on('removePeer', function(peer) {
 ```
 
 Now all that's left is to build your awesome app!
-
-## Demo
-
-We've included a fully featured WebRTC video chat demo using Symple for your hacking pleasure. The source code is located in the `demo` folder. 
-
-You can see it live here: http://symple.sourcey.com
 
 ## Symple Projects
 

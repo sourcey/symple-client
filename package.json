@@ -1,7 +1,7 @@
 {
   "name": "symple-client",
-  "version": "0.9.0",
-  "description": "Symple real time messaging client",
+  "version": "0.9.1",
+  "description": "Symple realtime messaging client",
   "dependencies": {
   },
   "devDependencies": {
@@ -16,8 +16,12 @@
   },
   "keywords": [
     "symple",
-    "real time",
+    "client",
+    "realtime",
     "messaging",
+    "websocket",
+    "streaming",
+    "webrtc",
     "chat"
   ],
   "author": "Kam Low <auscaster@gmail.com> (http://sourcey.com)",
