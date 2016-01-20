@@ -314,6 +314,12 @@ Symple.Client = Symple.Dispatcher.extend({
             }
         }
         return false;
+    },
+
+    // Disconnect Client
+    disconnect: function() {
+        if (this.socket)
+            this.socket.disconnect();
     }
 });
 
