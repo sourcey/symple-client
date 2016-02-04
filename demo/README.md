@@ -1,6 +1,9 @@
 # Symple WebRTC Video Chat Demo
 
-The Symple video chat demo is an example of how to use the Symple for instant messaging and WebRTC signaling in about 100 lines of JavaScript. External projects used are AngularJS, Bootstrap, Node.js and Express
+The Symple video chat demo is an example of how to use the Symple for instant messaging and WebRTC signaling in about 100 lines of JavaScript. External projects used are AngularJS, Bootstrap, Node.js and Express.
+
+
+The 
 
 See this blog post for more information about the demo: http://sourcey.com/symple-webrtc-video-chat-demo
 
@@ -12,17 +15,17 @@ The protocol itself is semantically similar to XMPP, except that it is much more
 
 Symple currently has client implementations in [JavaScript](https://github.com/sourcey/symple-client), [Ruby](https://github.com/sourcey/symple-client-ruby) and [C++](https://github.com/sourcey/libsourcey/tree/master/src/symple), which make it ideal for a wide range of messaging requirements, such as building real-time games and applications which run in the web browser, desktop, and mobile phone.
 
-## How to use it
+## Usage
 
-1. Clone the `symple-server` repository and fire up the server by typing `node server`. The server should be running on port 4500. Either ensure you have Redis installed for session management, or that anonymous logins are enabled on the server. See `config.json` in the server foot folder for configuration options.
-2. Run `node webserver` to start the demo web server.  
-3. Open `http://localhost:4500` in your browser and play!
+1. Install dependencies: `npm install`
+2. Fire up the server: `node app`
+3. And point your browser to: `http://localhost:4500`
 
-### Hacking
+## Hacking
 
-Some key options are specified in the main HTML file located at `views/index.ejs`
+Some key options are specified in the main HTML file located at `index.ejs`
 
-**CLIENT_OPTIONS** This is the options hash for the Symple client and Socket.IO. This is where you specify the server URL and Peer object. Note that we have disabled 'websocket' transport by default, but you will probably want to re-enable it in production.
+**CLIENT_OPTIONS** This is the options hash for the Symple client. This is where you specify the server URL and Peer object. Note that we have disabled 'websocket' transport by default, but you will probably want to re-enable it in production.
 
 **WEBRTC_CONFIG** This is the PeerConnection options hash. In production you will want to specify some TURN servers so as to ensure the p2p connection succeeds in all network topologies.
 
