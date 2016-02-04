@@ -3,8 +3,8 @@
 //
 Symple.Client = Symple.Dispatcher.extend({
     init: function(options) {
-        this.options = Symple.extend({ //$.extend
-            url:     options.url ? options.url : 'http://localhost:4000',
+        this.options = Symple.extend({
+            url:     options.url || 'http://localhost:4000',
             secure:  options.url && (
                          options.url.indexOf('https') == 0 ||
                          options.url.indexOf('wss') == 0) ? true : false,
@@ -13,7 +13,6 @@ Symple.Client = Symple.Dispatcher.extend({
         }, options);
         this._super();
         this.peer = options.peer || {};
-        this.peer.rooms = options.peer.rooms || [];
         this.roster = new Symple.Roster(this);
         this.socket = null;
     },
@@ -29,11 +28,11 @@ Symple.Client = Symple.Dispatcher.extend({
         this.socket.on('connect', function() {
             Symple.log('Symple Client: Connected');
             self.socket.emit('announce', {
-                token:  self.options.token || '',
-                // group:  self.peer.group    || '',
-                user:   self.peer.user     || '',
-                name:   self.peer.name     || '',
-                type:   self.peer.type     || ''
+                token:  self.options.token || "",
+                group:  self.peer.group    || "",
+                user:   self.peer.user     || "",
+                name:   self.peer.name     || "",
+                type:   self.peer.type     || ""
             }, function(res) {
                 Symple.log('Symple Client: Announced: ', res);
                 if (res.status != 200) {
@@ -64,9 +63,7 @@ Symple.Client = Symple.Dispatcher.extend({
                                 else
                                     self.roster.remove(m.data.id);
                                 if (m.probe)
-                                    self.sendPresence(new Symple.Presence({
-                                      to: Symple.parseAddress(m.from).id
-                                    }));
+                                    self.sendPresence(new Symple.Presence({ to: m.from }));
                                 break;
                             default:
                                 o = m;
@@ -136,20 +133,19 @@ Symple.Client = Symple.Dispatcher.extend({
         });
     },
 
-    send: function(m, to) { // to,
+    send: function(m) {
         //Symple.log('Symple Client: Sending: ', m);
         if (!this.online()) throw 'Cannot send messages when offline';
         if (typeof(m) != 'object') throw 'Message must be an object';
         if (typeof(m.type) != 'string') m.type = 'message' //throw 'Message must have a type attribute';
-        if (!m.id) m.id = Symple.randomString(8);
-        if (to) m.to = to;
-        // if (m.to && typeof(m.to) == 'object' && (m.to.room || m.to.id)) //group || m.to.user
-        //     m.to = Symple.buildAddress(m.to, this.peer.group);
-        // if (m.to && typeof(m.to) != 'string')
-        //     throw 'Message \'to\' attribute must be an address string';
-        // if (m.to && m.to.indexOf(this.peer.id) != -1)
-        //     throw 'Message sender cannot match the recipient';
-        // if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
+        if (!m.id)  m.id = Symple.randomString(8);
+        if (m.to && typeof(m.to) == 'object' && (m.to.group || m.to.user || m.to.id))
+            m.to = Symple.buildAddress(m.to, this.peer.group);
+        if (m.to && typeof(m.to) != 'string')
+            throw 'Message \'to\' attribute must be an address string';
+        if (m.to && m.to.indexOf(this.peer.id) != -1)
+            throw 'Message sender cannot match the recipient';
+        //if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
         //    throw 'The sender must not match the recipient';
         m.from = Symple.buildAddress(this.peer);
         Symple.log('Symple Client: Sending: ', m);
@@ -157,29 +153,29 @@ Symple.Client = Symple.Dispatcher.extend({
     },
 
     respond: function(m) {
-        // m.to = m.from;
-        this.send(m, m.from);
+        m.to = m.from;
+        this.send(m);
     },
 
-    sendMessage: function(m, to) { //, fn
-        this.send(m, to); //, fn
+    sendMessage: function(m) { //, fn
+        this.send(m); //, fn
     },
 
     sendPresence: function(p) {
         p = p || {};
+        if (!this.online()) throw 'Cannot send message while offline';
         if (p.data) {
             p.data = Symple.merge(this.peer, p.data);
         }
         else
             p.data = this.peer;
         Symple.log('Symple Client: Sending Presence: ', p);
-        // this.peer.rooms,
         this.send(new Symple.Presence(p));
     },
 
-    sendCommand: function(c, to, fn, once) {
+    sendCommand: function(c, fn, once) {
         var self = this;
-        c = new Symple.Command(c, to);
+        c = new Symple.Command(c);
         this.send(c);
         if (fn) {
             this.onResponse('command', {
@@ -341,15 +337,15 @@ Symple.Roster = Symple.Manager.extend({
     // Add a peer object to the roster
     add: function(peer) {
         Symple.log('Symple Roster: Adding: ', peer);
-        if (!peer || !peer.id || !peer.user) // || !peer.group
+        if (!peer || !peer.id || !peer.user || !peer.group)
             throw 'Cannot add invalid peer'
         this._super(peer);
         this.client.doDispatch('addPeer', peer);
     },
 
-    // Remove the peer matching an ID or address string: user|id
+    // Remove the peer matching an ID or address string: user@group/id
     remove: function(id) {
-        id = Symple.parseAddress(id).id || id;
+        id = Symple.parseIDFromAddress(id) || id;
         var peer = this._super(id);
         Symple.log('Symple Roster: Removing: ', id, peer);
         if (peer)
@@ -357,7 +353,7 @@ Symple.Roster = Symple.Manager.extend({
         return peer;
     },
 
-    // Get the peer matching an ID or address string: user|id
+    // Get the peer matching an ID or address string: user@group/id
     get: function(id) {
 
         // Handle IDs
@@ -380,7 +376,7 @@ Symple.Roster = Symple.Manager.extend({
             this.add(data);
     }
 
-    // Get the peer matching an address string: user|id
+    // Get the peer matching an address string: user@group/id
     //getForAddr: function(addr) {
     //    var o = Symple.parseAddress(addr);
     //    if (o && o.id)
@@ -393,21 +389,38 @@ Symple.Roster = Symple.Manager.extend({
 // -----------------------------------------------------------------------------
 // Helpers
 //
+Symple.parseIDFromAddress = function(str) {
+    var arr = str.split("/")
+    if (arr.length == 2)
+        return arr[1];
+    return null;
+};
 
 Symple.parseAddress = function(str) {
-    var addr = {}, //base,
-        arr = str.split("|")
+    var addr = {}, base,
+        arr = str.split("/")
 
-    if (arr.length > 0) // no id
-        addr.user = arr[0];
-    if (arr.length > 1) // has id
+    if (arr.length < 2) // no id
+        base = str;
+    else { // has id
         addr.id = arr[1];
+        base = arr[0];
+    }
+
+    arr = base.split("@")
+    if (arr.length < 2) // group only
+        addr.group = base;
+    else { // group and user
+        addr.user = arr[0];
+        addr.group  = arr[1];
+    }
 
     return addr;
 }
 
-Symple.buildAddress = function(peer) {
-    return (peer.user ? (peer.user + '|') : '') +
+Symple.buildAddress = function(peer, defaultGroup) {
+    return (peer.user ? (peer.user + '@') : '') +
+        (peer.group ? peer.group : defaultGroup) + '/' +
         (peer.id ? peer.id : '');
 }
 
