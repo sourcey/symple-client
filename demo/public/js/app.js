@@ -24,6 +24,7 @@ function SympleChat($scope) {
         $scope.client.on('announce', function(peer) {
             //console.log('announce:', peer)
 
+            $scope.client.join('public'); // join the public room
             $scope.isLoading = false;
             $scope.$apply();
         });
@@ -134,6 +135,7 @@ function SympleChat($scope) {
             console.log('disconnected')
             $scope.isLoading = false;
             $scope.errorText = 'Disconnected from the server';
+            $scope.peers = [];
             $scope.$apply();
         });
 

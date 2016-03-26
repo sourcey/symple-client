@@ -4,7 +4,7 @@
 var Symple = require('symple');
 var sy = new Symple();
 sy.loadConfig(__dirname + '/config.json'); // see config.json for options
-// sy.init();
+sy.init();
 console.log('Symple server listening on port ' + sy.config.port);
 
 
