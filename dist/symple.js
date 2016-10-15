@@ -527,38 +527,41 @@ Symple.Client = Symple.Dispatcher.extend({
 
     // Send a message to the given peer
     send: function(m, to) {
-        if (!this.online()) throw 'Cannot send messages while offline';
-        if (typeof(m) != 'object') throw 'Message must be an object';
-        if (typeof(m.type) != 'string') m.type = 'message' //throw 'Message must have a type attribute';
-        if (!m.id) m.id = Symple.randomString(8);
-        if (to) m.to = to;
-        // if (m.to && typeof(m.to) == 'object' && (m.to.room || m.to.id)) //group || m.to.user
-        //     m.to = Symple.buildAddress(m.to, this.peer.group);
-        // if (m.to && typeof(m.to) != 'string')
-        //     throw 'Message \'to\' attribute must be an address string';
-        // if (m.to && m.to.indexOf(this.peer.id) != -1)
-        //     throw 'Message sender cannot match the recipient';
-        // if (typeof(m.to) == 'object' && m.to && m.to.id == m.from.id)
-        //    throw 'The sender must not match the recipient';
+        // Symple.log('symple:client: before send', m, to);
+        if (!this.online())
+            throw 'Cannot send messages while offline'; // add to pending queue?
+        if (typeof(m) != 'object')
+            throw 'Message must be an object';
+        if (typeof(m.type) != 'string')
+            m.type = 'message';
+        if (!m.id)
+            m.id = Symple.randomString(8);
+        if (to)
+            m.to = to;
+        if (m.to && typeof(m.to) == 'object')
+            m.to = Symple.buildAddress(m.to);
+        if (m.to && typeof(m.to) != 'string')
+            throw 'Message `to` attribute must be an address string';
         m.from = Symple.buildAddress(this.peer);
+        if (m.from == m.to)
+            throw 'Message sender cannot match the recipient';
+
         Symple.log('symple:client: sending', m);
         this.socket.json.send(m);
     },
 
     respond: function(m) {
-        // m.to = m.from;
         this.send(m, m.from);
     },
 
-    sendMessage: function(m, to) { //, fn
-        this.send(m, to); //, fn
+    sendMessage: function(m, to) {
+        this.send(m, to);
     },
 
     sendPresence: function(p) {
         p = p || {};
-        if (p.data) {
+        if (p.data)
             p.data = Symple.merge(this.peer, p.data);
-        }
         else
             p.data = this.peer;
         this.send(new Symple.Presence(p));

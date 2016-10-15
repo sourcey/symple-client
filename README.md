@@ -1,6 +1,6 @@
 # Symple Client
 
-The Symple JavaScript client is a client-side implementation of the Symple protocol which runs in the web browser. 
+The Symple JavaScript client is a client-side implementation of the Symple protocol which runs in the web browser.
 
 Symple is a unrestrictive real time messaging and presence protocol that implements the minimum number of features required to build full fledged messaging applications with security, flexibility, performance and scalability in mind. These features include:
 
@@ -23,9 +23,9 @@ npm install symple-client
 
 ## Demo
 
-We've included a fully featured video chat demo using Symple and WebRTC for your hacking pleasure. The source code is located in the `demo` folder. 
+We've included a fully featured video chat demo using Symple and WebRTC for your hacking pleasure. The source code is located in the [symple-webrtc-video-chat-demo](https://github.com/sourcey/symple-webrtc-video-chat-demo) repository.
 
-You can see it live here: http://symple.sourcey.com
+<!-- You can see it live here: http://symple.sourcey.com -->
 
 ## Usage
 
@@ -49,19 +49,19 @@ To use Symple in your app just add the following two scripts into your HTML head
 The next thing is to instantiate the client. The code below should provide you with a solid starting point, and illustrates the available callback API methods:
 
 ```javascript
-client = new Symple.Client({	
+client = new Symple.Client({
   token: 'someauthtoken',        // An optional pre-arranged session token  
   url: 'http://localhost:4500',  // Symple server URL [http/https]  
   peer: {                        // Peer object contains user information  
     name: 'My Name',             // User display name  
     user: 'myusername',          // User ID  
     group: 'somegroup',          // Peer group/room this user's communication is restricted to  
-    
+
     // Note: The peer object may be extended any custom data, which will  
     // automatically be broadcast to other group peers via presence updates.  
   }
-}); 
-    
+});
+
 client.on('announce', function(peer) {
   console.log('announce:', peer)
 
@@ -89,7 +89,7 @@ client.on('command', function(c) {
 client.on('event', function(e) {  
   console.log('event:', e)    
 
-  // Captures an event broadcast from a remote peer 
+  // Captures an event broadcast from a remote peer
 });
 
 client.on('error', function(error, message) {
