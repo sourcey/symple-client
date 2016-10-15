@@ -1,15 +1,19 @@
 # Symple Client
 
-The Symple JavaScript client is a client-side implementation of the Symple protocol which runs in the web browser.
+The Symple JavaScript client is a client-side implementation of the Symple protocol that runs in the web browser.
+
+## What is Symple?
 
 Symple is a unrestrictive real time messaging and presence protocol that implements the minimum number of features required to build full fledged messaging applications with security, flexibility, performance and scalability in mind. These features include:
 
 * Session sharing with any backend (via Redis)
 * User rostering and presence
-* Media streaming (via WebRTC)
+* Media streaming (via WebRTC, [see demo](http://symple.sourcey.com))
 * Scoped messaging ie. direct, user and group scope
 * Real-time commands and events
 * Real-time forms
+
+Symple currently has client implementations in [JavaScript](https://github.com/sourcey/symple-client), [Ruby](https://github.com/sourcey/symple-client-ruby) and [C++](https://github.com/sourcey/libsourcey/tree/master/src/symple), which make it ideal for a wide range of messaging requirements, such as building real-time games and applications that run in the web browser, desktop, and mobile phone.
 
 ## Installation
 
@@ -25,7 +29,7 @@ npm install symple-client
 
 We've included a fully featured video chat demo using Symple and WebRTC for your hacking pleasure. The source code is located in the [symple-webrtc-video-chat-demo](https://github.com/sourcey/symple-webrtc-video-chat-demo) repository.
 
-<!-- You can see it live here: http://symple.sourcey.com -->
+You can see it live here: http://symple.sourcey.com
 
 ## Usage
 
