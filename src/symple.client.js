@@ -3,7 +3,7 @@
 //
 Symple.Client = Symple.Dispatcher.extend({
     init: function(options) {
-        this.options = Symple.extend({ //$.extend
+        this.options = Symple.extend({
             url:     options.url ? options.url : 'http://localhost:4000',
             secure:  options.url && (
                          options.url.indexOf('https') == 0 ||
@@ -21,7 +21,7 @@ Symple.Client = Symple.Dispatcher.extend({
     // Connects and authenticates on the server.
     // If the server is down the 'error' event will fire.
     connect: function() {
-        Symple.log('symple:client: connecting: ', this.options);
+        Symple.log('symple:client: connecting', this.options);
         self = this;
         if (this.socket)
             throw 'The client socket is not null'
@@ -39,12 +39,12 @@ Symple.Client = Symple.Dispatcher.extend({
                     self.setError('auth', res);
                     return;
                 }
-                self.peer = Symple.extend(self.peer, res.data); //$.extend
+                self.peer = Symple.extend(self.peer, res.data); // $.extend
                 self.roster.add(res.data);
                 self.sendPresence({ probe: true });
                 self.dispatch('announce', res);
                 self.socket.on('message', function(m) {
-                    //Symple.log('symple:client: receive', m);
+                    // Symple.log('symple:client: receive', m);
                     if (typeof(m) == 'object') {
                         switch(m.type) {
                             case 'message':
@@ -60,8 +60,11 @@ Symple.Client = Symple.Dispatcher.extend({
                                 m = new Symple.Presence(m);
                                 if (m.data.online)
                                     self.roster.update(m.data);
-                                else
-                                    self.roster.remove(m.data.id);
+                                else {
+                                    setTimeout(function() { // remove after timeout
+                                      self.roster.remove(m.data.id);
+                                    });
+                                }
                                 if (m.probe)
                                     self.sendPresence(new Symple.Presence({
                                       to: Symple.parseAddress(m.from).id
@@ -74,7 +77,7 @@ Symple.Client = Symple.Dispatcher.extend({
                         }
 
                         if (typeof(m.from) != 'string') {
-                            Symple.log('symple:client: invalid sender address: ', m);
+                            Symple.log('symple:client: invalid sender address', m);
                             return;
                         }
 
@@ -84,7 +87,7 @@ Symple.Client = Symple.Dispatcher.extend({
                         if (rpeer)
                             m.from = rpeer;
                         else
-                            Symple.log('symple:client: got message from unknown peer: ', m);
+                            Symple.log('symple:client: got message from unknown peer', m);
 
                         // Dispatch to the application
                         self.dispatch(m.type, m);
@@ -209,11 +212,11 @@ Symple.Client = Symple.Dispatcher.extend({
             if (typeof peer.capabilities == 'undefined')
                 peer.capabilities = {}
             peer.capabilities[name] = value;
-            //var idx = peer.capabilities.indexOf(name);
-            //if (idx == -1) {
+            // var idx = peer.capabilities.indexOf(name);
+            // if (idx == -1) {
             //    peer.capabilities.push(name);
             //    this.sendPresence();
-            //}
+            // }
         }
     },
 
@@ -224,11 +227,11 @@ Symple.Client = Symple.Dispatcher.extend({
             typeof peer.capabilities[name] != 'undefined') {
             delete peer.capabilities[key];
             this.sendPresence();
-            //var idx = peer.capabilities.indexOf(name)
-            //if (idx != -1) {
+            // var idx = peer.capabilities.indexOf(name)
+            // if (idx != -1) {
             //    peer.capabilities.pop(name);
             //    this.sendPresence();
-            //}
+            // }
         }
     },
 
@@ -265,9 +268,9 @@ Symple.Client = Symple.Dispatcher.extend({
     // Sets the client to an error state and disconnect
     setError: function(error, message) {
         Symple.log('symple:client: fatal error', error, message);
-        //if (this.error == error)
+        // if (this.error == error)
         //    return;
-        //this.error = error;
+        // this.error = error;
         this.dispatch('error', error, message);
         if (this.socket)
             this.socket.disconnect();
@@ -302,8 +305,6 @@ Symple.Client = Symple.Dispatcher.extend({
     dispatch: function() {
         if (!this.dispatchResponse.apply(this, arguments)) {
             this._super.apply(this, arguments);
-            // ;
-            // this.dispatch
         }
     },
 

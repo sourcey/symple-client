@@ -2,9 +2,6 @@
 // Symple JavaScript Client
 //
 var Symple = {
-    // Version
-    VERSION: "0.9.0",
-
     // Return an array of nested objects matching
     // the given key/value strings.
     filterObject: function(obj, key, value) { // (Object[, String, String])
@@ -24,7 +21,7 @@ var Symple = {
         }
         return r;
     },
-        
+
     // Delete nested objects with properties
     // that match the given key/value strings.
     deleteNested: function(obj, key, value) { // (Object[, String, String])
@@ -38,7 +35,7 @@ var Symple = {
                  Symple.deleteNested(v, key);
         }
     },
-    
+
     // Count nested object properties which
     // match the given key/value strings.
     countNested: function(obj, key, value, count) {
@@ -58,7 +55,7 @@ var Symple = {
         }
         return count;
     },
-    
+
     // Traverse an objects nested properties
     traverse: function(obj, fn) { // (Object, Function)
         for (var k in obj) {
@@ -70,12 +67,12 @@ var Symple = {
             }
         }
     },
-    
+
     // Generate a random string
     randomString: function(n) {
         return Math.random().toString(36).slice(2) //Math.random().toString(36).substring(n || 7);
     },
-    
+
     // Recursively merge object properties of r into l
     merge: function(l, r) { // (Object, Object)
         for (var p in r) {
@@ -88,17 +85,17 @@ var Symple = {
                     l[p] = r[p];
                 }
             } catch(e) {
-                // Property in destination object not set; 
+                // Property in destination object not set;
                 // create it and set its value.
                 l[p] = r[p];
             }
         }
         return l;
     },
-    
+
     // Object extend functionality
-    extend: function() {   
-        var process = function(destination, source) {   
+    extend: function() {
+        var process = function(destination, source) {
             for (var key in source) {
                 if (hasOwnProperty.call(source, key)) {
                     destination[key] = source[key];
@@ -112,9 +109,9 @@ var Symple = {
         }
         return result;
     },
-    
+
     // Run a vendor prefixed method from W3C standard method.
-    runVendorMethod: function(obj, method) {      
+    runVendorMethod: function(obj, method) {
         var p = 0, m, t, pfx = ["webkit", "moz", "ms", "o", ""];
         while (p < pfx.length && !obj[m]) {
             m = method;
@@ -130,7 +127,7 @@ var Symple = {
             p++;
         }
     },
-    
+
     //
     // Date parseing for ISO 8601
     // Based on https://github.com/csnover/js-iso8601
@@ -141,8 +138,8 @@ var Symple = {
     // 2001-02-03T04:05:06Z
     //
     parseISODate: function (date) { // (String)
-        
-        // ISO8601 dates were introduced with ECMAScript v5, 
+
+        // ISO8601 dates were introduced with ECMAScript v5,
         // try to parse it natively first...
         var timestamp = Date.parse(date)
         if (isNaN(timestamp)) {
@@ -176,17 +173,17 @@ var Symple = {
 
         return new Date(timestamp);
     },
-    
+
     isMobileDevice: function() {
         return 'ontouchstart' in document.documentElement;
-    },    
-    
+    },
+
     // Returns the current iOS version, or false if not iOS
     iOSVersion: function(l, r) {
         return parseFloat(('' + (/CPU.*OS ([0-9_]{1,5})|(CPU like).*AppleWebKit.*Mobile/i.exec(navigator.userAgent) || [0,''])[1])
             .replace('undefined', '3_2').replace('_', '.').replace('_', '')) || false;
     },
-    
+
     // Match the object properties of l with r
     match: function(l, r) { // (Object, Object)
         var res = true;
@@ -200,8 +197,8 @@ var Symple = {
         }
         return res
     },
-    
-    formatTime: function(date) {        
+
+    formatTime: function(date) {
         function pad(n) { return n < 10 ? ('0' + n) : n }
         return pad(date.getHours()).toString() + ':' +
             pad(date.getMinutes()).toString() + ':' +
@@ -209,10 +206,10 @@ var Symple = {
             pad(date.getDate()).toString() + '/' +
             pad(date.getMonth()).toString();
     },
-    
+
     // Debug logger
     log: function () {
-        if (typeof console != "undefined" && 
+        if (typeof console != "undefined" &&
             typeof console.log != "undefined") {
             console.log.apply(console, arguments);
         }
@@ -222,24 +219,24 @@ var Symple = {
 
 // -----------------------------------------------------------------------------
 // Symple OOP Base Class
-//    
+//
 (function(Symple) {
-    var initializing = false, 
+    var initializing = false,
         fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
-   
+
     // The base Class implementation (does nothing)
     Symple.Class = function(){};
-   
+
     // Create a new Class that inherits from this class
     Symple.Class.extend = function(prop) {
         var _super = this.prototype;
-       
+
         // Instantiate a base class (but only create the instance,
         // don't run the init constructor)
         initializing = true;
         var prototype = new this();
         initializing = false;
-       
+
         // Copy the properties over onto the new prototype
         for (var name in prop) {
             // Check if we're overwriting an existing function
@@ -248,38 +245,38 @@ var Symple = {
                 (function(name, fn){
                     return function() {
                         var tmp = this._super;
-                       
+
                         // Add a new ._super() method that is the same method
                         // but on the super-class
                         this._super = _super[name];
-                       
+
                         // The method only need to be bound temporarily, so we
                         // remove it when we're done executing
-                        var ret = fn.apply(this, arguments);        
+                        var ret = fn.apply(this, arguments);
                         this._super = tmp;
-                       
+
                         return ret;
                     };
                 })(name, prop[name]) :
                 prop[name];
         }
-       
+
         // The dummy class constructor
         function Class() {
           // All construction is actually done in the init method
           if (!initializing && this.init)
             this.init.apply(this, arguments);
         }
-       
+
         // Populate our constructed prototype object
         Class.prototype = prototype;
-       
+
         // Enforce the constructor to be what we expect
         Class.prototype.constructor = Class;
-     
+
         // And make this class extendable
         Class.extend = arguments.callee;
-       
+
         return Class;
     };
 })(Symple);
@@ -289,10 +286,10 @@ var Symple = {
 // Dispatcher
 //
 Symple.Dispatcher = Symple.Class.extend({
-    init: function() {      
+    init: function() {
         this.listeners = {};
     },
-    
+
     on: function(event, fn) {
         if (typeof this.listeners[event] == 'undefined')
             this.listeners[event] = [];
@@ -329,12 +326,12 @@ Symple.Dispatcher = Symple.Class.extend({
 // Manager
 //
 Symple.Manager = Symple.Class.extend({
-    init: function(options) {    
+    init: function(options) {
         this.options = options || {};
         this.key = this.options.key || 'id';
         this.store = [];
     },
-    
+
     add: function(value) {
         this.store.push(value);
     },
@@ -389,7 +386,7 @@ Symple.Manager = Symple.Class.extend({
 //
 Symple.Client = Symple.Dispatcher.extend({
     init: function(options) {
-        this.options = Symple.extend({ //$.extend
+        this.options = Symple.extend({
             url:     options.url ? options.url : 'http://localhost:4000',
             secure:  options.url && (
                          options.url.indexOf('https') == 0 ||
@@ -407,7 +404,7 @@ Symple.Client = Symple.Dispatcher.extend({
     // Connects and authenticates on the server.
     // If the server is down the 'error' event will fire.
     connect: function() {
-        Symple.log('symple:client: connecting: ', this.options);
+        Symple.log('symple:client: connecting', this.options);
         self = this;
         if (this.socket)
             throw 'The client socket is not null'
@@ -425,12 +422,12 @@ Symple.Client = Symple.Dispatcher.extend({
                     self.setError('auth', res);
                     return;
                 }
-                self.peer = Symple.extend(self.peer, res.data); //$.extend
+                self.peer = Symple.extend(self.peer, res.data); // $.extend
                 self.roster.add(res.data);
                 self.sendPresence({ probe: true });
                 self.dispatch('announce', res);
                 self.socket.on('message', function(m) {
-                    //Symple.log('symple:client: receive', m);
+                    // Symple.log('symple:client: receive', m);
                     if (typeof(m) == 'object') {
                         switch(m.type) {
                             case 'message':
@@ -446,8 +443,11 @@ Symple.Client = Symple.Dispatcher.extend({
                                 m = new Symple.Presence(m);
                                 if (m.data.online)
                                     self.roster.update(m.data);
-                                else
-                                    self.roster.remove(m.data.id);
+                                else {
+                                    setTimeout(function() { // remove after timeout
+                                      self.roster.remove(m.data.id);
+                                    });
+                                }
                                 if (m.probe)
                                     self.sendPresence(new Symple.Presence({
                                       to: Symple.parseAddress(m.from).id
@@ -460,7 +460,7 @@ Symple.Client = Symple.Dispatcher.extend({
                         }
 
                         if (typeof(m.from) != 'string') {
-                            Symple.log('symple:client: invalid sender address: ', m);
+                            Symple.log('symple:client: invalid sender address', m);
                             return;
                         }
 
@@ -470,7 +470,7 @@ Symple.Client = Symple.Dispatcher.extend({
                         if (rpeer)
                             m.from = rpeer;
                         else
-                            Symple.log('symple:client: got message from unknown peer: ', m);
+                            Symple.log('symple:client: got message from unknown peer', m);
 
                         // Dispatch to the application
                         self.dispatch(m.type, m);
@@ -595,11 +595,11 @@ Symple.Client = Symple.Dispatcher.extend({
             if (typeof peer.capabilities == 'undefined')
                 peer.capabilities = {}
             peer.capabilities[name] = value;
-            //var idx = peer.capabilities.indexOf(name);
-            //if (idx == -1) {
+            // var idx = peer.capabilities.indexOf(name);
+            // if (idx == -1) {
             //    peer.capabilities.push(name);
             //    this.sendPresence();
-            //}
+            // }
         }
     },
 
@@ -610,11 +610,11 @@ Symple.Client = Symple.Dispatcher.extend({
             typeof peer.capabilities[name] != 'undefined') {
             delete peer.capabilities[key];
             this.sendPresence();
-            //var idx = peer.capabilities.indexOf(name)
-            //if (idx != -1) {
+            // var idx = peer.capabilities.indexOf(name)
+            // if (idx != -1) {
             //    peer.capabilities.pop(name);
             //    this.sendPresence();
-            //}
+            // }
         }
     },
 
@@ -651,9 +651,9 @@ Symple.Client = Symple.Dispatcher.extend({
     // Sets the client to an error state and disconnect
     setError: function(error, message) {
         Symple.log('symple:client: fatal error', error, message);
-        //if (this.error == error)
+        // if (this.error == error)
         //    return;
-        //this.error = error;
+        // this.error = error;
         this.dispatch('error', error, message);
         if (this.socket)
             this.socket.disconnect();
@@ -688,8 +688,6 @@ Symple.Client = Symple.Dispatcher.extend({
     dispatch: function() {
         if (!this.dispatchResponse.apply(this, arguments)) {
             this._super.apply(this, arguments);
-            // ;
-            // this.dispatch
         }
     },
 
