@@ -1,10 +1,34 @@
-// -----------------------------------------------------------------------------
-// Symple JavaScript Client
 //
-var Symple = {
+// Symple.js
+//
+// Copyright (c)2010 Sourcey
+// http://sourcey.com
+// Distributed under The MIT License.
+//
+(function(S) {
+
+    // Parse a Symple address into a peer object.
+    S.parseAddress = function(str) {
+        var addr = {},
+            arr = str.split("|")
+
+        if (arr.length > 0) // no id
+            addr.user = arr[0];
+        if (arr.length > 1) // has id
+            addr.id = arr[1];
+
+        return addr;
+    }
+
+    // Build a Symple address from the given peer object.
+    S.buildAddress = function(peer) {
+        return (peer.user ? (peer.user + '|') : '') +
+            (peer.id ? peer.id : '');
+    }
+
     // Return an array of nested objects matching
     // the given key/value strings.
-    filterObject: function(obj, key, value) { // (Object[, String, String])
+    S.filterObject = function(obj, key, value) { // (Object[, String, String])
         var r = []
         for (var k in obj) {
             if (obj.hasOwnProperty(k)) {
@@ -14,17 +38,17 @@ var Symple = {
                     r.push(obj)
                 }
                 else if (typeof v === 'object') {
-                    var a = Symple.filterObject(v, key, value);
+                    var a = S.filterObject(v, key, value);
                     if (a) r = r.concat(a);
                 }
             }
         }
         return r;
-    },
+    }
 
     // Delete nested objects with properties
     // that match the given key/value strings.
-    deleteNested: function(obj, key, value) { // (Object[, String, String])
+    S.deleteNested = function(obj, key, value) { // (Object[, String, String])
         for (var k in obj) {
             var v = obj[k];
             if ((!key || k == key) &&
@@ -32,13 +56,13 @@ var Symple = {
                 delete obj[k];
             }
             else if (typeof v === 'object')
-                 Symple.deleteNested(v, key);
+                 S.deleteNested(v, key);
         }
-    },
+    }
 
     // Count nested object properties which
     // match the given key/value strings.
-    countNested: function(obj, key, value, count) {
+    S.countNested = function(obj, key, value, count) {
         if (count === undefined) count = 0;
         for (var k in obj) {
             if (obj.hasOwnProperty(k)) {
@@ -49,36 +73,36 @@ var Symple = {
                 }
                 else if (typeof(v) === 'object') {
                 //else if (v instanceof Object) {
-                    count = Symple.countNested(v, key, value, count);
+                    count = S.countNested(v, key, value, count);
                 }
             }
         }
         return count;
-    },
+    }
 
     // Traverse an objects nested properties
-    traverse: function(obj, fn) { // (Object, Function)
+    S.traverse = function(obj, fn) { // (Object, Function)
         for (var k in obj) {
             if (obj.hasOwnProperty(k)) {
                 var v = obj[k];
                 fn(k, v);
                 if (typeof v === 'object')
-                    Symple.traverse(v, fn);
+                    S.traverse(v, fn);
             }
         }
-    },
+    }
 
     // Generate a random string
-    randomString: function(n) {
-        return Math.random().toString(36).slice(2) //Math.random().toString(36).substring(n || 7);
-    },
+    S.randomString = function(n) {
+        return Math.random().toString(36).slice(2); // Math.random().toString(36).substring(n || 7);
+    }
 
     // Recursively merge object properties of r into l
-    merge: function(l, r) { // (Object, Object)
+    S.merge = function(l, r) { // (Object, Object)
         for (var p in r) {
             try {
                 // Property in destination object set; update its value.
-                //if (typeof r[p] == "object") {
+                // if (typeof r[p] == "object") {
                 if (r[p].constructor == Object) {
                     l[p] = merge(l[p], r[p]);
                 } else {
@@ -91,10 +115,10 @@ var Symple = {
             }
         }
         return l;
-    },
+    }
 
     // Object extend functionality
-    extend: function() {
+    S.extend = function() {
         var process = function(destination, source) {
             for (var key in source) {
                 if (hasOwnProperty.call(source, key)) {
@@ -104,14 +128,14 @@ var Symple = {
             return destination;
         };
         var result = arguments[0];
-        for(var i=1; i<arguments.length; i++) {
+        for (var i=1; i<arguments.length; i++) {
             result = process(result, arguments[i]);
         }
         return result;
-    },
+    }
 
     // Run a vendor prefixed method from W3C standard method.
-    runVendorMethod: function(obj, method) {
+    S.runVendorMethod = function(obj, method) {
         var p = 0, m, t, pfx = ["webkit", "moz", "ms", "o", ""];
         while (p < pfx.length && !obj[m]) {
             m = method;
@@ -126,18 +150,16 @@ var Symple = {
             }
             p++;
         }
-    },
+    }
 
-    //
-    // Date parseing for ISO 8601
+    // Date parsing for ISO 8601
     // Based on https://github.com/csnover/js-iso8601
     //
     // Parses dates like:
     // 2001-02-03T04:05:06.007+06:30
     // 2001-02-03T04:05:06.007Z
     // 2001-02-03T04:05:06Z
-    //
-    parseISODate: function (date) { // (String)
+    S.parseISODate = function(date) { // (String)
 
         // ISO8601 dates were introduced with ECMAScript v5,
         // try to parse it natively first...
@@ -172,20 +194,20 @@ var Symple = {
         }
 
         return new Date(timestamp);
-    },
+    }
 
-    isMobileDevice: function() {
+    S.isMobileDevice = function() {
         return 'ontouchstart' in document.documentElement;
-    },
+    }
 
     // Returns the current iOS version, or false if not iOS
-    iOSVersion: function(l, r) {
+    S.iOSVersion = function(l, r) {
         return parseFloat(('' + (/CPU.*OS ([0-9_]{1,5})|(CPU like).*AppleWebKit.*Mobile/i.exec(navigator.userAgent) || [0,''])[1])
             .replace('undefined', '3_2').replace('_', '.').replace('_', '')) || false;
-    },
+    }
 
     // Match the object properties of l with r
-    match: function(l, r) { // (Object, Object)
+    S.match = function(l, r) { // (Object, Object)
         var res = true;
         for (var prop in l) {
             if (!l.hasOwnProperty(prop) ||
@@ -196,39 +218,37 @@ var Symple = {
             }
         }
         return res
-    },
+    }
 
-    formatTime: function(date) {
+    S.formatTime = function(date) {
         function pad(n) { return n < 10 ? ('0' + n) : n }
         return pad(date.getHours()).toString() + ':' +
             pad(date.getMinutes()).toString() + ':' +
             pad(date.getSeconds()).toString() + ' ' +
             pad(date.getDate()).toString() + '/' +
             pad(date.getMonth()).toString();
-    },
+    }
 
     // Debug logger
-    log: function () {
+    S.log = function() {
         if (typeof console != "undefined" &&
             typeof console.log != "undefined") {
             console.log.apply(console, arguments);
         }
     }
-};
 
 
-// -----------------------------------------------------------------------------
-// Symple OOP Base Class
-//
-(function(Symple) {
+    // -------------------------------------------------------------------------
+    // Symple OOP Base Class
+    //
     var initializing = false,
         fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
 
     // The base Class implementation (does nothing)
-    Symple.Class = function(){};
+    S.Class = function(){};
 
     // Create a new Class that inherits from this class
-    Symple.Class.extend = function(prop) {
+    S.Class.extend = function(prop) {
         var _super = this.prototype;
 
         // Instantiate a base class (but only create the instance,
@@ -279,104 +299,105 @@ var Symple = {
 
         return Class;
     };
-})(Symple);
 
 
-// -----------------------------------------------------------------------------
-// Dispatcher
-//
-Symple.Dispatcher = Symple.Class.extend({
-    init: function() {
-        this.listeners = {};
-    },
+    // -------------------------------------------------------------------------
+    // Emitter
+    //
+    S.Emitter = S.Class.extend({
+        init: function() {
+            this.listeners = {};
+        },
 
-    on: function(event, fn) {
-        if (typeof this.listeners[event] == 'undefined')
-            this.listeners[event] = [];
-        if (typeof fn != 'undefined' && fn.constructor == Function)
-            this.listeners[event].push(fn);
-    },
+        on: function(event, fn) {
+            if (typeof this.listeners[event] == 'undefined')
+                this.listeners[event] = [];
+            if (typeof fn != 'undefined' && fn.constructor == Function)
+                this.listeners[event].push(fn);
+        },
 
-    clear: function(event, fn) {
-        if (typeof this.listeners[event] != 'undefined') {
-            for (var i = 0; i < this.listeners[event].length; i++) {
-                if (this.listeners[event][i] == fn) {
-                    this.listeners[event].splice(i, 1);
+        clear: function(event, fn) {
+            if (typeof this.listeners[event] != 'undefined') {
+                for (var i = 0; i < this.listeners[event].length; i++) {
+                    if (this.listeners[event][i] == fn) {
+                        this.listeners[event].splice(i, 1);
+                    }
+                }
+            }
+        },
+
+        emit: function() {
+            // S.log('Emitting: ', arguments);
+            var event = arguments[0];
+            var args = Array.prototype.slice.call(arguments, 1);
+            if (typeof this.listeners[event] != 'undefined') {
+                for (var i = 0; i < this.listeners[event].length; i++) {
+                    //S.log('Emitting: Function: ', this.listeners[event][i]);
+                    if (this.listeners[event][i].constructor == Function)
+                        this.listeners[event][i].apply(this, args);
                 }
             }
         }
-    },
+    });
 
-    dispatch: function() {
-        //Symple.log('Dispatching: ', arguments);
-        var event = arguments[0];
-        var args = Array.prototype.slice.call(arguments, 1);
-        if (typeof this.listeners[event] != 'undefined') {
-            for (var i = 0; i < this.listeners[event].length; i++) {
-                //Symple.log('Dispatching: Function: ', this.listeners[event][i]);
-                if (this.listeners[event][i].constructor == Function)
-                    this.listeners[event][i].apply(this, args);
+
+    // -------------------------------------------------------------------------
+    // Manager
+    //
+    S.Manager = S.Class.extend({
+        init: function(options) {
+            this.options = options || {};
+            this.key = this.options.key || 'id';
+            this.store = [];
+        },
+
+        add: function(value) {
+            this.store.push(value);
+        },
+
+        remove: function(key) {
+            var res = null;
+            for (var i = 0; i < this.store.length; i++) {
+                if (this.store[i][this.key] == key) {
+                    res = this.store[i];
+                    this.store.splice(i, 1);
+                    break;
+                }
             }
-        }
-    }
-});
+            return res;
+        },
 
-
-// -----------------------------------------------------------------------------
-// Manager
-//
-Symple.Manager = Symple.Class.extend({
-    init: function(options) {
-        this.options = options || {};
-        this.key = this.options.key || 'id';
-        this.store = [];
-    },
-
-    add: function(value) {
-        this.store.push(value);
-    },
-
-    remove: function(key) {
-        var res = null;
-        for (var i = 0; i < this.store.length; i++) {
-            if (this.store[i][this.key] == key) {
-                res = this.store[i];
-                this.store.splice(i, 1);
-                break;
+        get: function(key) {
+            for (var i = 0; i < this.store.length; i++) {
+                if (this.store[i][this.key] == key) {
+                    return this.store[i];
+                }
             }
-        }
-        return res;
-    },
+            return null;
+        },
 
-    get: function(key) {
-        for (var i = 0; i < this.store.length; i++) {
-            if (this.store[i][this.key] == key) {
-                return this.store[i];
+        find: function(params) {
+            var res = [];
+            for (var i = 0; i < this.store.length; i++) {
+                if (S.match(params, this.store[i])) {
+                    res.push(this.store[i])
+                }
             }
+            return res;
+        },
+
+        findOne: function(params) {
+            var res = this.find(params);
+            return res.length ? res[0] : undefined;
+        },
+
+        last: function() {
+            return this.store[this.store.length - 1];
+        },
+
+        size: function() {
+            return this.store.length;
         }
-        return null;
-    },
+    });
 
-    find: function(params) {
-        var res = [];
-        for (var i = 0; i < this.store.length; i++) {
-            if (Symple.match(params, this.store[i])) {
-                res.push(this.store[i])
-            }
-        }
-        return res;
-    },
-
-    findOne: function(params) {
-        var res = this.find(params);
-        return res.length ? res[0] : undefined;
-    },
-
-    last: function() {
-        return this.store[this.store.length - 1];
-    },
-
-    size: function() {
-        return this.store.length;
-    }
-});
+})(window.Symple = window.Symple || {});
