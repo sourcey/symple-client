@@ -8,7 +8,7 @@
 //
 (function(S) {
 
-    // Symple Client class.
+    // Symple client class.
     S.Client = S.Emitter.extend({
         init: function(options) {
             this.options = S.extend({
