@@ -7,16 +7,14 @@
 // Distributed under The MIT License.
 //
 (function (S) {
-    // Symple client class.
+  // Symple client class
   S.Client = S.Emitter.extend({
     init: function (options) {
       this.options = S.extend({
         url: options.url ? options.url : 'http://localhost:4000',
-        secure: !!(options.url && (
-                             options.url.indexOf('https') == 0 ||
-                             options.url.indexOf('wss') == 0)),
-        token: undefined     // pre-arranged server session token
-                // timeout: 0          // set for connection timeout
+        secure: !!(options.url && (options.url.indexOf('https') === 0 ||
+                                   options.url.indexOf('wss') === 0)),
+        token: undefined  // pre-arranged server session token
       }, options)
       this._super()
       this.peer = options.peer || {}
@@ -25,8 +23,8 @@
       this.socket = null
     },
 
-        // Connects and authenticates on the server.
-        // If the server is down the 'error' event will fire.
+    // Connects and authenticates on the server.
+    // If the server is down the 'error' event will fire.
     connect: function () {
       S.log('symple:client: connecting', this.options)
       self = this
@@ -43,16 +41,16 @@
           type: self.peer.type || ''
         }, function (res) {
           S.log('symple:client: announced', res)
-          if (res.status != 200) {
+          if (res.status !== 200) {
             self.setError('auth', res)
             return
           }
-          self.peer = S.extend(self.peer, res.data) // $.extend
+          self.peer = S.extend(self.peer, res.data)
           self.roster.add(res.data)
           self.sendPresence({ probe: true })
           self.emit('announce', res)
           self.socket.on('message', function (m) {
-                        // S.log('symple:client: receive', m);
+            // S.log('symple:client: receive', m);
             if (typeof (m) === 'object') {
               switch (m.type) {
                 case 'message':
@@ -68,8 +66,8 @@
                   m = new S.Presence(m)
                   if (m.data.online) { self.roster.update(m.data) } else {
                     setTimeout(function () { // remove after timeout
-                        self.roster.remove(m.data.id)
-                      })
+                      self.roster.remove(m.data.id)
+                    })
                   }
                   if (m.probe) {
                     self.sendPresence(new S.Presence({
@@ -88,20 +86,22 @@
                 return
               }
 
-                            // Replace the from attribute with the full peer object.
-                            // This will only work for peer messages, not server messages.
+              // Replace the from attribute with the full peer object.
+              // This will only work for peer messages, not server messages.
               var rpeer = self.roster.get(m.from)
-              if (rpeer) { m.from = rpeer } else { S.log('symple:client: got message from unknown peer', m) }
+              if (rpeer) { m.from = rpeer } else {
+                S.log('symple:client: got message from unknown peer', m)
+              }
 
-                            // Dispatch to the application
+              // Dispatch to the application
               self.emit(m.type, m)
             }
           })
         })
       })
       this.socket.on('error', function () {
-                // This is triggered when any transport fails,
-                // so not necessarily fatal.
+        // This is triggered when any transport fails,
+        // so not necessarily fatal.
         self.emit('connect')
       })
       this.socket.on('connecting', function () {
@@ -125,29 +125,29 @@
       })
     },
 
-        // Disconnect from the server
+    // Disconnect from the server
     disconnect: function () {
       if (this.socket) { this.socket.disconnect() }
     },
 
-        // Return the online status
+    // Return the online status
     online: function () {
       return this.peer.online
     },
 
-        // Join a room
+    // Join a room
     join: function (room) {
       this.socket.emit('join', room)
     },
 
-        // Leave a room
+    // Leave a room
     leave: function (room) {
       this.socket.emit('leave', room)
     },
 
-        // Send a message to the given peer
+    // Send a message to the given peer
     send: function (m, to) {
-            // S.log('symple:client: before send', m, to);
+      // S.log('symple:client: before send', m, to);
       if (!this.online()) { throw 'Cannot send messages while offline' } // add to pending queue?
       if (typeof (m) !== 'object') { throw 'Message must be an object' }
       if (typeof (m.type) !== 'string') { m.type = 'message' }
@@ -156,7 +156,7 @@
       if (m.to && typeof (m.to) === 'object') { m.to = S.buildAddress(m.to) }
       if (m.to && typeof (m.to) !== 'string') { throw 'Message `to` attribute must be an address string' }
       m.from = S.buildAddress(this.peer)
-      if (m.from == m.to) { throw 'Message sender cannot match the recipient' }
+      if (m.from === m.to) { throw 'Message sender cannot match the recipient' }
 
       S.log('symple:client: sending', m)
       this.socket.json.send(m)
@@ -184,48 +184,47 @@
         this.onResponse('command', {
           id: c.id
         }, fn, function (res) {
-          if (once || (
-                        // 202 (Accepted) and 406 (Not acceptable) response codes
-                        // signal that the command has not yet completed.
-                        res.status != 202 &&
-                        res.status != 406)) {
+          // NOTE: 202 (Accepted) and 406 (Not acceptable) response codes
+          // signal that the command has not yet completed.
+          if (once || (res.status !== 202 &&
+                       res.status !== 406)) {
             self.clear('command', fn)
           }
         })
       }
     },
 
-        // Adds a capability for our current peer
+    // Adds a capability for our current peer
     addCapability: function (name, value) {
       var peer = this.peer
       if (peer) {
         if (typeof value === 'undefined') { value = true }
         if (typeof peer.capabilities === 'undefined') { peer.capabilities = {} }
         peer.capabilities[name] = value
-                // var idx = peer.capabilities.indexOf(name);
-                // if (idx == -1) {
-                //    peer.capabilities.push(name);
-                //    this.sendPresence();
-                // }
+        // var idx = peer.capabilities.indexOf(name);
+        // if (idx === -1) {
+        //    peer.capabilities.push(name);
+        //    this.sendPresence();
+        // }
       }
     },
 
-        // Removes a capability from our current peer
+    // Removes a capability from our current peer
     removeCapability: function (name) {
       var peer = this.peer
       if (peer && typeof peer.capabilities !== 'undefined' &&
                 typeof peer.capabilities[name] !== 'undefined') {
         delete peer.capabilities[key]
         this.sendPresence()
-                // var idx = peer.capabilities.indexOf(name)
-                // if (idx != -1) {
-                //    peer.capabilities.pop(name);
-                //    this.sendPresence();
-                // }
+        // var idx = peer.capabilities.indexOf(name)
+        // if (idx !== -1) {
+        //    peer.capabilities.pop(name);
+        //    this.sendPresence();
+        // }
       }
     },
 
-        // Checks if a peer has a specific capbility and returns a boolean
+    // Checks if a peer has a specific capbility and returns a boolean
     hasCapability: function (id, name) {
       var peer = this.roster.get(id)
       if (peer) {
@@ -238,7 +237,7 @@
       return false
     },
 
-        // Checks if a peer has a specific capbility and returns the value
+    // Checks if a peer has a specific capbility and returns the value
     getCapability: function (id, name) {
       var peer = this.roster.get(id)
       if (peer) {
@@ -251,19 +250,19 @@
       return undefined
     },
 
-        // Sets the client to an error state and disconnect
+    // Sets the client to an error state and disconnect
     setError: function (error, message) {
       S.log('symple:client: fatal error', error, message)
-            // if (this.error == error)
-            //    return;
-            // this.error = error;
+      // if (this.error === error)
+      //    return;
+      // this.error = error;
       this.emit('error', error, message)
       if (this.socket) { this.socket.disconnect() }
     },
 
     onResponse: function (event, filters, fn, after) {
       if (typeof this.listeners[event] === 'undefined') { this.listeners[event] = [] }
-      if (typeof fn !== 'undefined' && fn.constructor == Function) {
+      if (typeof fn !== 'undefined' && fn.constructor === Function) {
         this.listeners[event].push({
           fn: fn,             // data callback function
           after: after,       // after data callback function
@@ -277,7 +276,7 @@
       if (typeof this.listeners[event] !== 'undefined') {
         for (var i = 0; i < this.listeners[event].length; i++) {
           if (this.listeners[event][i].fn === fn &&
-                        String(this.listeners[event][i].fn) == String(fn)) {
+            String(this.listeners[event][i].fn) === String(fn)) {
             this.listeners[event].splice(i, 1)
             S.log('symple:client: cleared callback', event)
           }
@@ -285,25 +284,25 @@
       }
     },
 
-        // Extended emit function to handle filtered message response
-        // callbacks first, and then standard events.
+    // Extended emit function to handle filtered message response
+    // callbacks first, and then standard events.
     emit: function () {
       if (!this.emitResponse.apply(this, arguments)) {
         this._super.apply(this, arguments)
       }
     },
 
-        // Dispatch function for handling filtered message response callbacks.
+    // Emit function for handling filtered message response callbacks.
     emitResponse: function () {
       var event = arguments[0]
       var data = Array.prototype.slice.call(arguments, 1)
       if (typeof this.listeners[event] !== 'undefined') {
         for (var i = 0; i < this.listeners[event].length; i++) {
           if (typeof this.listeners[event][i] === 'object' &&
-                        this.listeners[event][i].filters != 'undefined' &&
+                        this.listeners[event][i].filters !== 'undefined' &&
                         S.match(this.listeners[event][i].filters, data[0])) {
             this.listeners[event][i].fn.apply(this, data)
-            if (this.listeners[event][i].after != 'undefined') {
+            if (this.listeners[event][i].after !== 'undefined') {
               this.listeners[event][i].after.apply(this, data)
             }
             return true
@@ -313,38 +312,37 @@
       return false
     }
 
-        // getPeers: function(fn) {
-        //     self = this;
-        //     this.socket.emit('peers', function(res) {
-        //         S.log('Peers: ', res);
-        //         if (typeof(res) != 'object')
-        //             for (var peer in res)
-        //                 self.roster.update(peer);
-        //         if (fn)
-        //             fn(res);
-        //     });
-        // }
+    // getPeers: function(fn) {
+    //     self = this;
+    //     this.socket.emit('peers', function(res) {
+    //         S.log('Peers: ', res);
+    //         if (typeof(res) !== 'object')
+    //             for (var peer in res)
+    //                 self.roster.update(peer);
+    //         if (fn)
+    //             fn(res);
+    //     });
+    // }
   })
 
-    // -------------------------------------------------------------------------
-    // Symple Roster
-    //
+  // -------------------------------------------------------------------------
+  // Symple Roster
+  //
   S.Roster = S.Manager.extend({
     init: function (client) {
       this._super()
       this.client = client
     },
 
-        // Add a peer object to the roster
+    // Add a peer object to the roster
     add: function (peer) {
       S.log('symple:roster: adding', peer)
-      if (!peer || !peer.id || !peer.user) // || !peer.group
-              { throw 'Cannot add invalid peer' }
+      if (!peer || !peer.id || !peer.user) { throw 'Cannot add invalid peer' }
       this._super(peer)
       this.client.emit('addPeer', peer)
     },
 
-        // Remove the peer matching an ID or address string: user|id
+    // Remove the peer matching an ID or address string: user|id
     remove: function (id) {
       id = S.parseAddress(id).id || id
       var peer = this._super(id)
@@ -353,13 +351,13 @@
       return peer
     },
 
-        // Get the peer matching an ID or address string: user|id
+    // Get the peer matching an ID or address string: user|id
     get: function (id) {
-            // Handle IDs
+      // Handle IDs
       peer = this._super(id) // id = S.parseIDFromAddress(id) || id;
       if (peer) { return peer }
 
-            // Handle address strings
+      // Handle address strings
       return this.findOne(S.parseAddress(id))
     },
 
@@ -371,18 +369,18 @@
       } else { this.add(data) }
     }
 
-        // Get the peer matching an address string: user|id
-        // getForAddr: function(addr) {
-        //    var o = S.parseAddress(addr);
-        //    if (o && o.id)
-        //        return this.get(o.id);
-        //    return null;
-        // }
+    // Get the peer matching an address string: user|id
+    // getForAddr: function(addr) {
+    //    var o = S.parseAddress(addr);
+    //    if (o && o.id)
+    //        return this.get(o.id);
+    //    return null;
+    // }
   })
 
-    // -------------------------------------------------------------------------
-    // Message
-    //
+  // -------------------------------------------------------------------------
+  // Message
+  //
   S.Message = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'message'
@@ -399,9 +397,9 @@
     }
   }
 
-    // -------------------------------------------------------------------------
-    // Command
-    //
+  // -------------------------------------------------------------------------
+  // Command
+  //
   S.Command = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'command'
@@ -423,13 +421,13 @@
     matches: function (xuser) {
       xparams = xuser.split(':')
 
-            // No match if x params are greater than ours.
+      // No match if x params are greater than ours.
       if (xparams.length > this.params().length) { return false }
 
       for (var i = 0; i < xparams.length; i++) {
-                // Wildcard * matches everything until next parameter.
-        if (xparams[i] == '*') { continue }
-        if (xparams[i] != this.params()[i]) { return false }
+        // Wildcard * matches everything until next parameter.
+        if (xparams[i] === '*') { continue }
+        if (xparams[i] !== this.params()[i]) { return false }
       }
 
       return true
@@ -446,9 +444,9 @@
     }
   }
 
-    // -------------------------------------------------------------------------
-    // Presence
-    //
+  // -------------------------------------------------------------------------
+  // Presence
+  //
   S.Presence = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'presence'
@@ -465,9 +463,9 @@
     }
   }
 
-    // -------------------------------------------------------------------------
-    // Event
-    //
+  // -------------------------------------------------------------------------
+  // Event
+  //
   S.Event = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'event'
