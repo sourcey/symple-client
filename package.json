@@ -1,6 +1,6 @@
 {
   "name": "symple-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Symple realtime messaging client",
   "dependencies": {
     "socket.io-client": "^2.0.2"
@@ -25,7 +25,7 @@
     "webrtc",
     "chat"
   ],
-  "author": "Kam Low <auscaster@gmail.com> (http://sourcey.com)",
+  "author": "Kam Low <auscaster@gmail.com> (https://sourcey.com)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/sourcey/symple-client/issues"
