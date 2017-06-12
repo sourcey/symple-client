@@ -1,6 +1,6 @@
 {
   "name": "symple-client",
-  "version": "0.9.9",
+  "version": "1.0.0",
   "description": "Symple realtime messaging client",
   "dependencies": {
     "socket.io-client": "^2.0.2"

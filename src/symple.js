@@ -229,6 +229,11 @@
             pad(date.getMonth()).toString();
     }
 
+    // Return true if the DOM element has the specified class.
+    S.hasClass = function(element, className) {
+      return (' ' + element.className + ' ').indexOf(' ' + className + ' ') !== -1;
+    }
+
     // Debug logger
     S.log = function() {
         if (typeof console != "undefined" &&
@@ -332,7 +337,7 @@
             var args = Array.prototype.slice.call(arguments, 1);
             if (typeof this.listeners[event] != 'undefined') {
                 for (var i = 0; i < this.listeners[event].length; i++) {
-                    //S.log('Emitting: Function: ', this.listeners[event][i]);
+                    // S.log('Emitting: Function: ', this.listeners[event][i]);
                     if (this.listeners[event][i].constructor == Function)
                         this.listeners[event][i].apply(this, args);
                 }
