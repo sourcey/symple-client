@@ -16,8 +16,8 @@ const lclient = new Symple.Client({
   }
 });
 
-lclient.on('announce', function(peer) {
-  console.log('l announce:', peer)
+lclient.on('connect', function(peer) {
+  console.log('l connect:', peer)
 
   // The user has successfully authenticated
 });
@@ -95,8 +95,8 @@ const rclient = new Symple.Client({
   }
 });
 
-rclient.on('announce', function(peer) {
-  console.log('r announce:', peer)
+rclient.on('connect', function(peer) {
+  console.log('r connect:', peer)
 
   // The user has successfully authenticated
 });

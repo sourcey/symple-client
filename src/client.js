@@ -59,7 +59,7 @@ const { io } = require('socket.io-client');
           self.peer.online = true
           self.roster.add(self.peer)
           self.sendPresence({ probe: true })
-          // self.emit('announce', res)
+          self.emit('connect', res)
           self.socket.on('message', function (m) {
             Symple.log('symple:client: receive', m);
             if (typeof (m) === 'object') {
