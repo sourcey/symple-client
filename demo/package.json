@@ -1,0 +1,11 @@
+{
+  "name": "symple-client-demo",
+  "version": "2.0.0",
+  "description": "Realtime messaging and presence server",
+  "dependencies": {
+    "symple-client": "*"
+  },
+  "author": "Kam Low <auscaster@gmail.com> (http://sourcey.com)",
+  "license": "MIT",
+  "homepage": "http://sourcey.com/symple"
+}

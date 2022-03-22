@@ -1,13 +1,8 @@
-//
-// Symple.js
-//
-// Copyright (c)2010 Sourcey
-// http://sourcey.com
-// Distributed under The MIT License.
-//
-(function (S) {
+const Symple = {}
+
+// (function (S) {
   // Parse a Symple address into a peer object.
-  S.parseAddress = function (str) {
+  Symple.parseAddress = function (str) {
     var addr = {},
       arr = str.split('|')
 
@@ -20,13 +15,13 @@
   }
 
   // Build a Symple address from the given peer object.
-  S.buildAddress = function (peer) {
+  Symple.buildAddress = function (peer) {
     return (peer.user ? (peer.user + '|') : '') + (peer.id ? peer.id : '')
   }
 
   // Return an array of nested objects matching
   // the given key/value strings.
-  S.filterObject = function (obj, key, value) { // (Object[, String, String])
+  Symple.filterObject = function (obj, key, value) { // (Object[, String, String])
     var r = []
     for (var k in obj) {
       if (obj.hasOwnProperty(k)) {
@@ -34,7 +29,7 @@
         if ((!key || k === key) && (!value || v === value)) {
           r.push(obj)
         } else if (typeof v === 'object') {
-          var a = S.filterObject(v, key, value)
+          var a = Symple.filterObject(v, key, value)
           if (a) r = r.concat(a)
         }
       }
@@ -43,19 +38,19 @@
   }
 
   // Delete nested objects with properties that match the given key/value strings.
-  S.deleteNested = function (obj, key, value) { // (Object[, String, String])
+  Symple.deleteNested = function (obj, key, value) { // (Object[, String, String])
     for (var k in obj) {
       var v = obj[k]
       if ((!key || k === key) && (!value || v === value)) {
         delete obj[k]
       } else if (typeof v === 'object') {
-        S.deleteNested(v, key)
+        Symple.deleteNested(v, key)
       }
     }
   }
 
   // Count nested object properties that match the given key/value strings.
-  S.countNested = function (obj, key, value, count) {
+  Symple.countNested = function (obj, key, value, count) {
     if (count === undefined) count = 0
     for (var k in obj) {
       if (obj.hasOwnProperty(k)) {
@@ -64,7 +59,7 @@
           count++
         } else if (typeof (v) === 'object') {
           // else if (v instanceof Object) {
-          count = S.countNested(v, key, value, count)
+          count = Symple.countNested(v, key, value, count)
         }
       }
     }
@@ -72,23 +67,23 @@
   }
 
   // Traverse an objects nested properties
-  S.traverse = function (obj, fn) { // (Object, Function)
+  Symple.traverse = function (obj, fn) { // (Object, Function)
     for (var k in obj) {
       if (obj.hasOwnProperty(k)) {
         var v = obj[k]
         fn(k, v)
-        if (typeof v === 'object') { S.traverse(v, fn) }
+        if (typeof v === 'object') { Symple.traverse(v, fn) }
       }
     }
   }
 
   // Generate a random string
-  S.randomString = function (n) {
+  Symple.randomString = function (n) {
     return Math.random().toString(36).slice(2) // Math.random().toString(36).substring(n || 7)
   }
 
   // Recursively merge object properties of r into l
-  S.merge = function (l, r) { // (Object, Object)
+  Symple.merge = function (l, r) { // (Object, Object)
     for (var p in r) {
       try {
         // Property in destination object set; update its value.
@@ -108,7 +103,7 @@
   }
 
   // Object extend functionality
-  S.extend = function () {
+  Symple.extend = function () {
     var process = function (destination, source) {
       for (var key in source) {
         if (hasOwnProperty.call(source, key)) {
@@ -125,7 +120,7 @@
   }
 
   // Run a vendor prefixed method from W3C standard method.
-  S.runVendorMethod = function (obj, method) {
+  Symple.runVendorMethod = function (obj, method) {
     var p = 0, m, t, pfx = ['webkit', 'moz', 'ms', 'o', '']
     while (p < pfx.length && !obj[m]) {
       m = method
@@ -149,7 +144,7 @@
   // 2001-02-03T04:05:06.007+06:30
   // 2001-02-03T04:05:06.007Z
   // 2001-02-03T04:05:06Z
-  S.parseISODate = function (date) { // (String)
+  Symple.parseISODate = function (date) { // (String)
     // ISO8601 dates were introduced with ECMAScript v5,
     // try to parse it natively first...
     var timestamp = Date.parse(date)
@@ -183,18 +178,18 @@
     return new Date(timestamp)
   }
 
-  S.isMobileDevice = function () {
+  Symple.isMobileDevice = function () {
     return 'ontouchstart' in document.documentElement
   }
 
   // Returns the current iOS version, or false if not iOS
-  S.iOSVersion = function (l, r) {
+  Symple.iOSVersion = function (l, r) {
     return parseFloat(('' + (/CPU.*OS ([0-9_]{1,5})|(CPU like).*AppleWebKit.*Mobile/i.exec(navigator.userAgent) || [0, ''])[1])
             .replace('undefined', '3_2').replace('_', '.').replace('_', '')) || false
   }
 
   // Match the object properties of l with r
-  S.match = function (l, r) { // (Object, Object)
+  Symple.match = function (l, r) { // (Object, Object)
     var res = true
     for (var prop in l) {
       if (!l.hasOwnProperty(prop) ||
@@ -207,7 +202,7 @@
     return res
   }
 
-  S.formatTime = function (date) {
+  Symple.formatTime = function (date) {
     function pad (n) { return n < 10 ? ('0' + n) : n }
     return pad(date.getHours()).toString() + ':' +
             pad(date.getMinutes()).toString() + ':' +
@@ -217,14 +212,14 @@
   }
 
   // Return true if the DOM element has the specified class.
-  S.hasClass = function (element, className) {
+  Symple.hasClass = function (element, className) {
     return (' ' + element.className + ' ').indexOf(' ' + className + ' ') !== -1
   }
 
   // Debug logger
-  S.log = function () {
+  Symple.log = function () {
     if (typeof console !== 'undefined' &&
-            typeof console.log !== 'undefined') {
+        typeof console.log !== 'undefined') {
       console.log.apply(console, arguments)
     }
   }
@@ -236,10 +231,10 @@
     fnTest = /xyz/.test(function () { xyz }) ? /\b_super\b/ : /.*/
 
   // The base Class implementation (does nothing)
-  S.Class = function () {}
+  Symple.Class = function () {}
 
   // Create a new Class that inherits from this class
-  S.Class.extend = function (prop) {
+  Symple.Class.extend = function (prop) {
     var _super = this.prototype
 
     // Instantiate a base class (but only create the instance,
@@ -293,7 +288,7 @@
   // -------------------------------------------------------------------------
   // Emitter
   //
-  S.Emitter = S.Class.extend({
+  Symple.Emitter = Symple.Class.extend({
     init: function () {
       this.listeners = {}
     },
@@ -314,12 +309,12 @@
     },
 
     emit: function () {
-      // S.log('Emitting: ', arguments);
+      // Symple.log('Emitting: ', arguments);
       var event = arguments[0]
       var args = Array.prototype.slice.call(arguments, 1)
       if (typeof this.listeners[event] !== 'undefined') {
         for (var i = 0; i < this.listeners[event].length; i++) {
-          // S.log('Emitting: Function: ', this.listeners[event][i]);
+          // Symple.log('Emitting: Function: ', this.listeners[event][i]);
           if (this.listeners[event][i].constructor === Function) {
             this.listeners[event][i].apply(this, args)
           }
@@ -331,7 +326,7 @@
   // -------------------------------------------------------------------------
   // Manager
   //
-  S.Manager = S.Class.extend({
+  Symple.Manager = Symple.Class.extend({
     init: function (options) {
       this.options = options || {}
       this.key = this.options.key || 'id'
@@ -366,7 +361,7 @@
     find: function (params) {
       var res = []
       for (var i = 0; i < this.store.length; i++) {
-        if (S.match(params, this.store[i])) {
+        if (Symple.match(params, this.store[i])) {
           res.push(this.store[i])
         }
       }
@@ -386,4 +381,11 @@
       return this.store.length
     }
   })
-})(window.Symple = window.Symple || {})
+// })(window.Symple = window.Symple || {})
+
+
+/**
+ * Module exports.
+ */
+
+module.exports = Symple;

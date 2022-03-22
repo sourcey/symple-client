@@ -1,103 +1,117 @@
-//
-// Symple.Client.js
-// Realtime Messaging Client
-//
-// Copyright (c)2010 Sourcey
-// http://sourcey.com
-// Distributed under The MIT License.
-//
-(function (S) {
+const Symple = require('./symple');
+const { io } = require('socket.io-client');
+
+// (function (S) {
   // Symple client class
-  S.Client = S.Emitter.extend({
+  Symple.Client = Symple.Emitter.extend({
     init: function (options) {
-      this.options = S.extend({
+      this.options = Symple.extend({
         url: options.url ? options.url : 'http://localhost:4000',
         secure: !!(options.url && (options.url.indexOf('https') === 0 ||
                                    options.url.indexOf('wss') === 0)),
-        token: undefined  // pre-arranged server session token
+        token: undefined, // pre-arranged server session token
+        peer: {}
       }, options)
       this._super()
-      this.peer = options.peer || {}
+      this.options.auth = Symple.extend({
+        token: this.options.token || '',
+        user: this.options.peer.user || '',
+        name: this.options.peer.name || '',
+        type: this.options.peer.type || ''
+      }, this.options.auth)
+      this.peer = Symple.extend(this.options.auth, options.peer)
       this.peer.rooms = options.peer.rooms || []
-      this.roster = new S.Roster(this)
+      delete this.peer.token
+      this.roster = new Symple.Roster(this)
       this.socket = null
     },
 
     // Connects and authenticates on the server.
     // If the server is down the 'error' event will fire.
     connect: function () {
-      S.log('symple:client: connecting', this.options)
-      self = this
+      Symple.log('symple:client: connecting', this.options)
+      var self = this
       if (this.socket) { throw 'The client socket is not null' }
 
-      var io = io || window.io
+      // var io = io || window.io
+      // console.log(io)
+      // this.options.auth || {}
+      // this.options.auth.user = this.peer.user
+      // this.options.auth.token = this.options.token
+
       this.socket = io.connect(this.options.url, this.options)
       this.socket.on('connect', function () {
-        S.log('symple:client: connected')
-        self.socket.emit('announce', {
-          token: self.options.token || '',
-          user: self.peer.user || '',
-          name: self.peer.name || '',
-          type: self.peer.type || ''
-        }, function (res) {
-          S.log('symple:client: announced', res)
-          if (res.status !== 200) {
-            self.setError('auth', res)
-            return
-          }
-          self.peer = S.extend(self.peer, res.data)
-          self.roster.add(res.data)
+        Symple.log('symple:client: connected')
+        // self.socket.emit('announce', {
+        //   token: self.options.token || '',
+        //   user: self.peer.user || '',
+        //   name: self.peer.name || '',
+        //   type: self.peer.type || ''
+        // }, function (res) {
+          // Symple.log('symple:client: announced', res)
+          // if (res.status !== 200) {
+          //   self.setError('auth', res)
+          //   return
+          // }
+          // self.peer = Symple.extend(self.peer, res.data)
+          // self.roster.add(res.data)
+          self.peer.id = self.socket.id
+          self.peer.online = true
+          self.roster.add(self.peer)
           self.sendPresence({ probe: true })
-          self.emit('announce', res)
+          // self.emit('announce', res)
           self.socket.on('message', function (m) {
-            // S.log('symple:client: receive', m);
+            Symple.log('symple:client: receive', m);
             if (typeof (m) === 'object') {
               switch (m.type) {
                 case 'message':
-                  m = new S.Message(m)
+                  m = new Symple.Message(m)
                   break
                 case 'command':
-                  m = new S.Command(m)
+                  m = new Symple.Command(m)
                   break
                 case 'event':
-                  m = new S.Event(m)
+                  m = new Symple.Event(m)
                   break
                 case 'presence':
-                  m = new S.Presence(m)
-                  if (m.data.online) { self.roster.update(m.data) } else {
+                  m = new Symple.Presence(m)
+                  if (m.data.online) {
+                    self.roster.update(m.data)
+                  } else {
                     setTimeout(function () { // remove after timeout
                       self.roster.remove(m.data.id)
                     })
                   }
                   if (m.probe) {
-                    self.sendPresence(new S.Presence({
-                        to: S.parseAddress(m.from).id
-                      }))
+                    self.sendPresence(new Symple.Presence({
+                      to: Symple.parseAddress(m.from).id
+                    }))
                   }
                   break
                 default:
-                  o = m
-                  o.type = o.type || 'message'
+                  m.type = m.type || 'message'
                   break
               }
 
               if (typeof (m.from) !== 'string') {
-                S.log('symple:client: invalid sender address', m)
+                Symple.log('symple:client: invalid sender address', m)
                 return
               }
 
               // Replace the from attribute with the full peer object.
               // This will only work for peer messages, not server messages.
               var rpeer = self.roster.get(m.from)
-              if (rpeer) { m.from = rpeer } else {
-                S.log('symple:client: got message from unknown peer', m)
+              if (rpeer) {
+                m.from = rpeer
+              } else {
+                Symple.log('symple:client: got message from unknown peer', m)
               }
 
               // Dispatch to the application
               self.emit(m.type, m)
             }
           })
-        })
+        // })
       })
       this.socket.on('error', function () {
         // This is triggered when any transport fails,
@@ -105,21 +119,27 @@
         self.emit('connect')
       })
       this.socket.on('connecting', function () {
-        S.log('symple:client: connecting')
+        Symple.log('symple:client: connecting')
         self.emit('connecting')
       })
       this.socket.on('reconnecting', function () {
-        S.log('symple:client: reconnecting')
+        Symple.log('symple:client: reconnecting')
         self.emit('reconnecting')
       })
+      this.socket.on('connect_error', (err) => {
+        // Called when authentication middleware fails
+        self.emit('connect_error')
+        self.setError('auth', err.message)
+        Symple.log('symple:client: connect error', err)
+      })
       this.socket.on('connect_failed', function () {
-                // Called when all transports fail
-        S.log('symple:client: connect failed')
+        // Called when all transports fail
+        Symple.log('symple:client: connect failed')
         self.emit('connect_failed')
         self.setError('connect')
       })
       this.socket.on('disconnect', function () {
-        S.log('symple:client: disconnect')
+        Symple.log('symple:client: disconnect')
         self.peer.online = false
         self.emit('disconnect')
       })
@@ -147,19 +167,20 @@
 
     // Send a message to the given peer
     send: function (m, to) {
-      // S.log('symple:client: before send', m, to);
+      // Symple.log('symple:client: before send', m, to);
       if (!this.online()) { throw 'Cannot send messages while offline' } // add to pending queue?
       if (typeof (m) !== 'object') { throw 'Message must be an object' }
       if (typeof (m.type) !== 'string') { m.type = 'message' }
-      if (!m.id) { m.id = S.randomString(8) }
+      if (!m.id) { m.id = Symple.randomString(8) }
       if (to) { m.to = to }
-      if (m.to && typeof (m.to) === 'object') { m.to = S.buildAddress(m.to) }
+      if (m.to && typeof (m.to) === 'object') { m.to = Symple.buildAddress(m.to) }
       if (m.to && typeof (m.to) !== 'string') { throw 'Message `to` attribute must be an address string' }
-      m.from = S.buildAddress(this.peer)
+      m.from = Symple.buildAddress(this.peer)
       if (m.from === m.to) { throw 'Message sender cannot match the recipient' }
 
-      S.log('symple:client: sending', m)
-      this.socket.json.send(m)
+      Symple.log('symple:client: sending', m)
+      this.socket.emit('message', m)
+      // this.socket.json.send(m)
     },
 
     respond: function (m) {
@@ -172,13 +193,13 @@
 
     sendPresence: function (p) {
       p = p || {}
-      if (p.data) { p.data = S.merge(this.peer, p.data) } else { p.data = this.peer }
-      this.send(new S.Presence(p))
+      if (p.data) { p.data = Symple.merge(this.peer, p.data) } else { p.data = this.peer }
+      this.send(new Symple.Presence(p))
     },
 
     sendCommand: function (c, to, fn, once) {
       var self = this
-      c = new S.Command(c, to)
+      c = new Symple.Command(c, to)
       this.send(c)
       if (fn) {
         this.onResponse('command', {
@@ -252,7 +273,7 @@
 
     // Sets the client to an error state and disconnect
     setError: function (error, message) {
-      S.log('symple:client: fatal error', error, message)
+      Symple.log('symple:client: fatal error', error, message)
       // if (this.error === error)
       //    return;
       // this.error = error;
@@ -272,13 +293,13 @@
     },
 
     clear: function (event, fn) {
-      S.log('symple:client: clearing callback', event)
+      Symple.log('symple:client: clearing callback', event)
       if (typeof this.listeners[event] !== 'undefined') {
         for (var i = 0; i < this.listeners[event].length; i++) {
           if (this.listeners[event][i].fn === fn &&
             String(this.listeners[event][i].fn) === String(fn)) {
             this.listeners[event].splice(i, 1)
-            S.log('symple:client: cleared callback', event)
+            Symple.log('symple:client: cleared callback', event)
           }
         }
       }
@@ -300,7 +321,7 @@
         for (var i = 0; i < this.listeners[event].length; i++) {
           if (typeof this.listeners[event][i] === 'object' &&
                         this.listeners[event][i].filters !== 'undefined' &&
-                        S.match(this.listeners[event][i].filters, data[0])) {
+                        Symple.match(this.listeners[event][i].filters, data[0])) {
             this.listeners[event][i].fn.apply(this, data)
             if (this.listeners[event][i].after !== 'undefined') {
               this.listeners[event][i].after.apply(this, data)
@@ -313,9 +334,9 @@
     }
 
     // getPeers: function(fn) {
-    //     self = this;
+    //     var self = this;
     //     this.socket.emit('peers', function(res) {
-    //         S.log('Peers: ', res);
+    //         Symple.log('Peers: ', res);
     //         if (typeof(res) !== 'object')
     //             for (var peer in res)
     //                 self.roster.update(peer);
@@ -328,7 +349,7 @@
   // -------------------------------------------------------------------------
   // Symple Roster
   //
-  S.Roster = S.Manager.extend({
+  Symple.Roster = Symple.Manager.extend({
     init: function (client) {
       this._super()
       this.client = client
@@ -336,7 +357,7 @@
 
     // Add a peer object to the roster
     add: function (peer) {
-      S.log('symple:roster: adding', peer)
+      Symple.log('symple:roster: adding', peer)
       if (!peer || !peer.id || !peer.user) { throw 'Cannot add invalid peer' }
       this._super(peer)
       this.client.emit('addPeer', peer)
@@ -344,9 +365,9 @@
 
     // Remove the peer matching an ID or address string: user|id
     remove: function (id) {
-      id = S.parseAddress(id).id || id
+      id = Symple.parseAddress(id).id || id
       var peer = this._super(id)
-      S.log('symple:roster: removing', id, peer)
+      Symple.log('symple:roster: removing', id, peer)
       if (peer) { this.client.emit('removePeer', peer) }
       return peer
     },
@@ -354,11 +375,11 @@
     // Get the peer matching an ID or address string: user|id
     get: function (id) {
       // Handle IDs
-      peer = this._super(id) // id = S.parseIDFromAddress(id) || id;
+      peer = this._super(id) // id = Symple.parseIDFromAddress(id) || id;
       if (peer) { return peer }
 
       // Handle address strings
-      return this.findOne(S.parseAddress(id))
+      return this.findOne(Symple.parseAddress(id))
     },
 
     update: function (data) {
@@ -371,7 +392,7 @@
 
     // Get the peer matching an address string: user|id
     // getForAddr: function(addr) {
-    //    var o = S.parseAddress(addr);
+    //    var o = Symple.parseAddress(addr);
     //    if (o && o.id)
     //        return this.get(o.id);
     //    return null;
@@ -381,12 +402,12 @@
   // -------------------------------------------------------------------------
   // Message
   //
-  S.Message = function (json) {
+  Symple.Message = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'message'
   }
 
-  S.Message.prototype = {
+  Symple.Message.prototype = {
     fromJSON: function (json) {
       for (var key in json) { this[key] = json[key] }
     },
@@ -400,12 +421,12 @@
   // -------------------------------------------------------------------------
   // Command
   //
-  S.Command = function (json) {
+  Symple.Command = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'command'
   }
 
-  S.Command.prototype = {
+  Symple.Command.prototype = {
     getData: function (name) {
       return this['data'] ? this['data'][name] : null
     },
@@ -447,31 +468,30 @@
   // -------------------------------------------------------------------------
   // Presence
   //
-  S.Presence = function (json) {
+  Symple.Presence = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'presence'
   }
 
-  S.Presence.prototype = {
+  Symple.Presence.prototype = {
     fromJSON: function (json) {
       for (var key in json) { this[key] = json[key] }
     },
 
     valid: function () {
-      return this['id'] &&
-            this['from']
+      return this['id'] && this['from']
     }
   }
 
   // -------------------------------------------------------------------------
   // Event
   //
-  S.Event = function (json) {
+  Symple.Event = function (json) {
     if (typeof (json) === 'object') { this.fromJSON(json) }
     this.type = 'event'
   }
 
-  S.Event.prototype = {
+  Symple.Event.prototype = {
     fromJSON: function (json) {
       for (var key in json) { this[key] = json[key] }
     },
@@ -482,4 +502,11 @@
             this.name
     }
   }
-})(window.Symple = window.Symple || {})
+// })(window.Symple = window.Symple || {})
+
+
+/**
+ * Module exports.
+ */
+
+module.exports = Symple;
