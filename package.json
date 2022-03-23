@@ -1,15 +1,16 @@
 {
   "name": "symple-client",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Symple realtime messaging client",
   "dependencies": {
     "socket.io-client": "^4.4.1"
   },
   "devDependencies": {
     "grunt": "^1.4.1",
+    "grunt-contrib-concat": "^2.0.0",
     "grunt-contrib-cssmin": "^4.0.0",
-    "grunt-contrib-watch": "^1.1.0",
-    "grunt-contrib-uglify": "^5.0.1"
+    "grunt-contrib-uglify": "^5.0.1",
+    "grunt-contrib-watch": "^1.1.0"
   },
   "repository": {
     "type": "git",

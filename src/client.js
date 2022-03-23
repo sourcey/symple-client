@@ -19,9 +19,9 @@ const { io } = require('socket.io-client');
         name: this.options.peer.name || '',
         type: this.options.peer.type || ''
       }, this.options.auth)
-      this.peer = Symple.extend(this.options.auth, options.peer)
-      this.peer.rooms = options.peer.rooms || []
-      delete this.peer.token
+      this.peer = options.peer // Symple.extend(this.options.auth, options.peer)
+      this.peer.rooms = this.peer.rooms || []
+      // delete this.peer.token
       this.roster = new Symple.Roster(this)
       this.socket = null
     },
