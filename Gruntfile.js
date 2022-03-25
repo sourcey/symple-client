@@ -17,7 +17,7 @@ module.exports = function(grunt) {
       js: {
         files: {
           'dist/symple.min.js': ['dist/symple.js'],
-          'demo/public/symple.min.js': ['dist/symple.js']
+          // 'demo/public/symple.min.js': ['dist/symple.js']
         }
       }
     },

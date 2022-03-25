@@ -10,7 +10,8 @@ let queryParams = new URLSearchParams(window.location.search)
 // ----------------------------------------
 // L Client
 
-const lclient = new Symple.Client({
+const client = new Symple.Client({
+  // url: 'https://chat.mytommy.com',  // Symple server URL [http/https]
   url: 'http://localhost:4500',  // Symple server URL [http/https]
   token: 'someauthtoken',        // An optional pre-arranged session token
   peer: {                        // Peer object contains user information
@@ -23,38 +24,40 @@ const lclient = new Symple.Client({
   }
 });
 
-lclient.on('connect', function(peer) {
-  console.log('l connect !!!!!!!!!!!!!!!!!:', peer)
+client.on('connect', function() {
+  console.log('connect')
+  console.log('joining test')
+  client.join('test');
 
   // The user has successfully authenticated
 });
 
-lclient.on('presence', function(p) {
-  console.log('l presence:', p)
+client.on('presence', function(p) {
+  console.log('presence:', p)
 
   // Captures a presence message broadcast by a peer
 });
 
-lclient.on('message', function(m) {
-  console.log('l message:', m)
+client.on('message', function(m) {
+  console.log('message:', m)
 
   // Captures a message broadcast by a peer
 });
 
-lclient.on('command', function(c) {
-  console.log('l command:', c)
+client.on('command', function(c) {
+  console.log('command:', c)
 
   // Captures a command send from a remote peer
 });
 
-lclient.on('event', function(e) {
-  console.log('l event:', e)
+client.on('event', function(e) {
+  console.log('event:', e)
 
   // Captures an event broadcast from a remote peer
 });
 
-lclient.on('error', function(error, message) {
-  console.log('l connection error:', error, message)
+client.on('error', function(error, message) {
+  console.log('connection error:', error, message)
 
   // Connection or authentication failed
   if (error == 'auth') {
@@ -65,22 +68,22 @@ lclient.on('error', function(error, message) {
   }
 });
 
-lclient.on('disconnect', function() {
-  console.log('l disconnected')
+client.on('disconnect', function() {
+  console.log('disconnected')
 
   // Disconnected from the server
 });
 
-lclient.on('addPeer', function(peer) {
-  console.log('l add peer:', peer)
+client.on('addPeer', function(peer) {
+  console.log('add peer:', peer)
 
   // A peer connected
 });
 
-lclient.on('removePeer', function(peer) {
-  console.log('l remove peer:', peer)
+client.on('removePeer', function(peer) {
+  console.log('remove peer:', peer)
 
   // A peer disconnected
 });
 
-lclient.connect();
+client.connect();

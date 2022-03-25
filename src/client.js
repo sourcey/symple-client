@@ -58,7 +58,9 @@ const { io } = require('socket.io-client');
           self.peer.id = self.socket.id
           self.peer.online = true
           self.roster.add(self.peer)
-          self.sendPresence({ probe: true })
+          setTimeout(function () {
+            self.sendPresence({ probe: true })
+          }) // next iteration incase rooms are joined on connect
           self.emit('connect')
           self.socket.on('message', function (m) {
             Symple.log('symple:client: receive', m);
@@ -113,10 +115,10 @@ const { io } = require('socket.io-client');
           })
         // })
       })
-      this.socket.on('error', function () {
+      this.socket.on('error', function (error) {
         // This is triggered when any transport fails,
         // so not necessarily fatal.
-        self.emit('connect')
+        self.emit('error', error)
       })
       this.socket.on('connecting', function () {
         Symple.log('symple:client: connecting')
@@ -126,11 +128,11 @@ const { io } = require('socket.io-client');
         Symple.log('symple:client: reconnecting')
         self.emit('reconnecting')
       })
-      this.socket.on('connect_error', (err) => {
+      this.socket.on('connect_error', (error) => {
         // Called when authentication middleware fails
         self.emit('connect_error')
-        self.setError('auth', err.message)
-        Symple.log('symple:client: connect error', err)
+        self.setError('auth', error.message)
+        Symple.log('symple:client: connect error', error)
       })
       this.socket.on('connect_failed', function () {
         // Called when all transports fail
@@ -138,8 +140,8 @@ const { io } = require('socket.io-client');
         self.emit('connect_failed')
         self.setError('connect')
       })
-      this.socket.on('disconnect', function () {
-        Symple.log('symple:client: disconnect')
+      this.socket.on('disconnect', function (reason) {
+        Symple.log('symple:client: disconnect', reason)
         self.peer.online = false
         self.emit('disconnect')
       })
