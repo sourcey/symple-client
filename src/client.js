@@ -42,63 +42,47 @@ const { io } = require('socket.io-client');
       this.socket = io.connect(this.options.url, this.options)
       this.socket.on('connect', function () {
         Symple.log('symple:client: connected')
-        // self.socket.emit('announce', {
-        //   token: self.options.token || '',
-        //   user: self.peer.user || '',
-        //   name: self.peer.name || '',
-        //   type: self.peer.type || ''
-        // }, function (res) {
-          // Symple.log('symple:client: announced', res)
-          // if (res.status !== 200) {
-          //   self.setError('auth', res)
-          //   return
-          // }
-          // self.peer = Symple.extend(self.peer, res.data)
-          // self.roster.add(res.data)
-          self.peer.id = self.socket.id
-          self.peer.online = true
-          self.roster.add(self.peer)
-          setTimeout(function () {
-            self.sendPresence({ probe: true })
-          }) // next iteration incase rooms are joined on connect
-          self.emit('connect')
-          self.socket.on('message', function (m) {
-            Symple.log('symple:client: receive', m);
-            if (typeof (m) === 'object') {
-              switch (m.type) {
-                case 'message':
-                  m = new Symple.Message(m)
-                  break
-                case 'command':
-                  m = new Symple.Command(m)
-                  break
-                case 'event':
-                  m = new Symple.Event(m)
-                  break
-                case 'presence':
-                  m = new Symple.Presence(m)
-                  if (m.data.online) {
-                    self.roster.update(m.data)
-                  } else {
-                    setTimeout(function () { // remove after timeout
-                      self.roster.remove(m.data.id)
-                    })
-                  }
-                  if (m.probe) {
-                    self.sendPresence(new Symple.Presence({
-                      to: Symple.parseAddress(m.from).id
-                    }))
-                  }
-                  break
-                default:
-                  m.type = m.type || 'message'
-                  break
-              }
+        self.peer.id = self.socket.id
+        self.peer.online = true
+        self.roster.add(self.peer)
+        setTimeout(function () {
+          self.sendPresence({ probe: true })
+        }) // next iteration incase rooms are joined on connect
+        self.emit('connect')
+        self.socket.on('message', function (m) {
+          Symple.log('symple:client: receive', m);
+          if (typeof (m) === 'object') {
+            switch (m.type) {
+              case 'message':
+                m = new Symple.Message(m)
+                break
+              case 'command':
+                m = new Symple.Command(m)
+                break
+              case 'event':
+                m = new Symple.Event(m)
+                break
+              case 'presence':
+                m = new Symple.Presence(m)
+                if (m.data.online) {
+                  self.roster.update(m.data)
+                } else {
+                  setTimeout(function () { // remove after timeout
+                    self.roster.remove(m.data.id)
+                  })
+                }
+                if (m.probe) {
+                  self.sendPresence(new Symple.Presence({
+                    to: Symple.parseAddress(m.from).id
+                  }))
+                }
+                break
+              default:
+                m.type = m.type || 'message'
+                break
+            }
 
-              if (typeof (m.from) !== 'string') {
-                Symple.log('symple:client: invalid sender address', m)
-                return
-              }
+            if (typeof (m.from) === 'string') {
 
               // Replace the from attribute with the full peer object.
               // This will only work for peer messages, not server messages.
@@ -108,12 +92,12 @@ const { io } = require('socket.io-client');
               } else {
                 Symple.log('symple:client: got message from unknown peer', m)
               }
-
-              // Dispatch to the application
-              self.emit(m.type, m)
             }
-          })
-        // })
+
+            // Dispatch to the application
+            self.emit(m.type, m)
+          }
+        })
       })
       this.socket.on('error', function (error) {
         // This is triggered when any transport fails,
