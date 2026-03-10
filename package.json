@@ -1,16 +1,17 @@
 {
   "name": "symple-client",
-  "version": "2.0.5",
-  "description": "Symple realtime messaging client",
-  "dependencies": {
-    "socket.io-client": "^4.4.1"
+  "version": "3.0.0",
+  "description": "Symple realtime messaging and presence client",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
   },
-  "devDependencies": {
-    "grunt": "^1.4.1",
-    "grunt-contrib-concat": "^2.0.0",
-    "grunt-contrib-cssmin": "^4.0.0",
-    "grunt-contrib-uglify": "^5.0.1",
-    "grunt-contrib-watch": "^1.1.0"
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.0"
   },
   "repository": {
     "type": "git",
@@ -31,5 +32,5 @@
   "bugs": {
     "url": "https://github.com/sourcey/symple-client/issues"
   },
-  "homepage": "http://sourcey.com/symple"
+  "homepage": "https://sourcey.com/symple"
 }

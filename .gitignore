@@ -1,5 +1,2 @@
-~*
-*~
-bak
-log
 node_modules
+*.log

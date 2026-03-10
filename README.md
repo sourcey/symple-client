@@ -1,151 +1,153 @@
 # Symple Client
 
-The Symple JavaScript client is a client-side implementation of the Symple protocol that runs in the web browser.
+Realtime messaging and presence client for the [Symple](https://github.com/sourcey/symple-server) protocol, built on [Socket.IO](https://socket.io/).
 
-## What is Symple?
+## Features
 
-Symple is an unrestrictive real time messaging and presence protocol that implements the minimum number of features required to build full fledged messaging applications with security, flexibility, performance and scalability in mind. These features include:
+- **Connect and authenticate** with a Symple server
+- **Peer presence** — online/offline status, capabilities
+- **Scoped messaging** — direct, room, or broadcast
+- **Dynamic rooms** — join and leave at runtime
+- **Roster management** — automatic peer tracking
+- **ES modules** — clean ESM imports, tree-shakeable
 
-* Session sharing with any backend (via Redis)
-* User rostering and presence
-* Media streaming (via WebRTC, [see demo](http://symple.sourcey.com))
-* Scoped messaging ie. direct, user and group scope
-* Real-time commands and events
-* Real-time forms
-
-Symple currently has client implementations in [JavaScript](https://github.com/sourcey/symple-client), [Ruby](https://github.com/sourcey/symple-client-ruby) and [C++](https://github.com/sourcey/libsourcey/tree/master/src/symple), which make it ideal for a wide range of messaging requirements, such as building real-time games and applications that run in the web browser, desktop, and mobile phone.
-
-## Installation
+## Install
 
 ```bash
-# install the server
-npm install symple
-
-# install the client
 npm install symple-client
 ```
 
-## Demo
-
-We've included a fully featured video chat demo using Symple and WebRTC for your hacking pleasure. The source code is located in the [symple-webrtc-video-chat-demo](https://github.com/sourcey/symple-webrtc-video-chat-demo) repository.
-
-You can see it live here: http://symple.sourcey.com
-
-## Usage
-
-The first thing to do is fire up the server:
-
-```bash
-cd /path/to/symple/server
-
-node server
-```
-
-To use Symple in your app just add the following two scripts into your HTML head, replacing the `src` path with the correct script locations as necessary.
-
-**Note:** [Socket.IO](https://github.com/socketio/socket.io-client) is the only dependency (1.3.7 at the time of writing).
-
-```
-  <script type="text/javascript" src="socket.io.js"></script>
-  <script type="text/javascript" src="symple.min.js"></script>
-```
-
-The next thing is to instantiate the client. The code below should provide you with a solid starting point, and illustrates the available callback API methods:
+## Quick Start
 
 ```javascript
-client = new Symple.Client({
-  token: 'someauthtoken',        // An optional pre-arranged session token  
-  url: 'http://localhost:4500',  // Symple server URL [http/https]  
-  peer: {                        // Peer object contains user information  
-    name: 'My Name',             // User display name  
-    user: 'myusername',          // User ID  
-    group: 'somegroup',          // Peer group/room this user's communication is restricted to  
+import SympleClient from 'symple-client'
 
-    // Note: The peer object may be extended any custom data, which will  
-    // automatically be broadcast to other group peers via presence updates.  
+const client = new SympleClient({
+  url: 'http://localhost:4500',
+  peer: {
+    user: 'alice',
+    name: 'Alice'
   }
-});
+})
 
-client.on('announce', function(peer) {
-  console.log('announce:', peer)
+client.on('connect', () => {
+  console.log('Connected as', client.peer.name)
 
-  // The user has successfully authenticated
-});
+  // Join a room
+  client.join('general')
 
-client.on('presence', function(p) {
-  console.log('presence:', p)
+  // Send a message
+  client.send({
+    type: 'message',
+    body: 'Hello everyone!'
+  })
+})
 
-  // Captures a presence message broadcast by a peer
-});
+client.on('message', (m) => {
+  console.log('Message from', m.from, ':', m.body)
+})
 
-client.on('message', function(m) {
-  console.log('message:', m)
+client.on('addPeer', (peer) => {
+  console.log('Peer joined:', peer.name)
+})
 
-  // Captures a message broadcast by a peer
-});
+client.on('removePeer', (peer) => {
+  console.log('Peer left:', peer.name)
+})
 
-client.on('command', function(c) {
-  console.log('command:', c)
+client.on('error', (error, message) => {
+  console.error('Error:', error, message)
+})
 
-  // Captures a command send from a remote peer
-});
-
-client.on('event', function(e) {  
-  console.log('event:', e)    
-
-  // Captures an event broadcast from a remote peer
-});
-
-client.on('error', function(error, message) {
-  console.log('connection error:', error, message)
-
-  // Connection or authentication failed
-  if (error == 'connect') {
-  	// Authentication failed
-  }
-  else if (error == 'connect') {
-  	// Connection failed
-  }
-});
-
-client.on('disconnect', function() {
-  console.log('disconnected')
-
-  // Disconnected from the server
-});
-
-client.on('addPeer', function(peer) {
-  console.log('add peer:', peer)  
-
-  // A peer connected       
-});
-
-client.on('removePeer', function(peer) {
-  console.log('remove peer:', peer)
-
-  // A peer disconnected  
-});
+client.connect()
 ```
 
-Now all that's left is to build your awesome app!
+## Authentication
 
-## Symple Projects
+To use token-based authentication (when the server has `SYMPLE_AUTHENTICATION=true`):
 
-Node.js server: https://github.com/sourcey/symple-server-node  
-JavaScript client: https://github.com/sourcey/symple-client  
-JavaScript client player: https://github.com/sourcey/symple-client-player  
-Ruby client: https://github.com/sourcey/symple-client-ruby  
-C++ client: https://github.com/sourcey/libsourcey/tree/master/src/symple  
+```javascript
+const client = new SympleClient({
+  url: 'https://your-server.com',
+  token: 'your-session-token',
+  peer: {
+    user: 'alice',
+    name: 'Alice'
+  }
+})
+```
 
-## Contributing
+## API
 
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+### `new SympleClient(options)`
 
-## Contact
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | string | `http://localhost:4500` | Server URL |
+| `token` | string | — | Authentication token |
+| `peer` | object | `{}` | Peer info (`user`, `name`, `type`) |
+| `reconnectionDelay` | number | `3000` | Reconnection delay in ms |
 
-For more information please check out the Symple homepage: http://sourcey.com/symple/  
-For bugs and issues please use the Github issue tracker: https://github.com/sourcey/symple-client/issues
+### Methods
+
+| Method | Description |
+| --- | --- |
+| `connect()` | Connect to the server |
+| `disconnect()` | Disconnect from the server |
+| `shutdown()` | Disconnect and destroy the socket |
+| `send(message, to?)` | Send a message |
+| `sendMessage(message, to?)` | Send a typed message |
+| `sendPresence(presence?)` | Broadcast presence |
+| `join(room)` | Join a room |
+| `leave(room)` | Leave a room |
+| `addCapability(name, value?)` | Add a peer capability |
+| `removeCapability(name)` | Remove a peer capability |
+| `hasCapability(peerId, name)` | Check if a peer has a capability |
+| `getCapability(peerId, name)` | Get a peer's capability value |
+
+### Events
+
+| Event | Payload | Description |
+| --- | --- | --- |
+| `connect` | — | Connected to server |
+| `disconnect` | — | Disconnected from server |
+| `reconnect` | attempt | Reconnected after failure |
+| `connect_error` | — | Connection/auth failed |
+| `error` | error, message | Error occurred |
+| `message` | message | Message received |
+| `presence` | presence | Presence update |
+| `command` | command | Command received |
+| `event` | event | Event received |
+| `addPeer` | peer | Peer joined |
+| `removePeer` | peer | Peer left |
+
+### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `online` | boolean | Whether the client is connected |
+| `peer` | object | The local peer object |
+| `roster` | Roster | Connected peers roster |
+
+## Exports
+
+```javascript
+// Default export
+import SympleClient from 'symple-client'
+
+// Named exports
+import { SympleClient, Symple, Emitter, Store, Roster } from 'symple-client'
+```
+
+## Debug Logging
+
+Enable debug output:
+
+```javascript
+import { Symple } from 'symple-client'
+Symple.debug = true
+```
+
+## License
+
+MIT
