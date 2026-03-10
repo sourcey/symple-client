@@ -2,6 +2,11 @@
 
 Realtime messaging and presence client for the [Symple](https://github.com/sourcey/symple-server) protocol, built on [Socket.IO](https://socket.io/).
 
+Part of the Symple ecosystem:
+
+- **[symple-server](https://github.com/sourcey/symple-server)** — Node.js messaging server
+- **[symple-client-ruby](https://github.com/sourcey/symple-client-ruby)** — Ruby/Rails server-side emitter
+
 ## Features
 
 - **Connect and authenticate** with a Symple server
