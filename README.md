@@ -153,6 +153,10 @@ import { Symple } from 'symple-client'
 Symple.debug = true
 ```
 
+## More Information
+
+For more details, visit [sourcey.com/code/symple](https://sourcey.com/code/symple).
+
 ## License
 
 MIT
