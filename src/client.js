@@ -1,4 +1,3 @@
-import { io } from 'socket.io-client'
 import Symple from './symple.js'
 import Emitter from './emitter.js'
 import Roster from './roster.js'
@@ -7,178 +6,222 @@ export default class SympleClient extends Emitter {
   constructor (options) {
     super()
     this.options = Symple.extend({
-      url: options.url ? options.url : 'http://localhost:4500',
-      secure: !!(options.url && (options.url.indexOf('https') === 0 ||
-                                 options.url.indexOf('wss') === 0)),
+      url: options.url ? options.url : 'ws://localhost:4500',
+      reconnection: true,
       reconnectionDelay: 3000,
+      reconnectionAttempts: 0, // 0 = unlimited
       token: undefined,
       peer: {}
     }, options)
-    this.options.auth = Symple.extend({
-      token: this.options.token || '',
-      user: this.options.peer.user || '',
-      name: this.options.peer.name || '',
-      type: this.options.peer.type || ''
-    }, this.options.auth)
     this.peer = options.peer
     this.peer.rooms = this.peer.rooms || []
     this.roster = new Roster(this)
     this.socket = null
+    this._reconnectCount = 0
+    this._reconnectTimer = null
+    this._closing = false
   }
 
   // Connect and authenticate on the server.
   connect () {
-    Symple.log('symple:client: connect', this.options)
+    Symple.log('symple:client: connect', this.options.url)
+    this._closing = false
+    this._reconnectCount = 0
+    this._doConnect()
+  }
 
-    if (!this.socket) {
-      this.socket = io.connect(this.options.url, this.options)
-      this.bind()
-    } else if (!this.online) {
-      // Ensure auth is set for reconnection
-      if (!this.socket.auth || !this.socket.auth.token) {
-        this.socket.auth = this.options.auth
+  _doConnect () {
+    if (this.socket) {
+      this.socket.close()
+      this.socket = null
+    }
+
+    const url = this.options.url.replace(/^http/, 'ws')
+    this.socket = new WebSocket(url)
+
+    this.socket.onopen = () => {
+      Symple.log('symple:client: websocket open, sending auth')
+      // Auth is the first message after WebSocket handshake
+      const auth = {
+        type: 'auth',
+        user: this.options.peer.user || '',
+        name: this.options.peer.name || '',
+        token: this.options.token || ''
       }
-      this.socket.connect()
-    } else {
-      Symple.log('symple:client: already connected')
+      if (this.options.peer.type) {
+        auth.data = { peerType: this.options.peer.type }
+      }
+      this.socket.send(JSON.stringify(auth))
+    }
+
+    this.socket.onmessage = (event) => {
+      let msg
+      try {
+        msg = JSON.parse(event.data)
+      } catch (e) {
+        Symple.log('symple:client: parse error', e)
+        return
+      }
+
+      Symple.log('symple:client: receive', msg)
+
+      if (typeof msg !== 'object') return
+
+      // Handle welcome (auth success)
+      if (msg.type === 'welcome') {
+        this._onWelcome(msg)
+        return
+      }
+
+      // Handle error from server
+      if (msg.type === 'error') {
+        Symple.log('symple:client: server error', msg.status, msg.message)
+        this.setError('server', msg.message)
+        this.emit('error', msg)
+        return
+      }
+
+      // Handle join/leave acks
+      if (msg.type === 'join:ok' || msg.type === 'leave:ok') return
+
+      // Route messages
+      this._onMessage(msg)
+    }
+
+    this.socket.onclose = (event) => {
+      Symple.log('symple:client: websocket closed', event.code, event.reason)
+      const wasOnline = this.peer.online
+      this.peer.online = false
+      this.emit('disconnect')
+
+      if (!this._closing && wasOnline && this.options.reconnection) {
+        this._startReconnect()
+      }
+    }
+
+    this.socket.onerror = (error) => {
+      Symple.log('symple:client: websocket error', error)
+      this.emit('connect_error', error)
     }
   }
 
-  bind () {
-    if (!this.socket) { throw 'The client socket must be initialized' }
+  _onWelcome (msg) {
+    if (msg.status !== 200) {
+      this.setError('auth', msg.message || 'Auth failed')
+      return
+    }
 
-    this.socket.on('connect', () => {
-      Symple.log('symple:client: connected')
-      this.error = null
-      this.peer.id = this.socket.id
-      this.peer.online = true
-      this.roster.add(this.peer)
-      setTimeout(() => {
-        this.sendPresence({ probe: true })
-      }) // next tick in case rooms are joined on connect
-      this.emit('connect')
+    if (!msg.peer || !msg.peer.id) {
+      this.setError('auth', 'Invalid welcome: missing peer data')
+      return
+    }
+
+    this.error = null
+    this.peer.id = msg.peer.id
+    this.peer.online = true
+    this._reconnectCount = 0
+    this.roster.add(this.peer)
+
+    Symple.log('symple:client: online as', this.peer.user + '|' + this.peer.id)
+    this.emit('connect')
+
+    // Send presence probe on next tick (in case rooms are joined on connect)
+    setTimeout(() => {
+      this.sendPresence({ probe: true })
     })
+  }
 
-    this.socket.on('message', (m) => {
-      Symple.log('symple:client: receive', m)
-      if (typeof m === 'object') {
-        switch (m.type) {
-          case 'message':
-            break
-          case 'command':
-            break
-          case 'event':
-            break
-          case 'presence':
-            if (m.data.online) {
-              this.roster.update(m.data)
-            } else {
-              setTimeout(() => {
-                this.roster.remove(m.data.id)
-              })
-            }
-            if (m.probe) {
-              this.sendPresence({
-                to: Symple.parseAddress(m.from).id
-              })
-            }
-            break
-          default:
-            m.type = m.type || 'message'
-            break
+  _onMessage (m) {
+    switch (m.type) {
+      case 'presence':
+        if (m.data && m.data.online) {
+          this.roster.update(m.data)
+        } else if (m.data) {
+          setTimeout(() => {
+            this.roster.remove(m.data.id)
+          })
         }
-
-        if (typeof m.from === 'string') {
-          const rpeer = this.roster.get(m.from)
-          if (rpeer) {
-            m.from = rpeer
-          } else {
-            Symple.log('symple:client: got message from unknown peer', m)
-          }
+        if (m.probe) {
+          this.sendPresence({
+            to: Symple.parseAddress(m.from).id
+          })
         }
+        break
+      case 'message':
+      case 'command':
+      case 'event':
+        break
+      default:
+        m.type = m.type || 'message'
+        break
+    }
 
-        // Dispatch to the application
-        this.emit(m.type, m)
+    // Resolve 'from' address to roster peer
+    if (typeof m.from === 'string') {
+      const rpeer = this.roster.get(m.from)
+      if (rpeer) {
+        m.from = rpeer
+      } else {
+        Symple.log('symple:client: got message from unknown peer', m)
       }
-    })
+    }
 
-    this.socket.on('connect_error', (error) => {
-      this.emit('connect_error')
-      this.setError('connect', error.message)
-      Symple.log('symple:client: connect error', error)
-    })
-
-    this.socket.on('disconnect', (reason) => {
-      Symple.log('symple:client: disconnect', reason)
-      this.peer.online = false
-      this.emit('disconnect')
-    })
-
-    // Manager events
-    this.socket.io.on('reconnect', (attempt) => {
-      Symple.log('symple:client: reconnect', attempt)
-      this.emit('reconnect')
-    })
-
-    this.socket.io.on('reconnect_attempt', (attempt) => {
-      Symple.log('symple:client: reconnect_attempt', attempt)
-    })
-
-    this.socket.io.on('reconnect_error', (error) => {
-      Symple.log('symple:client: reconnect_error', error)
-    })
-
-    this.socket.io.on('error', (error) => {
-      this.emit('error', error)
-    })
+    // Dispatch to the application
+    this.emit(m.type, m)
   }
 
   // Disconnect from the server.
   disconnect () {
     Symple.log('symple:client: disconnect')
+    this._closing = true
+    this._clearReconnect()
     if (this.socket) {
-      this.socket.disconnect()
+      this.socket.close()
     }
   }
 
   // Disconnect and nullify the socket.
   shutdown () {
     Symple.log('symple:client: shutdown')
+    this._closing = true
+    this._clearReconnect()
     if (this.socket) {
-      this.socket.disconnect()
+      this.socket.close()
       this.socket = null
     }
   }
 
   // Return the online status.
   get online () {
-    return !!this.socket?.connected
+    return !!(this.peer && this.peer.online && this.socket && this.socket.readyState === WebSocket.OPEN)
   }
 
   // Join a room.
   join (room) {
-    this.socket.emit('join', room)
+    if (!this.online) return
+    this.socket.send(JSON.stringify({ type: 'join', room }))
   }
 
   // Leave a room.
   leave (room) {
-    this.socket.emit('leave', room)
+    if (!this.online) return
+    this.socket.send(JSON.stringify({ type: 'leave', room }))
   }
 
   // Send a message to the given peer.
   send (m, to) {
-    if (!this.online) { throw 'Cannot send messages while offline' }
-    if (typeof m !== 'object') { throw 'Message must be an object' }
+    if (!this.online) { throw new Error('Cannot send messages while offline') }
+    if (typeof m !== 'object') { throw new Error('Message must be an object') }
     if (typeof m.type !== 'string') { m.type = 'message' }
     if (!m.id) { m.id = Symple.randomString(8) }
     if (to) { m.to = to }
     if (m.to && typeof m.to === 'object') { m.to = Symple.buildAddress(m.to) }
-    if (m.to && typeof m.to !== 'string') { throw 'Message `to` attribute must be an address string' }
+    if (m.to && typeof m.to !== 'string') { throw new Error('Message `to` attribute must be an address string') }
     m.from = Symple.buildAddress(this.peer)
-    if (m.from === m.to) { throw 'Message sender cannot match the recipient' }
+    if (m.from === m.to) { throw new Error('Message sender cannot match the recipient') }
 
     Symple.log('symple:client: sending', m)
-    this.socket.emit('message', m)
+    this.socket.send(JSON.stringify(m))
   }
 
   // Send a response to a received message.
@@ -243,6 +286,30 @@ export default class SympleClient extends Emitter {
     if (this.error === error) return
     this.error = error
     this.emit('error', error, message)
+  }
+
+  // Reconnection
+  _startReconnect () {
+    if (this.options.reconnectionAttempts > 0 &&
+        this._reconnectCount >= this.options.reconnectionAttempts) {
+      Symple.log('symple:client: max reconnect attempts reached')
+      return
+    }
+
+    this._reconnectCount++
+    Symple.log('symple:client: reconnecting (attempt ' + this._reconnectCount + ')')
+
+    this._reconnectTimer = setTimeout(() => {
+      this._doConnect()
+      this.emit('reconnect_attempt', this._reconnectCount)
+    }, this.options.reconnectionDelay)
+  }
+
+  _clearReconnect () {
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer)
+      this._reconnectTimer = null
+    }
   }
 
   // Register a filtered response handler.

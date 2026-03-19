@@ -18,7 +18,7 @@ const user = process.argv[2] || 'user-' + Math.random().toString(36).slice(2, 6)
 const room = 'lobby'
 
 const client = new SympleClient({
-  url: 'http://localhost:4500',
+  url: 'ws://localhost:4500',
   peer: { user, name: user }
 })
 

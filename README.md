@@ -1,20 +1,22 @@
 # Symple Client
 
-Realtime messaging and presence client for the [Symple](https://github.com/sourcey/symple-server) protocol, built on [Socket.IO](https://socket.io/).
+Realtime messaging and presence client for the [Symple](https://github.com/sourcey/symple-server) protocol over native WebSocket.
 
 Part of the Symple ecosystem:
 
-- **[symple-server](https://github.com/sourcey/symple-server)** — Node.js messaging server
-- **[symple-client-ruby](https://github.com/sourcey/symple-client-ruby)** — Ruby/Rails server-side emitter
+- **[symple-server](https://github.com/sourcey/symple-server)** - Node.js messaging server
+- **[symple-client-ruby](https://github.com/sourcey/symple-client-ruby)** - Ruby/Rails server-side emitter
 
 ## Features
 
 - **Connect and authenticate** with a Symple server
-- **Peer presence** — online/offline status, capabilities
-- **Scoped messaging** — direct, room, or broadcast
-- **Dynamic rooms** — join and leave at runtime
-- **Roster management** — automatic peer tracking
-- **ES modules** — clean ESM imports, tree-shakeable
+- **Peer presence** - online/offline status, capabilities
+- **Scoped messaging** - direct, room, or broadcast
+- **Dynamic rooms** - join and leave at runtime
+- **Roster management** - automatic peer tracking
+- **Reconnection** - configurable automatic reconnection
+- **Zero dependencies** - uses the native WebSocket API (browser or Node.js 22+)
+- **ES modules** - clean ESM imports, tree-shakeable
 
 ## Install
 
@@ -28,7 +30,7 @@ npm install symple-client
 import SympleClient from 'symple-client'
 
 const client = new SympleClient({
-  url: 'http://localhost:4500',
+  url: 'ws://localhost:4500',
   peer: {
     user: 'alice',
     name: 'Alice'
@@ -73,7 +75,7 @@ To use token-based authentication (when the server has `SYMPLE_AUTHENTICATION=tr
 
 ```javascript
 const client = new SympleClient({
-  url: 'https://your-server.com',
+  url: 'wss://your-server.com',
   token: 'your-session-token',
   peer: {
     user: 'alice',
@@ -88,10 +90,12 @@ const client = new SympleClient({
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | string | `http://localhost:4500` | Server URL |
-| `token` | string | — | Authentication token |
+| `url` | string | `ws://localhost:4500` | Server WebSocket URL |
+| `token` | string | - | Authentication token |
 | `peer` | object | `{}` | Peer info (`user`, `name`, `type`) |
+| `reconnection` | boolean | `true` | Enable automatic reconnection |
 | `reconnectionDelay` | number | `3000` | Reconnection delay in ms |
+| `reconnectionAttempts` | number | `0` | Max attempts (`0` = unlimited) |
 
 ### Methods
 
@@ -114,10 +118,10 @@ const client = new SympleClient({
 
 | Event | Payload | Description |
 | --- | --- | --- |
-| `connect` | — | Connected to server |
-| `disconnect` | — | Disconnected from server |
-| `reconnect` | attempt | Reconnected after failure |
-| `connect_error` | — | Connection/auth failed |
+| `connect` | - | Connected and authenticated |
+| `disconnect` | - | Disconnected from server |
+| `reconnect_attempt` | attempt | Reconnection attempt |
+| `connect_error` | error | Connection failed |
 | `error` | error, message | Error occurred |
 | `message` | message | Message received |
 | `presence` | presence | Presence update |
