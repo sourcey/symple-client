@@ -13,7 +13,7 @@
   "dependencies": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sourcey/symple-client.git"
+    "url": "git+https://github.com/nilstate/symple-client.git"
   },
   "keywords": [
     "symple",
@@ -25,10 +25,10 @@
     "webrtc",
     "chat"
   ],
-  "author": "Kam Low <auscaster@gmail.com> (https://sourcey.com)",
+  "author": "Kam Low <auscaster@gmail.com> (https://0state.com)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/sourcey/symple-client/issues"
+    "url": "https://github.com/nilstate/symple-client/issues"
   },
-  "homepage": "https://sourcey.com/code/symple"
+  "homepage": "https://0state.com/symple"
 }

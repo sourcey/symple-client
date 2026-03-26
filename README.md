@@ -1,11 +1,11 @@
 # Symple Client
 
-Realtime messaging and presence client for the [Symple](https://github.com/sourcey/symple-server) protocol over native WebSocket.
+Realtime messaging and presence client for the [Symple](https://github.com/nilstate/symple-server) protocol over native WebSocket.
 
 Part of the Symple ecosystem:
 
-- **[symple-server](https://github.com/sourcey/symple-server)** - Node.js messaging server
-- **[symple-client-ruby](https://github.com/sourcey/symple-client-ruby)** - Ruby/Rails server-side emitter
+- **[symple-server](https://github.com/nilstate/symple-server)** - Node.js messaging server
+- **[symple-client-ruby](https://github.com/nilstate/symple-client-ruby)** - Ruby/Rails server-side emitter
 
 ## Features
 
@@ -159,7 +159,7 @@ Symple.debug = true
 
 ## More Information
 
-For more details, visit [sourcey.com/code/symple](https://sourcey.com/code/symple).
+For more details, visit [0state.com/symple](https://0state.com/symple).
 
 ## License
 
